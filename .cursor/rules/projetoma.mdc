@@ -1,0 +1,74 @@
+---
+alwaysApply: true
+---
+
+Je développe un site web professionnel pour le Réseau OMA, un organisme axé sur :
+
+l’art oratoire, la communication, le management et la formation,
+
+la mise en valeur de talents,
+
+la publication d’événements, formations et contenus multimédias.
+
+Le site comprend un front office dynamique (landing page, actualités, événements, formations, contact) et un panneau d’administration sécurisé (Next.js + Tailwind CSS + Supabase) permettant de gérer le contenu sans dépendre du code.
+
+⚙️ Technologies utilisées :
+
+Next.js 14 (App Router)
+
+TypeScript
+
+Supabase (auth + base de données)
+
+TailwindCSS + DaisyUI
+
+React Query ou SWR pour la gestion asynchrone des données
+
+React Hook Form + Zod pour la validation des formulaires
+Exigences techniques clés
+🧩 Tolérance aux erreurs
+
+Toutes les fonctions doivent être asynchrones (async/await) pour garantir une gestion fluide des erreurs et éviter tout blocage du rendu.
+
+Chaque action critique (fetch, insert, update, delete) doit être encapsulée dans un try/catch.
+
+Aucune erreur ne doit casser le rendu du site : afficher un message d’erreur clair via un composant visuel (Toast ou Alert).
+
+Implémenter un ErrorBoundary global pour intercepter les erreurs fatales côté client.
+
+Les erreurs doivent être loggées côté console et remontées dans Supabase logs pour le suivi.
+
+🔒 Fiabilité
+
+En cas d’indisponibilité temporaire de Supabase, afficher un message d’information convivial sans bloquer le système.
+
+Tous les formulaires doivent être validés avec Zod (validation des champs, types, formats).
+
+Les champs invalides doivent indiquer clairement le problème à l’utilisateur.
+
+Utiliser des états de chargement explicites (isLoading, isSubmitting) pour éviter les actions multiples ou incohérentes.
+
+Toujours prévoir une valeur par défaut en cas de données manquantes pour éviter les undefined ou null non gérés.
+
+🧱 Architecture claire
+
+Chaque page du site (Landing, Événements, Formations, Contact, etc.) doit être un composant indépendant exporté proprement.
+Sécurité
+
+Les routes du panneau administrateur doivent être protégées via Supabase Auth et un middleware Next.js (middleware.ts).
+
+Aucune donnée sensible (API keys, tokens, mots de passe) ne doit être exposée côté client.
+
+Les actions admin (ajout, modification, suppression) doivent vérifier les rôles utilisateurs avant exécution.
+
+🚀 Évolutivité
+
+La structure du projet doit permettre d’ajouter facilement de nouveaux modules :
+
+Blog (articles, catégories, commentaires)
+
+Espace membre (profils publics et privés)
+
+Tableau de bord analytics (statistiques des vues, inscriptions, etc.)
+
+Le code doit être modulaire, documenté et testable, avec une séparation claire entre logique, données et interface.

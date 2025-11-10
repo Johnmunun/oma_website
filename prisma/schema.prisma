@@ -1,0 +1,449 @@
+// ============================================
+// PRISMA SCHEMA - NEON POSTGRESQL
+// ============================================
+// Migration complète de Supabase vers Neon + NextAuth + Prisma
+// Compatible Next.js App Router
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Connection directe pour migrations (optionnel)
+}
+
+// ============================================
+// NEXTAUTH.JS MODELS (Requis pour l'authentification)
+// ============================================
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("Account")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("Session")
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Pour Credentials provider
+  role          UserRole   @default(EDITOR)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+
+  accounts      Account[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("User")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("VerificationToken")
+}
+
+// ============================================
+// MODELS MÉTIER
+// ============================================
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+// Table Contact pour les informations de contact du site
+model Contact {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String?  // Email du site (nullable)
+  telephones Json?   // Tableau de numéros de téléphone en JSON: ["+243900000000", "+243970000000"]
+  facebook  String?  // URL Facebook (nullable)
+  instagram String?  // URL Instagram (nullable)
+  youtube   String?  // URL YouTube (nullable)
+  twitter   String?  // URL Twitter/X (nullable)
+  linkedin  String?  // URL LinkedIn (nullable)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Contact")
+}
+
+// Table Setting pour les paramètres du site
+model Setting {
+  id            String   @id @default(uuid()) @db.Uuid
+  siteTitle     String   @default("Réseau OMA & OMA TV")
+  siteDescription String? @default("Plateforme internationale de formation en communication et leadership")
+  logoUrl       String?  @default("/placeholder-logo.png")
+  
+  // Couleurs shadcn dynamiques (côté public/visiteur)
+  // Couleurs principales
+  colorBackground      String?  @default("#fefcfb") // Fond clair beige/crème
+  colorForeground      String?  @default("#1a1a1a") // Texte sombre
+  colorCard            String?  @default("#ffffff") // Cartes blanches
+  colorCardForeground  String?  @default("#1a1a1a")
+  
+  // Couleurs primaires et secondaires
+  colorPrimary         String?  @default("#0a0a0a") // Noir pour Hero/Footer
+  colorPrimaryForeground String? @default("#fefcfb")
+  colorSecondary       String?  @default("#f97316") // Orange/or
+  colorSecondaryForeground String? @default("#1a1a1a")
+  
+  // Accents et neutres
+  colorMuted           String?  @default("#f7f5f3")
+  colorMutedForeground String?  @default("#71717a")
+  colorAccent          String?  @default("#f97316") // Orange/or
+  colorAccentForeground String?  @default("#1a1a1a")
+  
+  // Bordures et inputs
+  colorBorder          String?  @default("#e4e4e7")
+  colorInput           String?  @default("#ffffff")
+  colorRing            String?  @default("#f97316") // Orange/or
+  
+  // Couleur orange/or principale (gold)
+  colorGold            String?  @default("#f97316") // Orange vibrant
+  colorGoldDark        String?  @default("#ea580c") // Orange foncé
+  colorGoldLight       String?  @default("#fb923c") // Orange clair
+  
+  // Anciennes couleurs (conservées pour compatibilité)
+  primaryColor  String   @default("#f97316") // Orange/or
+  secondaryColor String  @default("#1a1a1a") // Noir
+  
+  fontFamily    String   @default("Playfair Display")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("Setting")
+}
+
+// ============================================
+// CMS MODELS (existants - conservés)
+// ============================================
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Page {
+  id          String    @id @default(uuid()) @db.Uuid
+  slug        String    @unique
+  title       String
+  status      PageStatus @default(DRAFT)
+  publishedAt DateTime?
+  seo         SeoMeta? @relation("PageSeo")
+
+  sections Section[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("Page")
+}
+
+model Section {
+  id        String  @id @default(uuid()) @db.Uuid
+  pageId    String  @db.Uuid
+  page      Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  key       String  // e.g., "hero", "about", "domains", "events", ...
+  component String  // e.g., "HeroSection", "AboutSection"
+  enabled   Boolean @default(true)
+  order     Int     @default(0)
+  props     Json    // JSONB: texts, colors, layout, media, etc.
+
+  blocks    Block[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, key])
+  @@index([enabled, order])
+  @@map("Section")
+}
+
+model Block {
+  id        String  @id @default(uuid()) @db.Uuid
+  sectionId String  @db.Uuid
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  type      String  // e.g., "card", "testimonial", "feature", "cta"
+  order     Int     @default(0)
+  props     Json    // JSONB: title, subtitle, icon, image, links, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sectionId, type, order])
+  @@map("Block")
+}
+
+model SeoMeta {
+  id          String  @id @default(uuid()) @db.Uuid
+  pageId      String  @unique @db.Uuid
+  page        Page    @relation("PageSeo", fields: [pageId], references: [id], onDelete: Cascade)
+  title       String?
+  description String?
+  ogImageUrl  String?
+  noIndex     Boolean @default(false)
+  noFollow    Boolean @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@map("SeoMeta")
+}
+
+model SiteSetting {
+  id      String  @id @default(uuid()) @db.Uuid
+  key     String  @unique
+  value   String  // JSON string or plain text
+  updatedAt DateTime @updatedAt
+
+  @@map("SiteSetting")
+}
+
+model AuditLog {
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String? @db.Uuid
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String  // e.g., "section.update", "theme.apply", "event.publish"
+  target    String?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, action, createdAt])
+  @@map("AuditLog")
+}
+
+model FeatureFlag {
+  id      String  @id @default(uuid()) @db.Uuid
+  key     String  @unique
+  enabled Boolean @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("FeatureFlag")
+}
+
+// ============================================
+// DOMAIN MODELS (Events, Formations, etc.)
+// ============================================
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  FILE
+}
+
+model Event {
+  id          String      @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String      @unique
+  description String?
+  type        String?     // e.g., Formation, Conférence, Atelier
+  status      EventStatus @default(PUBLISHED)
+  imageUrl    String?
+  location    String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  metaTitle   String?
+  metaDesc    String?
+  showOnBanner Boolean   @default(false) // Afficher dans le banner de la page d'accueil
+
+  registrations Registration[]
+  media          Media[]
+  formations     Formation[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([status])
+  @@index([showOnBanner])
+  @@map("Event")
+}
+
+model Registration {
+  id              String             @id @default(uuid()) @db.Uuid
+  eventId         String             @db.Uuid
+  event           Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId          String?            @db.Uuid   // NextAuth user.id
+  fullName        String
+  email           String
+  phone           String?
+  notes           String?
+
+  status          RegistrationStatus @default(PENDING)
+
+  stripeSessionId String?
+  amountInCents   Int?
+  currency        String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([eventId, email])
+  @@index([userId])
+  @@index([status])
+  @@map("Registration")
+}
+
+model Formation {
+  id            String  @id @default(uuid()) @db.Uuid
+  name          String
+  slug          String  @unique
+  description   String?
+  priceInCents  Int
+  currency      String  @default("EUR")
+  active        Boolean @default(true)
+
+  eventId       String? @db.Uuid
+  event         Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active])
+  @@map("Formation")
+}
+
+model Media {
+  id      String    @id @default(uuid()) @db.Uuid
+  url     String
+  type    MediaType
+  alt     String?
+  width   Int?
+  height  Int?
+  folder  String?
+
+  eventId String?   @db.Uuid
+  event   Event?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@map("Media")
+}
+
+model TeamMember {
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String
+  role         String
+  bio          String?
+  photoUrl     String?
+  xUrl         String?
+  linkedinUrl  String?
+  facebookUrl  String?
+  instagramUrl String?
+  order        Int     @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([order])
+  @@map("TeamMember")
+}
+
+model Partner {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String
+  logoUrl   String?
+  url       String?
+  order     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+  @@map("Partner")
+}
+
+model NewsletterSubscriber {
+  id         String   @id @default(uuid()) @db.Uuid
+  email      String   @unique
+  name       String?
+  whatsapp   String?  // Numéro WhatsApp (format international)
+  subscribed Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([subscribed])
+  @@index([email])
+  @@map("NewsletterSubscriber")
+}
+
+model Translation {
+  id      String  @id @default(uuid()) @db.Uuid
+  key     String
+  locale  String  // e.g. "fr", "en"
+  value   String
+
+  @@unique([key, locale])
+  @@map("Translation")
+}
+
+// ============================================
+// MESSAGES DE CONTACT
+// ============================================
+
+model ContactMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  subject   String?
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+  @@index([email])
+  @@map("ContactMessage")
+}
