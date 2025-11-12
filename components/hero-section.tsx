@@ -59,12 +59,12 @@ export function HeroSection() {
             alt="Orateur professionnel"
             fill
             priority
-            className="object-cover opacity-30"
+            className="object-cover opacity-40 md:opacity-30"
             sizes="100vw"
             quality={85}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/80 via-primary/70 to-primary" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/75 via-primary/65 to-primary md:from-primary/80 md:via-primary/70" />
       </div>
 
       {/* Content */}

@@ -417,10 +417,24 @@ export default function AdminMediaPage() {
         }}
         onSubmit={
           editingMedia
-            ? (data) => handleUpdate(editingMedia.id, data)
+            ? (data) => {
+                // S'assurer que l'ID est bien passé lors de la modification
+                handleUpdate(editingMedia.id, data)
+              }
             : handleCreate
         }
-        initialData={editingMedia}
+        initialData={editingMedia ? {
+          url: editingMedia.url,
+          type: editingMedia.type,
+          title: editingMedia.title,
+          description: editingMedia.description,
+          platform: editingMedia.platform,
+          thumbnailUrl: editingMedia.thumbnailUrl,
+          alt: editingMedia.alt,
+          order: editingMedia.order,
+          isPublished: editingMedia.isPublished,
+          eventId: editingMedia.eventId,
+        } : null}
       />
     </div>
   )

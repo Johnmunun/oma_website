@@ -9,6 +9,10 @@ import { useEffect, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import TiptapLink from '@tiptap/extension-link'
+import TextAlign from '@tiptap/extension-text-align'
+import TiptapUnderline from '@tiptap/extension-underline'
+import HorizontalRule from '@tiptap/extension-horizontal-rule'
 import { 
   Bold, 
   Italic, 
@@ -23,6 +27,11 @@ import {
   Undo,
   Redo,
   Code,
+  Link as LinkIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Minus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -57,6 +66,17 @@ export function TiptapEditor({
       Placeholder.configure({
         placeholder,
       }),
+      TiptapLink.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-gold hover:underline',
+        },
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TiptapUnderline,
+      HorizontalRule,
     ],
     content: content || '',
     immediatelyRender: false, // Éviter les problèmes d'hydratation SSR
@@ -140,6 +160,18 @@ export function TiptapEditor({
           >
             <Code className="w-4 h-4" />
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('underline') && "bg-muted"
+            )}
+          >
+            <Underline className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Titres */}
@@ -219,6 +251,72 @@ export function TiptapEditor({
             )}
           >
             <Quote className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Liens et alignement */}
+        <div className="flex items-center gap-1 border-r border-border pr-2 mr-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const url = window.prompt('Entrez l\'URL du lien:')
+              if (url) {
+                editor.chain().focus().setLink({ href: url }).run()
+              }
+            }}
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive('link') && "bg-muted"
+            )}
+          >
+            <LinkIcon className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive({ textAlign: 'left' }) && "bg-muted"
+            )}
+          >
+            <AlignLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive({ textAlign: 'center' }) && "bg-muted"
+            )}
+          >
+            <AlignCenter className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            className={cn(
+              "h-8 w-8 p-0",
+              editor.isActive({ textAlign: 'right' }) && "bg-muted"
+            )}
+          >
+            <AlignRight className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            className="h-8 w-8 p-0"
+          >
+            <Minus className="w-4 h-4" />
           </Button>
         </div>
 

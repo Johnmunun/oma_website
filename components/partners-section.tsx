@@ -28,18 +28,24 @@ export function PartnersSection() {
         setIsLoading(true)
         const res = await fetch('/api/partners', {
           cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
         })
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}))
+          throw new Error(errorData.error || `Erreur ${res.status}: Failed to load partners`)
+        }
         
         const data = await res.json()
         
-        if (!res.ok) {
-          throw new Error(data.error || `Erreur ${res.status}: Failed to load partners`)
-        }
-        
-        if (data.success && data.data) {
+        if (data.success && data.data && Array.isArray(data.data)) {
+          console.log('[Partners] Partenaires chargés:', data.data.length)
           setPartners(data.data)
         } else {
-          throw new Error(data.error || 'Erreur inconnue lors du chargement')
+          console.warn('[Partners] Format de données inattendu:', data)
+          setPartners([])
         }
       } catch (err: any) {
         console.error('[Partners] Erreur chargement partenaires:', err)

@@ -12,10 +12,13 @@ import { prisma } from '@/lib/prisma'
 // Récupère tous les médias publiés (publique)
 export const revalidate = 60 // Cache 60 secondes
 
+// Marquer la route comme dynamique pour éviter l'erreur de rendu statique
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    // Récupérer les paramètres de requête
-    const { searchParams } = new URL(request.url)
+    // Récupérer les paramètres de requête depuis request.nextUrl au lieu de request.url
+    const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type')
     const platform = searchParams.get('platform')
     const limit = parseInt(searchParams.get('limit') || '20')

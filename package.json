@@ -14,7 +14,6 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset"
-    
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -52,7 +51,11 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@stripe/react-stripe-js": "latest",
     "@stripe/stripe-js": "latest",
+    "@tiptap/extension-horizontal-rule": "^3.10.5",
+    "@tiptap/extension-link": "^3.10.5",
     "@tiptap/extension-placeholder": "^3.10.4",
+    "@tiptap/extension-text-align": "^3.10.5",
+    "@tiptap/extension-underline": "^3.10.5",
     "@tiptap/react": "^3.10.4",
     "@tiptap/starter-kit": "^3.10.4",
     "@vercel/analytics": "latest",

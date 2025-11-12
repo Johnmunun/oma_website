@@ -126,6 +126,9 @@ function EventRow({
     })
   }
 
+  // Vérifier si l'événement est passé
+  const isPast = event.startsAt ? new Date(event.startsAt) < new Date() : false
+
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
@@ -178,31 +181,36 @@ function EventRow({
 
         {/* Actions */}
         <div className="md:col-span-3 flex gap-2 justify-end flex-wrap">
-          <ShareButtons
-            url={eventUrl}
-            title={event.title}
-            description={event.description || undefined}
-            imageUrl={event.imageUrl || undefined}
-            className="hidden md:inline-flex"
-          />
-          {/* Actions d'inscription - seulement pour ADMIN et EDITOR */}
-          {canEdit && event.status === "PUBLISHED" && (
+          {/* Boutons Inscription et Partager uniquement pour les événements à venir */}
+          {!isPast && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onRegister(event)}
-                className="gap-2"
-                title="Inscrire quelqu'un manuellement (par téléphone, etc.)"
-              >
-                <UserPlus className="w-4 h-4" />
-                Inscrire manuellement
-              </Button>
-              <ShareRegistrationForm
-                eventSlug={event.slug}
-                eventTitle={event.title}
+              <ShareButtons
+                url={eventUrl}
+                title={event.title}
+                description={event.description || undefined}
+                imageUrl={event.imageUrl || undefined}
                 className="hidden md:inline-flex"
               />
+              {/* Actions d'inscription - seulement pour ADMIN et EDITOR */}
+              {canEdit && event.status === "PUBLISHED" && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRegister(event)}
+                    className="gap-2"
+                    title="Inscrire quelqu'un manuellement (par téléphone, etc.)"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Inscrire manuellement
+                  </Button>
+                  <ShareRegistrationForm
+                    eventSlug={event.slug}
+                    eventTitle={event.title}
+                    className="hidden md:inline-flex"
+                  />
+                </>
+              )}
             </>
           )}
           {canEdit && (

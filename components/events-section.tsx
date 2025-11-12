@@ -198,23 +198,39 @@ export function EventsSection() {
                       )}
                     </div>
 
-                    {/* Boutons d'action en bas */}
-                    <div className="flex flex-col gap-3 pt-4 border-t border-border/50 mt-auto">
-                      <Link href={`/events/${event.slug}`} className="w-full">
-                        <Button className="w-full bg-gold hover:bg-gold-dark text-primary rounded-lg py-2.5 font-semibold">
-                          En savoir plus
-                        </Button>
-                      </Link>
-                      <div className="flex justify-center">
-                        <ShareButtons
-                          url={getEventUrl(event.slug)}
-                          title={event.title}
-                          description={event.description || undefined}
-                          imageUrl={event.imageUrl || undefined}
-                          className="flex-shrink-0"
-                        />
-                      </div>
-                    </div>
+                    {/* Boutons d'action en bas - Uniquement pour les événements à venir */}
+                    {(() => {
+                      const isPast = event.startsAt ? new Date(event.startsAt) < new Date() : false
+                      if (isPast) {
+                        return (
+                          <div className="pt-4 border-t border-border/50 mt-auto">
+                            <Link href={`/events/${event.slug}`} className="w-full">
+                              <Button className="w-full bg-gold hover:bg-gold-dark text-primary rounded-lg py-2.5 font-semibold">
+                                Voir les détails
+                              </Button>
+                            </Link>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div className="flex flex-col gap-3 pt-4 border-t border-border/50 mt-auto">
+                          <Link href={`/events/${event.slug}`} className="w-full">
+                            <Button className="w-full bg-gold hover:bg-gold-dark text-primary rounded-lg py-2.5 font-semibold">
+                              En savoir plus
+                            </Button>
+                          </Link>
+                          <div className="flex justify-center">
+                            <ShareButtons
+                              url={getEventUrl(event.slug)}
+                              title={event.title}
+                              description={event.description || undefined}
+                              imageUrl={event.imageUrl || undefined}
+                              className="flex-shrink-0"
+                            />
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
                 </AnimateOnScroll>
@@ -269,8 +285,9 @@ export function EventsSection() {
         {/* CTA: Plus d'événements */}
         <div className="mt-12 flex justify-center">
           <Link href="/events">
-            <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-primary">
-              Voir tous les événements <ArrowRight className="w-4 h-4 ml-2" />
+            <Button variant="outline" className="border-gold text-gold hover:bg-gold hover:text-primary w-full sm:w-auto">
+              <span className="w-full sm:w-auto">Découvrir nos prochains événements</span>
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>
