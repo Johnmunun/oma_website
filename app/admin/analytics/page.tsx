@@ -92,6 +92,12 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [activityData, setActivityData] = useState<any>(null)
   const [isLoadingActivity, setIsLoadingActivity] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // S'assurer que le composant est monté côté client avant de rendre les graphiques
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -100,16 +106,59 @@ export default function AdminAnalyticsPage() {
         const res = await fetch(`/api/admin/analytics?period=${period}`, {
           cache: "no-store",
         })
-        if (!res.ok) throw new Error("Failed to load analytics")
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}))
+          throw new Error(errorData.error || "Failed to load analytics")
+        }
         const result = await res.json()
-        if (result.success) {
-          setData(result.data)
+        if (result.success && result.data) {
+          // Valider et normaliser les données
+          const normalizedData: AnalyticsData = {
+            overview: result.data.overview || {
+              totalVisits: 0,
+              uniqueVisitors: 0,
+              totalPageViews: 0,
+              avgDuration: 0,
+            },
+            visitsByDay: Array.isArray(result.data.visitsByDay) ? result.data.visitsByDay : [],
+            visitsByPath: Array.isArray(result.data.visitsByPath) ? result.data.visitsByPath : [],
+            visitsByCountry: Array.isArray(result.data.visitsByCountry) ? result.data.visitsByCountry : [],
+            visitsByDevice: Array.isArray(result.data.visitsByDevice) ? result.data.visitsByDevice : [],
+            visitsByBrowser: Array.isArray(result.data.visitsByBrowser) ? result.data.visitsByBrowser : [],
+            visitsByOS: Array.isArray(result.data.visitsByOS) ? result.data.visitsByOS : [],
+            topReferrers: Array.isArray(result.data.topReferrers) ? result.data.topReferrers : [],
+            period: result.data.period || {
+              from: new Date().toISOString(),
+              to: new Date().toISOString(),
+            },
+          }
+          setData(normalizedData)
         } else {
           throw new Error(result.error || "Erreur lors du chargement")
         }
       } catch (err: any) {
         console.error("[Admin] Erreur chargement analytics:", err)
         toast.error(err.message || "Impossible de charger les analytics")
+        // Définir des données par défaut pour éviter les erreurs de rendu
+        setData({
+          overview: {
+            totalVisits: 0,
+            uniqueVisitors: 0,
+            totalPageViews: 0,
+            avgDuration: 0,
+          },
+          visitsByDay: [],
+          visitsByPath: [],
+          visitsByCountry: [],
+          visitsByDevice: [],
+          visitsByBrowser: [],
+          visitsByOS: [],
+          topReferrers: [],
+          period: {
+            from: new Date().toISOString(),
+            to: new Date().toISOString(),
+          },
+        })
       } finally {
         setIsLoading(false)
       }
@@ -158,17 +207,17 @@ export default function AdminAnalyticsPage() {
     )
   }
 
-  // Formater les données pour les graphiques
-  const visitsByDayFormatted = data.visitsByDay.map((item) => ({
+  // Formater les données pour les graphiques (avec vérifications)
+  const visitsByDayFormatted = (data?.visitsByDay || []).map((item) => ({
     date: new Date(item.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
-    visites: item.count,
+    visites: item.count || 0,
   }))
 
-  const deviceData = data.visitsByDevice.map((item) => ({
+  const deviceData = (data?.visitsByDevice || []).map((item) => ({
     name: item.device === "desktop" ? "Desktop" : item.device === "mobile" ? "Mobile" : "Tablette",
-    value: item.count,
+    value: item.count || 0,
     color: COLORS[item.device as keyof typeof COLORS] || "#888",
-  }))
+  })).filter(d => d.value > 0)
 
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`
@@ -236,31 +285,37 @@ export default function AdminAnalyticsPage() {
         {/* Graphique visites par jour */}
         <Card className="lg:col-span-2 p-6">
           <h3 className="text-lg font-semibold mb-4">Visites par jour</h3>
-          {visitsByDayFormatted.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300} minHeight={300}>
-              <LineChart data={visitsByDayFormatted} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 12 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="visites"
-                  stroke="#d4af37"
-                  strokeWidth={2}
-                  name="Visites"
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          {!isMounted ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="animate-pulse">Chargement du graphique...</div>
+            </div>
+          ) : visitsByDayFormatted.length > 0 ? (
+            <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={visitsByDayFormatted} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="visites"
+                    stroke="#d4af37"
+                    strokeWidth={2}
+                    name="Visites"
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               Aucune donnée pour cette période
@@ -271,33 +326,39 @@ export default function AdminAnalyticsPage() {
         {/* Graphique appareils */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Appareils</h3>
-          {deviceData.length > 0 && deviceData.some(d => d.value > 0) ? (
-            <ResponsiveContainer width="100%" height={300} minHeight={300}>
-              <PieChart>
-                <Pie
-                  data={deviceData.filter(d => d.value > 0)}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(props: any) => {
-                    const name = String(props.name || '')
-                    const percent = Number(props.percent || 0)
-                    return `${name} ${(percent * 100).toFixed(0)}%`
-                  }}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {deviceData.filter(d => d.value > 0).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: any) => [value, 'Visites']}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          {!isMounted ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="animate-pulse">Chargement du graphique...</div>
+            </div>
+          ) : deviceData.length > 0 && deviceData.some(d => d.value > 0) ? (
+            <div style={{ width: '100%', height: '300px', minHeight: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={deviceData.filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(props: any) => {
+                      const name = String(props.name || '')
+                      const percent = Number(props.percent || 0)
+                      return `${name} ${(percent * 100).toFixed(0)}%`
+                    }}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {deviceData.filter(d => d.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: any) => [value, 'Visites']}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               Aucune donnée
@@ -318,23 +379,29 @@ export default function AdminAnalyticsPage() {
               </Badge>
             )}
           </div>
-          {data.visitsByPath.length > 0 ? (
-            <ResponsiveContainer width="100%" height={Math.min(Math.max(300, data.visitsByPath.length * 30), 600)}>
-              <BarChart data={data.visitsByPath} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis 
-                  dataKey="path" 
-                  type="category" 
-                  width={150} 
-                  tick={{ fontSize: 11 }}
-                  angle={-45}
-                  textAnchor="end"
-                />
-                <Tooltip />
-                <Bar dataKey="count" fill="#d4af37" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {!isMounted ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="animate-pulse">Chargement du graphique...</div>
+            </div>
+          ) : data.visitsByPath.length > 0 ? (
+            <div style={{ width: '100%', height: `${Math.min(Math.max(300, data.visitsByPath.length * 30), 600)}px` }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.visitsByPath} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis 
+                    dataKey="path" 
+                    type="category" 
+                    width={150} 
+                    tick={{ fontSize: 11 }}
+                    angle={-45}
+                    textAnchor="end"
+                  />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#d4af37" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               Aucune donnée
@@ -352,22 +419,28 @@ export default function AdminAnalyticsPage() {
               </Badge>
             )}
           </div>
-          {data.visitsByBrowser.length > 0 ? (
-            <ResponsiveContainer width="100%" height={Math.min(Math.max(300, data.visitsByBrowser.length * 40), 600)}>
-              <BarChart data={data.visitsByBrowser} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="browser" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  tick={{ fontSize: 11 }}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#1a1a1a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {!isMounted ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="animate-pulse">Chargement du graphique...</div>
+            </div>
+          ) : data.visitsByBrowser.length > 0 ? (
+            <div style={{ width: '100%', height: `${Math.min(Math.max(300, data.visitsByBrowser.length * 40), 600)}px` }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.visitsByBrowser} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="browser" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#1a1a1a" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               Aucune donnée

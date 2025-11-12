@@ -59,35 +59,40 @@ export function MediaModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [detectedPlatform, setDetectedPlatform] = useState<string | null>(null)
 
+  // Réinitialiser le formulaire quand le modal s'ouvre ou que initialData change
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        url: initialData.url || "",
-        type: initialData.type || "VIDEO",
-        title: initialData.title || null,
-        description: initialData.description || null,
-        platform: initialData.platform || null,
-        thumbnailUrl: initialData.thumbnailUrl || null,
-        alt: initialData.alt || null,
-        order: initialData.order || 0,
-        isPublished: initialData.isPublished ?? true,
-        eventId: initialData.eventId || null,
-      })
-      setDetectedPlatform(initialData.platform || null)
-    } else {
-      setFormData({
-        url: "",
-        type: "VIDEO",
-        title: null,
-        description: null,
-        platform: null,
-        thumbnailUrl: null,
-        alt: null,
-        order: 0,
-        isPublished: true,
-        eventId: null,
-      })
-      setDetectedPlatform(null)
+    if (isOpen) {
+      if (initialData) {
+        // Mode édition : pré-remplir avec les données existantes
+        setFormData({
+          url: initialData.url || "",
+          type: initialData.type || "VIDEO",
+          title: initialData.title || null,
+          description: initialData.description || null,
+          platform: initialData.platform || null,
+          thumbnailUrl: initialData.thumbnailUrl || null,
+          alt: initialData.alt || null,
+          order: initialData.order || 0,
+          isPublished: initialData.isPublished ?? true,
+          eventId: initialData.eventId || null,
+        })
+        setDetectedPlatform(initialData.platform || null)
+      } else {
+        // Mode création : formulaire vide
+        setFormData({
+          url: "",
+          type: "VIDEO",
+          title: null,
+          description: null,
+          platform: null,
+          thumbnailUrl: null,
+          alt: null,
+          order: 0,
+          isPublished: true,
+          eventId: null,
+        })
+        setDetectedPlatform(null)
+      }
     }
   }, [initialData, isOpen])
 
@@ -274,17 +279,25 @@ export function MediaModal({
 
           {/* Titre */}
           <div>
-            <Label htmlFor="title">Titre</Label>
+            <Label htmlFor="title">Titre (max 200 caractères)</Label>
             <Input
               id="title"
               name="title"
               value={formData.title || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value || null })
-              }
+              onChange={(e) => {
+                const value = e.target.value
+                // Limiter à 200 caractères
+                if (value.length <= 200) {
+                  setFormData({ ...formData, title: value || null })
+                }
+              }}
               placeholder="Ex: Émission OMA TV - Épisode 1"
               className="w-full mt-2"
+              maxLength={200}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {(formData.title?.length || 0)} / 200 caractères
+            </p>
           </div>
 
           {/* Description */}

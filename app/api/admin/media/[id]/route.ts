@@ -29,24 +29,45 @@ const updateMediaSchema = z.object({
   isPublished: z.boolean().optional(),
 })
 
-// Fonction pour extraire l'ID d'une vidéo YouTube
+// Fonction pour extraire l'ID d'une vidéo YouTube (améliorée)
 function extractYouTubeId(url: string): string | null {
+  if (!url) return null
+  
+  // Nettoyer l'URL
+  const cleanUrl = url.trim()
+  
+  // Patterns pour différents formats d'URL YouTube
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+    // https://www.youtube.com/watch?v=VIDEO_ID
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    // https://youtu.be/VIDEO_ID
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    // https://www.youtube.com/embed/VIDEO_ID
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    // https://www.youtube.com/v/VIDEO_ID
+    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    // https://www.youtube.com/watch?v=VIDEO_ID&feature=...
+    /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
+    // Format court avec paramètres
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/,
   ]
   
   for (const pattern of patterns) {
-    const match = url.match(pattern)
-    if (match && match[1]) {
+    const match = cleanUrl.match(pattern)
+    if (match && match[1] && match[1].length === 11) {
+      console.log('[Media] ID YouTube extrait:', match[1], 'depuis:', cleanUrl)
       return match[1]
     }
   }
+  
+  console.warn('[Media] Impossible d\'extraire l\'ID YouTube de:', cleanUrl)
   return null
 }
 
 // Fonction pour générer une miniature YouTube
 function getYouTubeThumbnail(videoId: string): string {
+  // maxresdefault.jpg est la meilleure qualité, mais peut ne pas exister pour toutes les vidéos
+  // On peut aussi utiliser hqdefault.jpg ou mqdefault.jpg comme fallback
   return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
 }
 
@@ -148,25 +169,36 @@ export async function PUT(
       )
     }
 
-    // Détecter automatiquement la plateforme si l'URL change
-    let platform = validatedData.platform
-    let thumbnailUrl = validatedData.thumbnailUrl
+    // Détecter automatiquement la plateforme et générer la miniature si l'URL change
+    let platform = validatedData.platform || existingMedia.platform
+    let thumbnailUrl = validatedData.thumbnailUrl || existingMedia.thumbnailUrl
 
-    if (validatedData.url && !platform) {
+    if (validatedData.url) {
       const url = validatedData.url.toLowerCase()
+      
+      // Si l'URL a changé ou si c'est YouTube, régénérer la miniature
+      const urlChanged = validatedData.url !== existingMedia.url
+      
+      // Détecter YouTube
       if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        platform = 'youtube'
-        const videoId = extractYouTubeId(validatedData.url)
-        if (videoId && !thumbnailUrl) {
-          thumbnailUrl = getYouTubeThumbnail(videoId)
+        if (!platform) {
+          platform = 'youtube'
         }
-      } else if (url.includes('facebook.com')) {
+        // Régénérer la miniature si l'URL a changé ou si elle n'existe pas
+        if (urlChanged || !thumbnailUrl) {
+          const videoId = extractYouTubeId(validatedData.url)
+          if (videoId) {
+            thumbnailUrl = getYouTubeThumbnail(videoId)
+            console.log('[Media] Miniature YouTube régénérée:', thumbnailUrl)
+          }
+        }
+      } else if (url.includes('facebook.com') && !platform) {
         platform = 'facebook'
-      } else if (url.includes('instagram.com')) {
+      } else if (url.includes('instagram.com') && !platform) {
         platform = 'instagram'
-      } else if (url.includes('twitter.com') || url.includes('x.com')) {
+      } else if ((url.includes('twitter.com') || url.includes('x.com')) && !platform) {
         platform = 'twitter'
-      } else if (url.includes('linkedin.com')) {
+      } else if (url.includes('linkedin.com') && !platform) {
         platform = 'linkedin'
       }
     }

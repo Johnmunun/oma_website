@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Play, Youtube, Facebook, Instagram, Linkedin, Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -18,10 +18,75 @@ interface Media {
   createdAt: string
 }
 
+// Fonction pour extraire l'ID d'une vidéo YouTube
+function extractYouTubeId(url: string): string | null {
+  if (!url) return null
+  
+  const cleanUrl = url.trim()
+  
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/,
+  ]
+  
+  for (const pattern of patterns) {
+    const match = cleanUrl.match(pattern)
+    if (match && match[1] && match[1].length === 11) {
+      return match[1]
+    }
+  }
+  
+  return null
+}
+
+// Fonction pour générer une miniature YouTube
+function getYouTubeThumbnail(videoId: string): string {
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+}
+
+// Fonction pour obtenir la miniature d'une vidéo (avec fallback automatique pour YouTube)
+function getVideoThumbnail(video: Media): string {
+  // Si une miniature existe déjà, l'utiliser
+  if (video.thumbnailUrl) {
+    return video.thumbnailUrl
+  }
+  
+  // Si c'est une vidéo YouTube sans miniature, générer automatiquement
+  if (video.platform === 'youtube' || video.url.includes('youtube.com') || video.url.includes('youtu.be')) {
+    const videoId = extractYouTubeId(video.url)
+    if (videoId) {
+      return getYouTubeThumbnail(videoId)
+    }
+  }
+  
+  // Fallback par défaut
+  return "/placeholder.svg"
+}
+
 export function OmaTvSection() {
   const [media, setMedia] = useState<Media[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [featuredMedia, setFeaturedMedia] = useState<Media | null>(null)
+
+  // Mémoriser les miniatures générées pour éviter les recalculs
+  const mediaWithThumbnails = useMemo(() => {
+    return media.map(video => ({
+      ...video,
+      thumbnailUrl: getVideoThumbnail(video),
+    }))
+  }, [media])
+
+  const featuredMediaWithThumbnail = useMemo(() => {
+    if (!featuredMedia) return null
+    return {
+      ...featuredMedia,
+      thumbnailUrl: getVideoThumbnail(featuredMedia),
+    }
+  }, [featuredMedia])
 
   useEffect(() => {
     const loadMedia = async () => {
@@ -50,9 +115,9 @@ export function OmaTvSection() {
   }, [])
 
   // Vue desktop (grille)
-  const desktopView = media.length > 0 ? (
+  const desktopView = mediaWithThumbnails.length > 0 ? (
     <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
-      {media.map((video) => (
+      {mediaWithThumbnails.map((video) => (
         <Link
           key={video.id}
           href={video.url}
@@ -62,7 +127,7 @@ export function OmaTvSection() {
         >
           <div className="relative aspect-video">
             <img
-              src={video.thumbnailUrl || "/placeholder.svg"}
+              src={getVideoThumbnail(video)}
               alt={video.title || video.alt || "Vidéo OMA TV"}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
               loading="lazy"
@@ -97,7 +162,7 @@ export function OmaTvSection() {
   ) : null
 
   // Slides pour le carousel mobile
-  const slides = media.map((video) => (
+  const slides = mediaWithThumbnails.map((video) => (
     <Link
       key={video.id}
       href={video.url}
@@ -107,7 +172,7 @@ export function OmaTvSection() {
     >
       <div className="relative aspect-video">
         <img
-          src={video.thumbnailUrl || "/placeholder.svg"}
+          src={getVideoThumbnail(video)}
           alt={video.title || video.alt || "Vidéo OMA TV"}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
           loading="lazy"
@@ -154,17 +219,17 @@ export function OmaTvSection() {
           <div className="max-w-5xl mx-auto mb-12 flex items-center justify-center aspect-video">
             <Loader2 className="w-12 h-12 animate-spin text-gold" />
           </div>
-        ) : featuredMedia ? (
+        ) : featuredMediaWithThumbnail ? (
           <div className="max-w-5xl mx-auto mb-12">
             <Link
-              href={featuredMedia.url}
+              href={featuredMediaWithThumbnail.url}
               target="_blank"
               rel="noopener noreferrer"
               className="relative aspect-video rounded-lg overflow-hidden shadow-2xl group block"
             >
               <img
-                src={featuredMedia.thumbnailUrl || "/placeholder.svg?height=720&width=1280"}
-                alt={featuredMedia.title || featuredMedia.alt || "OMA TV Featured"}
+                src={featuredMediaWithThumbnail.thumbnailUrl || "/placeholder.svg?height=720&width=1280"}
+                alt={featuredMediaWithThumbnail.title || featuredMediaWithThumbnail.alt || "OMA TV Featured"}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
@@ -173,14 +238,14 @@ export function OmaTvSection() {
                   <Play className="h-10 w-10 text-primary ml-1" fill="currentColor" />
                 </div>
               </div>
-              {featuredMedia.title && (
+              {featuredMediaWithThumbnail.title && (
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/90 to-transparent p-6">
                   <h3 className="font-serif font-bold text-2xl text-primary-foreground">
-                    {featuredMedia.title}
+                    {featuredMediaWithThumbnail.title}
                   </h3>
-                  {featuredMedia.description && (
+                  {featuredMediaWithThumbnail.description && (
                     <p className="text-primary-foreground/90 mt-2 line-clamp-2">
-                      {featuredMedia.description}
+                      {featuredMediaWithThumbnail.description}
                     </p>
                   )}
                 </div>

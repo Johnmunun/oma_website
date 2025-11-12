@@ -104,15 +104,15 @@ export async function GET(request: NextRequest) {
         where: dateFilter,
       }),
 
-      // Visites par jour
+      // Visites par jour (PostgreSQL compatible)
       prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
         SELECT 
-          DATE("createdAt") as date,
+          DATE_TRUNC('day', "createdAt")::date as date,
           COUNT(*)::int as count
         FROM "Visit"
         WHERE "createdAt" >= ${dateFrom}
           AND "createdAt" <= ${dateTo}
-        GROUP BY DATE("createdAt")
+        GROUP BY DATE_TRUNC('day', "createdAt")::date
         ORDER BY date ASC
       `,
 

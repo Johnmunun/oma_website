@@ -282,3 +282,4 @@ import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 - Les animations sont désactivées automatiquement si `prefers-reduced-motion` est activé
 - Toutes les animations sont définies en CSS pour de meilleures performances
 
+
