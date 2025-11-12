@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GraduationCap, Calendar } from "lucide-react"
+import { EntranceAnimation } from "@/components/animations/entrance-animation"
 
 export function HeroSection() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null)
@@ -68,13 +69,18 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="container mx-auto px-4 z-10 text-center max-w-full overflow-x-hidden">
-        <h1 className="font-serif font-bold text-5xl md:text-7xl lg:text-8xl text-primary-foreground mb-6 text-balance leading-tight">
-          Dompter la parole, c'est <span className="text-gold">dompter le monde.</span>
-        </h1>
-        <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-3xl mx-auto text-pretty">
-          Réseau OMA & OMA TV — Formation, Communication et Leadership
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <EntranceAnimation animation="fade-down" delay={200}>
+          <h1 className="font-serif font-bold text-5xl md:text-7xl lg:text-8xl text-primary-foreground mb-6 text-balance leading-tight">
+            Dompter la parole, c'est <span className="text-gold">dompter le monde.</span>
+          </h1>
+        </EntranceAnimation>
+        <EntranceAnimation animation="fade-up" delay={400}>
+          <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-3xl mx-auto text-pretty">
+            Réseau OMA & OMA TV — Formation, Communication et Leadership
+          </p>
+        </EntranceAnimation>
+        <EntranceAnimation animation="scale" delay={600}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <div className="relative inline-flex">
   <Button
     size="lg"
@@ -101,7 +107,8 @@ export function HeroSection() {
               Voir les événements
             </Link>
           </Button>
-        </div>
+          </div>
+        </EntranceAnimation>
       </div>
 
       {/* Scroll Indicator */}

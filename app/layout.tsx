@@ -9,6 +9,7 @@ import { NextAuthSessionProvider } from "@/components/providers/session-provider
 import { DynamicColors } from "@/components/theming/dynamic-colors"
 import { VisitTracker } from "@/components/analytics/visit-tracker"
 import { TrackingPixels } from "@/components/tracking/tracking-pixels"
+import { PageTransition } from "@/components/animations/page-transition"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -44,7 +45,9 @@ export default function RootLayout({
         <NextAuthSessionProvider>
           <Suspense fallback={<div>Loading...</div>}>
             <VisitTracker />
-            {children}
+            <PageTransition transitionType="fade">
+              {children}
+            </PageTransition>
             <Analytics />
             <Toaster position="bottom-center" richColors={true} />
           </Suspense>

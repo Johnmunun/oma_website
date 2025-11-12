@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, ArrowRight } from "lucide-react"
 import { ShareButtons } from "@/components/admin/share-buttons"
+import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 
 interface Event {
   id: string
@@ -96,14 +97,16 @@ export function EventsSection() {
   return (
     <section id="evenements" className="py-24 bg-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
-            Nos événements
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Rejoignez-nous lors de nos prochains événements ou revivez nos moments passés
-          </p>
-        </div>
+        <AnimateOnScroll animation="fade-up" delay={100}>
+          <div className="text-center mb-12">
+            <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
+              Nos événements
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
+              Rejoignez-nous lors de nos prochains événements ou revivez nos moments passés
+            </p>
+          </div>
+        </AnimateOnScroll>
 
         <div className="flex justify-center gap-4 mb-12">
           <Button
@@ -141,12 +144,12 @@ export function EventsSection() {
                 <p className="text-muted-foreground">Aucun événement à venir pour le moment.</p>
               </div>
             ) : (
-              upcomingEvents.slice(0, 6).map((event) => (
-                <div
-                  key={event.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group relative flex flex-col h-full"
-                  style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
-                >
+              upcomingEvents.slice(0, 6).map((event, index) => (
+                <AnimateOnScroll key={event.id} animation="fade-up" delay={index * 100}>
+                  <div
+                    className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group relative flex flex-col h-full"
+                    style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
+                  >
                   {/* Image de l'événement avec coins arrondis */}
                   <div className="relative h-56 overflow-hidden rounded-t-2xl flex-shrink-0">
                     {event.imageUrl ? (
@@ -214,6 +217,7 @@ export function EventsSection() {
                     </div>
                   </div>
                 </div>
+                </AnimateOnScroll>
               ))
             )}
           </div>
@@ -224,11 +228,12 @@ export function EventsSection() {
                 <p className="text-muted-foreground">Aucun événement passé pour le moment.</p>
               </div>
             ) : (
-              pastEvents.slice(0, 8).map((event) => (
-                <Link key={event.id} href={`/events/${event.slug}`}>
-                  <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group relative h-full"
-                    style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
-                  >
+              pastEvents.slice(0, 8).map((event, index) => (
+                <AnimateOnScroll key={event.id} animation="fade-up" delay={index * 50}>
+                  <Link href={`/events/${event.slug}`}>
+                    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 group relative h-full"
+                      style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
+                    >
                     {/* Image avec coins arrondis */}
                     <div className="relative h-48 overflow-hidden rounded-t-2xl">
                       {event.imageUrl ? (
@@ -253,8 +258,9 @@ export function EventsSection() {
                       </h3>
                       <p className="text-sm text-muted-foreground text-center">{formatDate(event.startsAt)}</p>
                     </div>
-                  </div>
-                </Link>
+                    </div>
+                  </Link>
+                </AnimateOnScroll>
               ))
             )}
           </div>

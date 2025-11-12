@@ -3,6 +3,7 @@
 import { Sparkles } from "lucide-react"
 import { EmblaCarousel } from "@/components/ui/embla-carousel"
 import { useState, useEffect } from "react"
+import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 
 export function AboutSection() {
   const [isMounted, setIsMounted] = useState(false)
@@ -89,53 +90,59 @@ export function AboutSection() {
   return (
     <section className="py-24 bg-background">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-gold/10 text-gold px-4 py-2 rounded-full mb-6">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-semibold">À propos du Réseau OMA</span>
+        <AnimateOnScroll animation="fade-up" delay={100}>
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gold/10 text-gold px-4 py-2 rounded-full mb-6">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-semibold">À propos du Réseau OMA</span>
+            </div>
+            <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
+              Révéler votre potentiel, accompagner vos talents
+            </h2>
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8 text-pretty">
+              Créé en 2019 par le Coach Bin Adan, le Réseau OMA est une plateforme internationale dédiée à l'art oratoire,
+              la communication et le leadership. Notre mission : accompagner les talents et révéler leur potentiel à
+              travers des formations de qualité et un accompagnement personnalisé.
+            </p>
+            <blockquote className="text-2xl font-serif italic text-gold border-l-4 border-gold pl-6 my-8">
+              "Savoir parler, c'est savoir agir."
+            </blockquote>
           </div>
-          <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
-            Révéler votre potentiel, accompagner vos talents
-          </h2>
-          <p className="text-lg text-muted-foreground leading-relaxed mb-8 text-pretty">
-            Créé en 2019 par le Coach Bin Adan, le Réseau OMA est une plateforme internationale dédiée à l'art oratoire,
-            la communication et le leadership. Notre mission : accompagner les talents et révéler leur potentiel à
-            travers des formations de qualité et un accompagnement personnalisé.
-          </p>
-          <blockquote className="text-2xl font-serif italic text-gold border-l-4 border-gold pl-6 my-8">
-            "Savoir parler, c'est savoir agir."
-          </blockquote>
-        </div>
+        </AnimateOnScroll>
 
         {/* Stats - Carousel mobile / Grille desktop */}
-        {isMounted && (
-          <EmblaCarousel
-            breakpoint="md"
-            desktopView={statsDesktopView}
-            slideClassName="w-[80%] sm:w-[60%]"
-            options={{
-              align: "center",
-              containScroll: "trimSnaps",
-            }}
-          >
-            {statsSlides}
-          </EmblaCarousel>
-        )}
+        <AnimateOnScroll animation="fade-up" delay={200}>
+          {isMounted && (
+            <EmblaCarousel
+              breakpoint="md"
+              desktopView={statsDesktopView}
+              slideClassName="w-[80%] sm:w-[60%]"
+              options={{
+                align: "center",
+                containScroll: "trimSnaps",
+              }}
+            >
+              {statsSlides}
+            </EmblaCarousel>
+          )}
+        </AnimateOnScroll>
 
         {/* Leaders - Carousel mobile / Grille desktop */}
-        {isMounted && (
-          <EmblaCarousel
-            breakpoint="md"
-            desktopView={leadersDesktopView}
-            slideClassName="w-[90%] sm:w-[80%]"
-            options={{
-              align: "center",
-              containScroll: "trimSnaps",
-            }}
-          >
-            {leadersSlides}
-          </EmblaCarousel>
-        )}
+        <AnimateOnScroll animation="fade-up" delay={300}>
+          {isMounted && (
+            <EmblaCarousel
+              breakpoint="md"
+              desktopView={leadersDesktopView}
+              slideClassName="w-[90%] sm:w-[80%]"
+              options={{
+                align: "center",
+                containScroll: "trimSnaps",
+              }}
+            >
+              {leadersSlides}
+            </EmblaCarousel>
+          )}
+        </AnimateOnScroll>
       </div>
     </section>
   )
