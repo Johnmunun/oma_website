@@ -15,7 +15,9 @@ import { NextRequest } from 'next/server'
 
 // Vérifier que NEXTAUTH_SECRET est défini
 if (!process.env.NEXTAUTH_SECRET) {
-  console.warn('[NextAuth] NEXTAUTH_SECRET n\'est pas défini. L\'authentification peut ne pas fonctionner correctement.')
+  console.error('[NextAuth] ERREUR CRITIQUE: NEXTAUTH_SECRET n\'est pas défini. L\'authentification ne fonctionnera pas!')
+  // Ne pas throw ici car cela empêcherait le serveur de démarrer
+  // L'erreur sera visible dans les logs et NextAuth échouera lors de l'utilisation
 }
 
 // Vérifier et définir NEXTAUTH_URL si non défini (pour le développement)
@@ -25,11 +27,21 @@ if (!process.env.NEXTAUTH_URL) {
     process.env.NEXTAUTH_URL = 'http://localhost:3000'
     console.warn('[NextAuth] NEXTAUTH_URL non défini, utilisation de http://localhost:3000 par défaut')
   } else {
-    console.error('[NextAuth] NEXTAUTH_URL doit être défini en production!')
+    console.error('[NextAuth] ERREUR: NEXTAUTH_URL doit être défini en production!')
   }
 }
 
+console.log('[NextAuth] Configuration:', {
+  hasSecret: !!process.env.NEXTAUTH_SECRET,
+  url: process.env.NEXTAUTH_URL,
+  trustHost: process.env.AUTH_TRUST_HOST !== 'false',
+  nodeEnv: process.env.NODE_ENV,
+})
+
 const config = {
+  // Permet de faire confiance à localhost et aux hôtes (requis pour NextAuth v5)
+  // Peut être désactivé en définissant AUTH_TRUST_HOST=false dans .env
+  trustHost: process.env.AUTH_TRUST_HOST !== 'false',
   adapter: PrismaAdapter(prisma) as any,
   providers: [
     // Provider Credentials (email/password)
@@ -41,16 +53,25 @@ const config = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.error('[NextAuth] Credentials manquants')
           throw new Error('Email et mot de passe requis')
         }
 
         try {
+          console.log('[NextAuth] Tentative de connexion pour:', credentials.email)
+          
           // Chercher l'utilisateur dans la base de données
           const user = await prisma.user.findUnique({
             where: { email: credentials.email as string },
           })
 
-          if (!user || !user.password) {
+          if (!user) {
+            console.error('[NextAuth] Utilisateur non trouvé:', credentials.email)
+            throw new Error('Identifiants invalides')
+          }
+
+          if (!user.password) {
+            console.error('[NextAuth] Utilisateur sans mot de passe:', credentials.email)
             throw new Error('Identifiants invalides')
           }
 
@@ -61,19 +82,28 @@ const config = {
           )
 
           if (!isPasswordValid) {
+            console.error('[NextAuth] Mot de passe invalide pour:', credentials.email)
             throw new Error('Identifiants invalides')
           }
 
           // Vérifier si le compte est actif
           if (!user.isActive) {
+            console.error('[NextAuth] Compte désactivé:', credentials.email)
             throw new Error('Compte désactivé')
           }
 
           // Mettre à jour la date de dernière connexion
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          })
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLoginAt: new Date() },
+            })
+          } catch (updateError) {
+            console.warn('[NextAuth] Erreur mise à jour lastLoginAt (non bloquant):', updateError)
+            // Ne pas bloquer la connexion si la mise à jour échoue
+          }
+
+          console.log('[NextAuth] Connexion réussie pour:', credentials.email, 'Rôle:', user.role)
 
           return {
             id: user.id,
@@ -82,8 +112,13 @@ const config = {
             image: user.image,
             role: user.role,
           }
-        } catch (error) {
-          console.error('[NextAuth] Erreur authentification:', error)
+        } catch (error: any) {
+          console.error('[NextAuth] Erreur authentification complète:', {
+            error: error?.message,
+            stack: error?.stack,
+            email: credentials?.email,
+          })
+          // Re-throw l'erreur pour que NextAuth la gère
           throw error
         }
       },

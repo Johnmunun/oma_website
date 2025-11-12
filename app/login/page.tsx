@@ -43,7 +43,10 @@ export default function LoginPage() {
       // Gérer les erreurs de manière robuste
       if (result?.error) {
         const errMsg = result.error.toLowerCase()
-        console.error('[Login] Erreur de connexion:', result.error)
+        console.error('[Login] Erreur de connexion complète:', {
+          error: result.error,
+          fullResult: result,
+        })
         
         if (errMsg.includes('identifiants invalides') || 
             errMsg.includes('invalid') || 
@@ -60,6 +63,12 @@ export default function LoginPage() {
                    errMsg.includes('unexpected')) {
           setError("Erreur de communication avec le serveur. Veuillez réessayer.")
           console.error('[Login] Erreur JSON:', result.error)
+        } else if (errMsg.includes('configuration') || 
+                   errMsg.includes('config') ||
+                   errMsg.includes('trusthost') ||
+                   errMsg.includes('untrusted')) {
+          setError("Erreur de configuration serveur. Contactez un administrateur.")
+          console.error('[Login] Erreur de configuration:', result.error)
         } else {
           setError(`Erreur: ${result.error}. Vérifiez vos identifiants ou contactez un administrateur.`)
         }

@@ -2,11 +2,28 @@
  * @file middleware.ts
  * @description Middleware Next.js pour protéger les routes admin
  * Utilise NextAuth au lieu de Supabase
+ * 
+ * Note: Version optimisée pour Edge Runtime (évite les imports lourds)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { UserRole } from '@prisma/client'
+
+/**
+ * Fonction légère pour vérifier l'authentification via les cookies
+ * Utilise directement les cookies sans importer NextAuth/Prisma
+ * 
+ * Note: Cette approche vérifie simplement la présence d'un cookie de session.
+ * La validation complète du rôle et de l'authentification se fera côté serveur dans les pages.
+ * Cela réduit considérablement la taille du bundle Edge Runtime.
+ */
+function hasSessionCookie(req: NextRequest): boolean {
+  const sessionToken = req.cookies.get('authjs.session-token')?.value || 
+                       req.cookies.get('__Secure-authjs.session-token')?.value ||
+                       req.cookies.get('next-auth.session-token')?.value ||
+                       req.cookies.get('__Secure-next-auth.session-token')?.value
+  
+  return !!sessionToken
+}
 
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl
@@ -22,48 +39,21 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    // Vérifier l'authentification avec NextAuth
-    const session = await auth()
-
-    if (!session?.user) {
-    const loginUrl = new URL('/login', req.url)
-    loginUrl.searchParams.set('redirect', url.pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-    // Vérifier les permissions selon le rôle
-    const userRole = session.user.role
-
-    // Routes réservées aux ADMIN uniquement
-    const adminOnlyRoutes = ['/admin/users', '/admin/settings', '/admin/content', '/admin/analytics']
-    const isAdminOnlyRoute = adminOnlyRoutes.some(route => url.pathname.startsWith(route))
-    
-    if (isAdminOnlyRoute && userRole !== UserRole.ADMIN) {
+    // Vérifier la présence d'un cookie de session (approche légère pour Edge Runtime)
+    // La validation complète du rôle se fera côté serveur dans les pages
+    if (!hasSessionCookie(req)) {
       const loginUrl = new URL('/login', req.url)
       loginUrl.searchParams.set('redirect', url.pathname)
-      loginUrl.searchParams.set('error', 'forbidden')
       return NextResponse.redirect(loginUrl)
     }
 
-    // Routes accessibles aux ADMIN, EDITOR et VIEWER (lecture seule)
-    const viewableRoutes = ['/admin', '/admin/events', '/admin/messages']
-    const isViewableRoute = viewableRoutes.some(route => url.pathname === route || url.pathname.startsWith(route + '/'))
-    
-    // Si c'est une route viewable, autoriser tous les rôles (les restrictions d'actions seront gérées côté client)
-    if (isViewableRoute) {
-      return NextResponse.next()
-    }
+    // Pour les vérifications de rôle, on laisse les pages les gérer
+    // car elles ont accès à la session complète via auth()
+    // Le middleware vérifie juste la présence d'une session
 
-    // Routes accessibles aux ADMIN et EDITOR (mais pas VIEWER)
-    const editorRoutes = ['/admin/team', '/admin/testimonials', '/admin/newsletter', '/admin/media', '/admin/partners']
-    const isEditorRoute = editorRoutes.some(route => url.pathname.startsWith(route))
-    
-    if (isEditorRoute && userRole === UserRole.VIEWER) {
-      const loginUrl = new URL('/login', req.url)
-      loginUrl.searchParams.set('redirect', url.pathname)
-      loginUrl.searchParams.set('error', 'forbidden')
-      return NextResponse.redirect(loginUrl)
-    }
+    // La vérification des rôles se fait maintenant dans les pages elles-mêmes
+    // Le middleware vérifie uniquement la présence d'une session
+    // Cela réduit la taille du bundle Edge Runtime
 
     return NextResponse.next()
   } catch (error: any) {
