@@ -360,7 +360,7 @@ function AdminSidebar({
               </div>
             )}
             <div className="hidden sm:flex flex-col">
-              <span className="text-white font-bold">{siteTitle.toUpperCase()}</span>
+              <span className="text-sm md:text-base text-white font-bold">{siteTitle.toUpperCase()}</span>
               <span className="text-xs text-white/70 font-normal">{siteSlogan}</span>
             </div>
           </Link>
@@ -503,8 +503,8 @@ function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
 
         {/* Titre de bienvenue */}
         <div className="flex-1 ml-4 md:ml-0">
-          <h1 className="text-2xl font-bold text-foreground">Bienvenue {displayName} !</h1>
-          <p className="text-sm text-muted-foreground">Voici un aperçu de votre activité</p>
+          <h1 className="text-lg md:text-2xl font-bold text-foreground">Bienvenue {displayName}</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">Voici un aperçu de votre activité</p>
         </div>
 
         {/* Actions droite */}
@@ -625,7 +625,7 @@ function AdminHeader({ onMenuClick }: { onMenuClick: () => void }) {
           <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 rounded-2xl hover:bg-muted/50 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md">
             <UserAvatar email={email ?? undefined} />
             <div className="hidden sm:block">
-              <p className="text-sm font-medium truncate max-w-[160px]">{email ?? 'Utilisateur'}</p>
+              <p className="text-xs md:text-sm font-medium truncate max-w-[160px]">{email ?? 'Utilisateur'}</p>
               <p className="text-xs text-muted-foreground">Connecté</p>
             </div>
           </div>

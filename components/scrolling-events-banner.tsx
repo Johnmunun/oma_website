@@ -98,18 +98,18 @@ export function ScrollingEventsBanner() {
       
       <div className="container mx-auto px-4 max-w-full overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-12 gap-4">
           <div className="flex items-center gap-4">
             <div className="h-px w-12 bg-gold" />
-            <h2 className="font-serif font-bold text-4xl md:text-5xl text-gold">
+            <h2 className="font-serif font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">
               Événements à venir
             </h2>
           </div>
           <Link 
             href="/events" 
-            className="text-gold hover:text-gold-light transition-colors flex items-center gap-2 text-sm md:text-base font-medium"
+            className="text-gold hover:text-gold-light transition-colors flex items-center gap-2 text-xs sm:text-sm md:text-base font-medium mt-2 sm:mt-0"
           >
-            Voir tous les événements <ArrowRight className="w-4 h-4" />
+            Voir tous les événements <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
           </Link>
         </div>
 
