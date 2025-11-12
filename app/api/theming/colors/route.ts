@@ -10,6 +10,9 @@ import { prisma } from '@/lib/prisma'
 
 // GET /api/theming/colors
 // Récupère les couleurs du thème depuis la DB
+// Cache: 60 secondes (revalidation)
+export const revalidate = 60
+
 export async function GET() {
   try {
     // Récupérer les settings

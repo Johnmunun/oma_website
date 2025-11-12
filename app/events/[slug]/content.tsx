@@ -1,364 +1,310 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Users, Clock, Play } from "lucide-react"
-import YouTubeEmbed from "@/components/youtube-embed"
+/**
+ * @file app/events/[slug]/content.tsx
+ * @description Page de détail d'un événement avec photo de couverture responsive
+ */
 
-// Données d'exemple - À remplacer par une requête API
-const eventData: Record<string, any> = {
-  "formation-mc": {
-    id: 1,
-    title: "Formation Professionnelle Certifiante des MC",
-    date: "Date à confirmer",
-    dateObj: "2023-10-01",
-    location: "Kinshasa, RDC",
-    image: "/images/mc-formation-poster.jpg",
-    type: "Formation",
-    description: "Une formation professionnelle complète pour maîtriser l'art de la cérémonie.",
-    duration: "5 jours",
-    capacity: 50,
-    registered: 28,
-    program: [
-      {
-        day: "Jour 1",
-        title: "Introduction à l'art de la cérémonie",
-        description: "Fondamentaux et principes clés",
-      },
-      {
-        day: "Jour 2",
-        title: "Maîtrise de la parole en public",
-        description: "Techniques et pratiques avancées",
-      },
-      {
-        day: "Jour 3",
-        title: "Gestion du timing et du protocole",
-        description: "Aspects pratiques et professionnels",
-      },
-      {
-        day: "Jour 4",
-        title: "Communication non-verbale",
-        description: "Langage corporel et présence",
-      },
-      {
-        day: "Jour 5",
-        title: "Évaluation et certification",
-        description: "Examen final et remise de diplôme",
-      },
-    ],
-    speakers: [
-      {
-        name: "Coach Bin Adan",
-        title: "CEO International de Réseau OMA",
-        image: "/images/coach-bin-professional.jpg",
-      },
-      {
-        name: "Trainer Don Kayara",
-        title: "Rhétoricien et Expert en Communication",
-        image: "/images/coach-bin-speaking.jpg",
-      },
-    ],
-    price: 150,
-    isPast: false,
-    youtubeId: null,
-  },
-  "masterclass-orateur": {
-    id: 2,
-    title: "Masterclass Art Oratoire",
-    date: "15 Juin 2025",
-    dateObj: "2025-06-15",
-    location: "Paris, France",
-    image: "/images/graduation-ceremony-1.jpg",
-    type: "Masterclass",
-    description: "Une masterclass exclusive sur l'art de l'éloquence et de la rhétorique.",
-    duration: "2 jours",
-    capacity: 100,
-    registered: 45,
-    program: [
-      { day: "Jour 1", title: "Fondamentaux de l'éloquence", description: "Les bases de la rhétorique" },
-      { day: "Jour 2", title: "Pratique et perfectionnement", description: "Exercices intensifs" },
-    ],
-    speakers: [{ name: "Expert Oratoire", title: "Conférencier International", image: "/placeholder.svg" }],
-    price: 200,
-    isPast: false,
-    youtubeId: null,
-  },
-  "past-event": {
-    id: 3,
-    title: "Événement Passé",
-    date: "1 Janvier 2023",
-    dateObj: "2023-01-01",
-    location: "Lyon, France",
-    image: "/images/past-event-poster.jpg",
-    type: "Conférence",
-    description: "Un événement passé avec un replay disponible.",
-    duration: "3 jours",
-    capacity: 150,
-    registered: 150,
-    program: [
-      { day: "Jour 1", title: "Introduction", description: "Présentation de l'événement" },
-      { day: "Jour 2", title: "Ateliers", description: "Sessions pratiques" },
-      { day: "Jour 3", title: "Conclusion", description: "Résumé et Q&A" },
-    ],
-    speakers: [{ name: "Monsieur Speaker", title: "Conférencier renommé", image: "/placeholder.svg" }],
-    price: 0,
-    isPast: true,
-    youtubeId: "dQw4w9WgXcQ",
-  },
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Calendar, MapPin, Clock, ArrowLeft, Loader2, CheckCircle2, Ticket } from 'lucide-react'
+import Link from 'next/link'
+import { EventRegistrationForm } from '@/components/admin/event-registration-form'
+import { HtmlContent } from '@/components/html-content'
+import { ShareButtons } from '@/components/admin/share-buttons'
+
+interface Event {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  type: string | null
+  location: string | null
+  startsAt: string | null
+  endsAt: string | null
+  imageUrl: string | null
 }
 
 export default function EventDetailContent({ slug }: { slug: string }) {
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [event, setEvent] = useState<Event | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false)
+  const registrationFormRef = useRef<HTMLDivElement>(null)
 
-  const event = eventData[slug]
+  useEffect(() => {
+    const loadEvent = async () => {
+      try {
+        setIsLoading(true)
+        const res = await fetch(`/api/events?slug=${slug}`, {
+          next: { revalidate: 30 },
+        })
 
-  if (!event) {
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError('Événement non trouvé')
+          } else {
+            setError('Erreur lors du chargement de l\'événement')
+          }
+          return
+        }
+
+        const data = await res.json()
+        if (data.success && data.data && data.data.length > 0) {
+          setEvent(data.data[0])
+        } else {
+          setError('Événement non trouvé')
+        }
+      } catch (err) {
+        console.error('[EventDetailContent] Erreur:', err)
+        setError('Erreur de connexion')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadEvent()
+  }, [slug])
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Date à confirmer'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const getEventUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/events/${slug}`
+    }
+    return ''
+  }
+
+  const scrollToRegistration = () => {
+    if (registrationFormRef.current) {
+      registrationFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setShowRegistrationForm(true)
+    }
+  }
+
+  // Vérifier si l'événement est passé (calculé avant les conditions de retour)
+  const isPast = event?.startsAt ? new Date(event.startsAt) < new Date() : false
+  const eventUrl = event ? getEventUrl() : ''
+  
+  // Debug: afficher les infos dans la console (doit être avant les conditions de retour)
+  useEffect(() => {
+    if (event) {
+      console.log('[EventDetailContent] Événement chargé:', {
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        isPast,
+        hasImage: !!event.imageUrl,
+        willShowButton: !isPast && !!event.id,
+        willShowForm: !isPast && !!event.id,
+      })
+    }
+  }, [event, isPast])
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg text-muted-foreground">Événement non trouvé</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  const isPastEvent = event.isPast || false
-  const eventDate = new Date(event.dateObj || "")
-  const today = new Date()
-  const isEventPassed = eventDate < today
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      // Envoyer les données du formulaire à l'API /api/registrations
-      const formData = new FormData(e.currentTarget)
-      const data = {
-        eventId: event.id,
-        firstName: formData.get("firstName"),
-        lastName: formData.get("lastName"),
-        email: formData.get("email"),
-        phone: formData.get("phone"),
-        company: formData.get("company"),
-        country: formData.get("country"),
-      }
-
-      console.log("[v0] Inscription événement:", data)
-
-      // Simuler un délai d'envoi
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Redirection avec succès
-      router.push("/")
-    } catch (error) {
-      console.error("[v0] Erreur inscription:", error)
-      setIsSubmitting(false)
-    }
+  if (error || !event) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-12">
+          <Card className="p-12 text-center max-w-md mx-auto">
+            <h1 className="text-2xl font-bold mb-4">Événement non trouvé</h1>
+            <p className="text-muted-foreground mb-6">{error || 'Cet événement n\'existe pas'}</p>
+            <Link href="/events">
+              <Button>Retour aux événements</Button>
+            </Link>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background animate-fadeIn">
-      {/* HERO SECTION */}
-      <div className="relative h-96 md:h-[500px] overflow-hidden">
-        <img
-          src={event.image || "/placeholder.svg"}
-          alt={event.title}
-          className="w-full h-full object-cover animate-zoomIn"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60" />
-        <div className="absolute inset-0 flex items-end p-6 md:p-12">
-          <div className="max-w-4xl w-full animate-slideUp">
-            <div className="inline-block bg-gold text-primary px-4 py-2 rounded-full text-sm font-semibold mb-4">
-              {event.type}
+    <div className="min-h-screen bg-background">
+      {/* Photo de couverture responsive */}
+      <div className="relative w-full h-[50vh] md:h-[60vh] lg:h-[70vh] overflow-hidden">
+        {event.imageUrl ? (
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover"
+            style={{
+              objectPosition: 'center',
+            }}
+            loading="eager"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+            <Calendar className="w-24 h-24 text-muted-foreground opacity-30" />
+          </div>
+        )}
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
+        
+        {/* Contenu sur l'image */}
+        <div className="absolute inset-0 flex items-end">
+          <div className="container mx-auto px-4 pb-8 md:pb-12 w-full">
+            <div className="max-w-5xl w-full">
+              <Link href="/events">
+                <Button variant="ghost" size="sm" className="mb-4 text-white hover:bg-white/20">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Retour aux événements
+                </Button>
+              </Link>
+              
+              {event.type && (
+                <div className="inline-block bg-gold text-primary px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                  {event.type}
+                </div>
+              )}
+              
+              {/* Titre et bouton Réserver sur la même ligne */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
+                <div className="flex-1">
+                  <h1 className="font-serif font-bold text-3xl md:text-5xl lg:text-6xl text-white mb-4 md:mb-0 text-balance drop-shadow-lg">
+                    {event.title}
+                  </h1>
+                  
+                  {event.description && (
+                    <p className="text-lg md:text-xl text-gray-100 mt-4 line-clamp-2 drop-shadow-md">
+                      {event.description.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                    </p>
+                  )}
+                </div>
+                
+                {/* Bouton Réserver aligné à droite - Toujours visible pour les événements à venir */}
+                {!isPast && event.id && (
+                  <div className="flex-shrink-0 z-20 relative">
+                    <Button
+                      size="lg"
+                      onClick={scrollToRegistration}
+                      className="bg-gold hover:bg-gold-dark text-primary font-semibold px-6 md:px-8 py-6 text-base md:text-lg shadow-2xl relative z-20 whitespace-nowrap gap-2"
+                    >
+                      <Ticket className="w-5 h-5 md:w-6 md:h-6" />
+                      Réserver
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-            <h1 className="font-serif font-bold text-3xl md:text-5xl text-white mb-4 text-balance">{event.title}</h1>
-            <p className="text-lg text-gray-100">{event.description}</p>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="max-w-5xl mx-auto">
-          {/* INFO CARDS */}
-          <div className="grid md:grid-cols-4 gap-4 mb-12 -mt-8 relative z-10">
-            {[
-              { icon: Calendar, label: "Date", value: event.date },
-              { icon: MapPin, label: "Lieu", value: event.location },
-              { icon: Clock, label: "Durée", value: event.duration },
-              {
-                icon: Users,
-                label: "Places restantes",
-                value: `${event.capacity - event.registered}/${event.capacity}`,
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="bg-card border border-border rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow animate-slideUp"
-                style={{ animationDelay: `${i * 100}ms` }}
-              >
-                <item.icon className="h-5 w-5 text-gold mb-2" />
-                <p className="text-sm text-muted-foreground">{item.label}</p>
-                <p className="font-semibold text-foreground">{item.value}</p>
+          {/* Informations principales */}
+          <div className="grid md:grid-cols-3 gap-4 mb-12 -mt-8 relative z-10">
+            {event.startsAt && (
+              <Card className="p-6 shadow-lg">
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-6 h-6 text-gold flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Date et heure</p>
+                    <p className="font-semibold text-foreground">{formatDate(event.startsAt)}</p>
+                    {event.endsAt && (
+                      <p className="text-sm text-muted-foreground mt-1">Jusqu'au {formatDate(event.endsAt)}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {event.location && (
+              <Card className="p-6 shadow-lg">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-6 h-6 text-gold flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Lieu</p>
+                    <p className="font-semibold text-foreground">{event.location}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            <Card className="p-6 shadow-lg">
+              <div className="flex items-start gap-3">
+                <Clock className="w-6 h-6 text-gold flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Statut</p>
+                  <p className="font-semibold text-foreground">
+                    {isPast ? 'Événement passé' : 'À venir'}
+                  </p>
+                </div>
               </div>
-            ))}
+            </Card>
           </div>
 
-          {/* PROGRAMME */}
-          <section className="mb-16 animate-slideUp" style={{ animationDelay: "400ms" }}>
-            <h2 className="font-serif font-bold text-3xl mb-8 text-foreground">Au programme</h2>
-            <div className="space-y-4">
-              {event.program.map((item: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-muted/50 border border-border rounded-lg p-6 hover:bg-muted transition-colors"
-                >
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gold rounded-full flex items-center justify-center text-primary font-bold">
-                      {idx + 1}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-foreground mb-2">
-                        {item.day} - {item.title}
-                      </h3>
-                      <p className="text-muted-foreground">{item.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* SPEAKERS */}
-          <section className="mb-16 animate-slideUp" style={{ animationDelay: "500ms" }}>
-            <h2 className="font-serif font-bold text-3xl mb-8 text-foreground">Intervenants</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              {event.speakers.map((speaker: any, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <img
-                    src={speaker.image || "/placeholder.svg"}
-                    alt={speaker.name}
-                    className="w-full h-64 object-cover"
-                  />
-                  <div className="p-6">
-                    <h3 className="font-serif font-bold text-xl text-foreground mb-2">{speaker.name}</h3>
-                    <p className="text-gold text-sm font-semibold">{speaker.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {isPastEvent && event.youtubeId && (
-            <section className="mb-16 animate-slideUp" style={{ animationDelay: "550ms" }}>
-              <h2 className="font-serif font-bold text-3xl mb-8 text-foreground flex items-center gap-3">
-                <Play className="h-8 w-8 text-gold" />
-                Regarder le replay
-              </h2>
-              <div className="rounded-xl overflow-hidden shadow-2xl border border-gold/20">
-                <YouTubeEmbed videoId={event.youtubeId} />
+          {/* Description complète */}
+          {event.description && (
+            <Card className="p-8 mb-12">
+              <h2 className="font-serif font-bold text-3xl mb-6 text-foreground">À propos de cet événement</h2>
+              <div className="prose prose-lg max-w-none">
+                <HtmlContent content={event.description} />
               </div>
-              <p className="text-center text-muted-foreground mt-4">
-                Cet événement s'est déroulé le {event.date}. Profitez du replay pour ne rien manquer !
+            </Card>
+          )}
+
+          {/* Section inscription - Toujours affichée pour les événements à venir */}
+          {!isPast && event.id ? (
+            <Card ref={registrationFormRef} className="p-8 md:p-12 bg-gradient-to-br from-gold/10 to-gold/5 border border-gold/20">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+                <div>
+                  <h2 className="font-serif font-bold text-3xl mb-2 text-foreground">Réservez votre place</h2>
+                  <p className="text-muted-foreground">
+                    Inscrivez-vous dès maintenant pour ne pas manquer cet événement
+                  </p>
+                </div>
+                <ShareButtons
+                  url={eventUrl}
+                  title={event.title}
+                  description={event.description || undefined}
+                  imageUrl={event.imageUrl || undefined}
+                />
+              </div>
+
+              {/* Afficher le formulaire directement */}
+              <EventRegistrationForm
+                eventId={event.id}
+                eventTitle={event.title}
+                onSuccess={() => {
+                  // Optionnel: masquer le formulaire après succès si nécessaire
+                }}
+              />
+            </Card>
+          ) : isPast ? (
+            <Card className="p-12 text-center bg-muted/50">
+              <h2 className="font-serif font-bold text-2xl mb-4 text-foreground">Événement passé</h2>
+              <p className="text-muted-foreground mb-6">
+                Cet événement s'est déroulé le {formatDate(event.startsAt)}. Merci à tous les participants !
               </p>
-            </section>
-          )}
-
-          {!isPastEvent && (
-            <section className="animate-slideUp" style={{ animationDelay: "600ms" }}>
-              <div className="bg-gradient-to-br from-gold/10 to-gold/5 border border-gold/20 rounded-xl p-8 md:p-12">
-                <h2 className="font-serif font-bold text-3xl mb-2 text-foreground">Réservez votre place</h2>
-                <p className="text-muted-foreground mb-8">
-                  Prix: <span className="font-bold text-gold">${event.price}</span> par participant
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input
-                      type="text"
-                      name="firstName"
-                      placeholder="Prénom"
-                      required
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                    <input
-                      type="text"
-                      name="lastName"
-                      placeholder="Nom"
-                      required
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Email"
-                      required
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                    <input
-                      type="tel"
-                      name="phone"
-                      placeholder="Téléphone"
-                      required
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input
-                      type="text"
-                      name="company"
-                      placeholder="Entreprise (optionnel)"
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                    <input
-                      type="text"
-                      name="country"
-                      placeholder="Pays"
-                      required
-                      className="px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-gold"
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gold hover:bg-gold-dark text-primary font-semibold py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        Inscription en cours...
-                      </>
-                    ) : (
-                      "Confirmer ma réservation"
-                    )}
-                  </Button>
-                </form>
-              </div>
-            </section>
-          )}
-
-          {isPastEvent && !event.youtubeId && (
-            <section className="animate-slideUp" style={{ animationDelay: "600ms" }}>
-              <div className="bg-muted/50 border border-border rounded-xl p-12 text-center">
-                <h2 className="font-serif font-bold text-2xl mb-4 text-foreground">Événement passé</h2>
-                <p className="text-muted-foreground mb-6">
-                  Cet événement s'est déroulé le {event.date}. Merci à tous les participants !
-                </p>
-                <Button onClick={() => router.push("/#evenements")} className="bg-gold hover:bg-gold-dark text-primary">
+              <Link href="/events">
+                <Button className="bg-gold hover:bg-gold-dark text-primary">
                   Découvrir nos prochains événements
                 </Button>
-              </div>
-            </section>
-          )}
+              </Link>
+            </Card>
+          ) : null}
+
         </div>
       </div>
     </div>

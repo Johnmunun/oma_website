@@ -2,24 +2,32 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { X, Upload } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { LogoUpload } from "@/components/admin/logo-upload"
+import { toast } from "sonner"
 
 interface TeamModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit?: (data: TeamMemberFormData) => void
+  initialData?: TeamMemberFormData | null
 }
 
 export interface TeamMemberFormData {
   name: string
   role: string
-  bio: string
-  email: string
-  phone: string
-  image?: File
+  bio: string | null
+  photoUrl: string | null
+  xUrl?: string | null
+  linkedinUrl?: string | null
+  facebookUrl?: string | null
+  instagramUrl?: string | null
+  order?: number
 }
 
 /**
@@ -28,56 +36,95 @@ export interface TeamMemberFormData {
  * @param isOpen - État d'ouverture de la modal
  * @param onClose - Fonction appelée quand on ferme la modal
  * @param onSubmit - Fonction appelée avec les données du formulaire
- * @todo Intégrer upload d'image avec Vercel Blob
+ * @param initialData - Données initiales pour l'édition
  */
-export function TeamModal({ isOpen, onClose, onSubmit }: TeamModalProps) {
+export function TeamModal({ isOpen, onClose, onSubmit, initialData }: TeamModalProps) {
   const [formData, setFormData] = useState<TeamMemberFormData>({
-    name: "",
-    role: "",
-    bio: "",
-    email: "",
-    phone: "",
+    name: initialData?.name || "",
+    role: initialData?.role || "",
+    bio: initialData?.bio || null,
+    photoUrl: initialData?.photoUrl || null,
+    xUrl: initialData?.xUrl || null,
+    linkedinUrl: initialData?.linkedinUrl || null,
+    facebookUrl: initialData?.facebookUrl || null,
+    instagramUrl: initialData?.instagramUrl || null,
+    order: initialData?.order || 0,
   })
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [bioLength, setBioLength] = useState(0)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    
+    // Limiter la bio à 250 caractères
+    if (name === 'bio') {
+      const limitedValue = value.length > 250 ? value.substring(0, 250) : value
+      setFormData((prev) => ({ ...prev, [name]: limitedValue || null }))
+      setBioLength(limitedValue.length)
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value || null }))
+    }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setFormData((prev) => ({ ...prev, image: file }))
-      // Créer une preview
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
+  // Mettre à jour bioLength quand formData.bio change
+  useEffect(() => {
+    setBioLength(formData.bio?.length || 0)
+  }, [formData.bio])
+
+  const handlePhotoUpload = (url: string | null) => {
+    setFormData((prev) => ({ ...prev, photoUrl: url }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    
+    // Afficher le toast "processus en cours"
+    toast.info("Processus en cours...", {
+      duration: 2000,
+    })
 
     try {
-      // @todo Appeler l'API backend pour créer/modifier le membre
-      // const response = await fetch('/api/team', { method: 'POST', body: formData })
-      console.log("[Admin] Données du formulaire:", formData)
-
-      onSubmit?.(formData)
+      await onSubmit?.(formData)
 
       // Réinitialiser le formulaire
-      setFormData({ name: "", role: "", bio: "", email: "", phone: "" })
-      setImagePreview(null)
+      setFormData({
+        name: "",
+        role: "",
+        bio: null,
+        photoUrl: null,
+        xUrl: null,
+        linkedinUrl: null,
+        facebookUrl: null,
+        instagramUrl: null,
+        order: 0,
+      })
+      setBioLength(0)
       onClose()
+    } catch (error) {
+      // L'erreur sera gérée par la page admin
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  // Mettre à jour le formulaire quand initialData change
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        role: initialData.role || "",
+        bio: initialData.bio || null,
+        photoUrl: initialData.photoUrl || null,
+        xUrl: initialData.xUrl || null,
+        linkedinUrl: initialData.linkedinUrl || null,
+        facebookUrl: initialData.facebookUrl || null,
+        instagramUrl: initialData.instagramUrl || null,
+        order: initialData.order || 0,
+      })
+      setBioLength(initialData.bio?.length || 0)
+    }
+  }, [initialData])
 
   if (!isOpen) return null
 
@@ -94,7 +141,7 @@ export function TeamModal({ isOpen, onClose, onSubmit }: TeamModalProps) {
       >
         {/* En-tête modal */}
         <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Ajouter un membre</h2>
+          <h2 className="text-xl font-bold">{initialData ? 'Modifier le membre' : 'Ajouter un membre'}</h2>
           <button onClick={onClose} className="p-1 hover:bg-muted rounded transition-colors" aria-label="Fermer">
             <X className="w-5 h-5" />
           </button>
@@ -104,93 +151,121 @@ export function TeamModal({ isOpen, onClose, onSubmit }: TeamModalProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Section Image */}
           <div>
-            <label className="block text-sm font-semibold mb-3">Photo de profil</label>
-            <div className="relative">
-              {imagePreview ? (
-                <img
-                  src={imagePreview || "/placeholder.svg"}
-                  alt="Aperçu"
-                  className="w-full h-48 object-cover rounded-lg border border-border"
-                />
-              ) : (
-                <div className="w-full h-48 bg-muted rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                </div>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="absolute inset-0 opacity-0 cursor-pointer rounded-lg"
+            <Label>Photo de profil</Label>
+            <div className="mt-2">
+              <LogoUpload
+                currentLogoUrl={formData.photoUrl || ""}
+                onUploadComplete={handlePhotoUpload}
+                onRemove={() => handlePhotoUpload(null)}
+                folder="/team"
               />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Cliquez pour ajouter une photo</p>
           </div>
 
           {/* Nom */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Nom complet *</label>
+            <Label htmlFor="name">Nom complet *</Label>
             <Input
+              id="name"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Ex: Coach Bin Adan"
               required
-              className="w-full"
+              className="w-full mt-2"
             />
           </div>
 
           {/* Rôle */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Rôle *</label>
+            <Label htmlFor="role">Fonction au sein de l'entreprise *</Label>
             <Input
+              id="role"
               name="role"
               value={formData.role}
               onChange={handleInputChange}
-              placeholder="Ex: CEO International"
+              placeholder="Ex: CEO International, Directeur OMA TV"
               required
-              className="w-full"
+              className="w-full mt-2"
             />
           </div>
 
           {/* Bio */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Biographie *</label>
-            <textarea
+            <Label htmlFor="bio">
+              Détails sur la personne * (max 250 caractères)
+            </Label>
+            <Textarea
+              id="bio"
               name="bio"
-              value={formData.bio}
+              value={formData.bio ?? ""}
               onChange={handleInputChange}
-              placeholder="Décrivez les compétences et expériences..."
+              placeholder="Décrivez les compétences et expériences de la personne..."
               required
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              maxLength={250}
+              className="w-full mt-2"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {bioLength || formData.bio?.length || 0} / 250 caractères
+            </p>
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Email</label>
-            <Input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="email@oma.com"
-              className="w-full"
-            />
-          </div>
+          {/* Réseaux sociaux */}
+          <div className="space-y-3">
+            <Label>Réseaux sociaux (optionnel)</Label>
+            
+            <div>
+              <Label htmlFor="linkedinUrl" className="text-xs text-muted-foreground">LinkedIn</Label>
+              <Input
+                id="linkedinUrl"
+                name="linkedinUrl"
+                type="url"
+                value={formData.linkedinUrl ?? ""}
+                onChange={handleInputChange}
+                placeholder="https://linkedin.com/in/..."
+                className="w-full mt-1"
+              />
+            </div>
 
-          {/* Téléphone */}
-          <div>
-            <label className="block text-sm font-semibold mb-2">Téléphone</label>
-            <Input
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="+243 123 456 789"
-              className="w-full"
-            />
+            <div>
+              <Label htmlFor="facebookUrl" className="text-xs text-muted-foreground">Facebook</Label>
+              <Input
+                id="facebookUrl"
+                name="facebookUrl"
+                type="url"
+                value={formData.facebookUrl ?? ""}
+                onChange={handleInputChange}
+                placeholder="https://facebook.com/..."
+                className="w-full mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="instagramUrl" className="text-xs text-muted-foreground">Instagram</Label>
+              <Input
+                id="instagramUrl"
+                name="instagramUrl"
+                type="url"
+                value={formData.instagramUrl ?? ""}
+                onChange={handleInputChange}
+                placeholder="https://instagram.com/..."
+                className="w-full mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="xUrl" className="text-xs text-muted-foreground">X (Twitter)</Label>
+              <Input
+                id="xUrl"
+                name="xUrl"
+                type="url"
+                value={formData.xUrl ?? ""}
+                onChange={handleInputChange}
+                placeholder="https://x.com/..."
+                className="w-full mt-1"
+              />
+            </div>
           </div>
 
           {/* Boutons d'action */}
@@ -199,7 +274,9 @@ export function TeamModal({ isOpen, onClose, onSubmit }: TeamModalProps) {
               Annuler
             </Button>
             <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? "Ajout en cours..." : "Ajouter le membre"}
+              {isSubmitting 
+                ? (initialData ? "Modification en cours..." : "Ajout en cours...") 
+                : (initialData ? "Modifier le membre" : "Ajouter le membre")}
             </Button>
           </div>
         </form>

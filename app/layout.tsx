@@ -7,6 +7,8 @@ import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { NextAuthSessionProvider } from "@/components/providers/session-provider"
 import { DynamicColors } from "@/components/theming/dynamic-colors"
+import { VisitTracker } from "@/components/analytics/visit-tracker"
+import { TrackingPixels } from "@/components/tracking/tracking-pixels"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -35,11 +37,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr" className={`${playfair.variable} ${poppins.variable}`}>
-      <body className="font-sans antialiased">
+    <html lang="fr" className={`${playfair.variable} ${poppins.variable} overflow-x-hidden max-w-full`}>
+      <body className="font-sans antialiased overflow-x-hidden max-w-full w-full">
+        <TrackingPixels />
         <DynamicColors />
         <NextAuthSessionProvider>
           <Suspense fallback={<div>Loading...</div>}>
+            <VisitTracker />
             {children}
             <Analytics />
             <Toaster position="bottom-center" richColors={true} />

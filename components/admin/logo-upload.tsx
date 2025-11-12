@@ -6,12 +6,22 @@ import { Upload, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface LogoUploadProps {
-  currentLogoUrl?: string
+  currentLogoUrl?: string | null
   onUploadComplete: (url: string) => void
   onRemove?: () => void
+  folder?: string // Dossier ImageKit (par défaut: /logos)
+  publicToken?: string | null // Token pour upload public (témoignages)
+  uploadEndpoint?: string // Endpoint personnalisé pour l'upload (par défaut: /api/uploads)
 }
 
-export function LogoUpload({ currentLogoUrl, onUploadComplete, onRemove }: LogoUploadProps) {
+export function LogoUpload({ 
+  currentLogoUrl, 
+  onUploadComplete, 
+  onRemove, 
+  folder = "/logos",
+  publicToken,
+  uploadEndpoint,
+}: LogoUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(currentLogoUrl || null)
   const [uploading, setUploading] = useState(false)
@@ -65,9 +75,19 @@ export function LogoUpload({ currentLogoUrl, onUploadComplete, onRemove }: LogoU
 
       const formData = new FormData()
       formData.append("file", fileToUse)
-      formData.append("folder", "/logos") // Dossier spécifique pour les logos
+      
+      // Utiliser l'endpoint personnalisé ou déterminer l'endpoint selon le contexte
+      const endpoint = uploadEndpoint || (publicToken ? "/api/testimonials/upload" : "/api/uploads")
+      
+      // Si c'est un upload public (témoignages), ajouter le token
+      if (publicToken) {
+        formData.append("token", publicToken)
+      } else {
+        // Pour les uploads admin, on garde le dossier
+        formData.append("folder", folder)
+      }
 
-      const res = await fetch("/api/uploads", {
+      const res = await fetch(endpoint, {
         method: "POST",
         body: formData,
       })
@@ -80,7 +100,7 @@ export function LogoUpload({ currentLogoUrl, onUploadComplete, onRemove }: LogoU
       const data = await res.json()
       if (data.success && data.data?.url) {
         setPreview(data.data.url)
-        toast.success("Logo uploadé avec succès vers ImageKit")
+        toast.success(publicToken ? "Photo uploadée avec succès" : "Logo uploadé avec succès vers ImageKit")
         // Appeler le callback avec l'URL
         onUploadComplete(data.data.url)
       } else {
@@ -197,7 +217,9 @@ export function LogoUpload({ currentLogoUrl, onUploadComplete, onRemove }: LogoU
 
       {/* Info */}
       <p className="text-xs text-muted-foreground">
-        Formats acceptés : JPG, PNG, WEBP (max 10MB). Le logo sera uploadé vers ImageKit et l'URL sera sauvegardée automatiquement dans la base de données. Le logo sera affiché avec un cercle blanc derrière pour garantir la visibilité sur fond sombre.
+        Formats acceptés : JPG, PNG, WEBP (max 10MB). {publicToken 
+          ? "La photo sera uploadée vers ImageKit et utilisée pour votre témoignage."
+          : "Le logo sera uploadé vers ImageKit et l'URL sera sauvegardée automatiquement dans la base de données. Le logo sera affiché avec un cercle blanc derrière pour garantir la visibilité sur fond sombre."}
       </p>
     </div>
   )

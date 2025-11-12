@@ -8,14 +8,53 @@ import { prisma } from "@/lib/prisma"
 
 // GET /api/events
 // Récupère tous les événements publiés à venir (limite 10 pour la bannière de défilement)
+// Cache: 30 secondes (revalidation)
+export const revalidate = 30
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get("limit") || "10")
+    const page = parseInt(searchParams.get("page") || "1")
     const upcoming = searchParams.get("upcoming") === "true"
+    const past = searchParams.get("past") === "true"
     const bannerOnly = searchParams.get("bannerOnly") === "true"
+    const slug = searchParams.get("slug")
 
     const now = new Date()
+    const skip = (page - 1) * limit
+
+    // Si on cherche par slug, retourner un seul événement
+    if (slug) {
+      const event = await prisma.event.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          type: true,
+          status: true,
+          imageUrl: true,
+          location: true,
+          startsAt: true,
+          endsAt: true,
+          showOnBanner: true,
+        },
+      })
+
+      if (!event) {
+        return NextResponse.json(
+          { success: false, error: 'Événement non trouvé' },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: [event],
+      })
+    }
 
     // Construire la clause where de manière sécurisée
     const where: any = {
@@ -25,6 +64,10 @@ export async function GET(request: NextRequest) {
     if (upcoming) {
       where.startsAt = {
         gte: now,
+      }
+    } else if (past) {
+      where.startsAt = {
+        lt: now,
       }
     }
 
@@ -59,17 +102,29 @@ export async function GET(request: NextRequest) {
       includeShowInBanner = false
     }
 
-    // Exécuter la requête
+    // Exécuter la requête avec pagination
     let events
+    let total = 0
     try {
+      // Log pour debug
+      console.log("[API Events] Requête avec where:", JSON.stringify(where, null, 2))
+      
+      // Compter le total (sans pagination)
+      total = await prisma.event.count({ where })
+      
+      // Récupérer les événements avec pagination
       events = await prisma.event.findMany({
         where,
-        orderBy: {
-          startsAt: "asc",
-        },
+        orderBy: [
+          { startsAt: upcoming ? "asc" : "desc" },
+          { createdAt: "desc" }, // Si startsAt est null, trier par date de création
+        ],
+        skip,
         take: limit,
         select: selectFields,
       })
+      
+      console.log(`[API Events] ${events.length} événement(s) trouvé(s) sur ${total} au total`)
     } catch (dbError: any) {
       // Vérifier si l'erreur est liée au champ showOnBanner qui n'existe pas
       const errorMessage = dbError.message?.toLowerCase() || ""
@@ -97,11 +152,14 @@ export async function GET(request: NextRequest) {
         }
         
         // Sinon, continuer sans le filtre showOnBanner
+        total = await prisma.event.count({ where })
         events = await prisma.event.findMany({
           where,
-          orderBy: {
-            startsAt: "asc",
-          },
+          orderBy: [
+            { startsAt: upcoming ? "asc" : "desc" },
+            { createdAt: "desc" },
+          ],
+          skip,
           take: limit,
           select: selectFields,
         })
@@ -117,9 +175,19 @@ export async function GET(request: NextRequest) {
       showOnBanner: event.showOnBanner ?? false,
     }))
 
+    const totalPages = Math.ceil(total / limit)
+
     return NextResponse.json({
       success: true,
       data: eventsWithDefaultBanner,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     })
   } catch (error: any) {
     console.error("[API] Erreur GET events:", error)

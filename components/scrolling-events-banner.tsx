@@ -25,7 +25,7 @@ export function ScrollingEventsBanner() {
     const fetchEvents = async () => {
       try {
         const res = await fetch("/api/events?upcoming=true&limit=10&bannerOnly=true", {
-          cache: "no-store",
+          next: { revalidate: 30 }, // Cache 30 secondes
         })
         
         if (!res.ok) {
@@ -47,9 +47,13 @@ export function ScrollingEventsBanner() {
         }
 
         if (data.success && data.data) {
+          console.log("[ScrollingEventsBanner] Événements reçus:", data.data.length, data.data)
           // Filtrer les événements avec showOnBanner = true (au cas où certains seraient retournés)
           const bannerEvents = data.data.filter((event: Event) => event.showOnBanner === true)
+          console.log("[ScrollingEventsBanner] Événements avec showOnBanner=true:", bannerEvents.length, bannerEvents)
           setEvents(bannerEvents)
+        } else {
+          console.warn("[ScrollingEventsBanner] Pas de données ou erreur:", data)
         }
       } catch (error) {
         console.error("[ScrollingEventsBanner] Erreur:", error)
@@ -88,11 +92,11 @@ export function ScrollingEventsBanner() {
   }
 
   return (
-    <section className="relative py-16 bg-primary border-y border-gold/20">
+    <section className="relative py-16 bg-primary border-y border-gold/20 overflow-x-hidden max-w-full">
       {/* Ligne décorative en haut */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
       
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 max-w-full overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
@@ -110,9 +114,9 @@ export function ScrollingEventsBanner() {
         </div>
 
         {/* Container de défilement */}
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden max-w-full">
           <div
-            className="flex gap-6 scroll-container"
+            className="flex gap-6 scroll-container max-w-full"
             style={{
               animation: "scroll-left 40s linear infinite",
             }}
@@ -126,7 +130,7 @@ export function ScrollingEventsBanner() {
             {duplicatedEvents.map((event, index) => (
               <div
                 key={`${event.id}-${index}`}
-                className="flex-shrink-0 w-80 md:w-96"
+                className="flex-shrink-0 w-80 md:w-96 max-w-[calc(100vw-2rem)]"
               >
                 <Link href={`/events/${event.slug}`}>
                   <div className="bg-card rounded-lg overflow-hidden shadow-xl border border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full">

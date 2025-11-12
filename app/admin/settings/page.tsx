@@ -49,6 +49,8 @@ export default function AdminSettings() {
     smtp_secure: "false",
     smtp_user: "",
     smtp_pass: "", // Ne sera pas affiché, seulement pour modification
+    idle_timeout_minutes: 15, // Temps d'inactivité avant verrouillage (en minutes)
+    wakeup_ping_interval_minutes: 5, // Intervalle pour le wake-up ping (en minutes)
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -107,6 +109,8 @@ export default function AdminSettings() {
             smtp_secure: loadedSettings.smtpSecure || prev.smtp_secure,
             smtp_user: loadedSettings.smtpUser || prev.smtp_user,
             // Ne pas charger le mot de passe pour des raisons de sécurité
+            idle_timeout_minutes: loadedSettings.idleTimeoutMinutes || prev.idle_timeout_minutes,
+            wakeup_ping_interval_minutes: loadedSettings.wakeUpPingIntervalMinutes || prev.wakeup_ping_interval_minutes,
           }))
         }
 
@@ -181,6 +185,8 @@ export default function AdminSettings() {
         smtpSecure: settings.smtp_secure,
         smtpUser: settings.smtp_user,
         smtpPass: settings.smtp_pass || undefined, // Ne pas envoyer si vide
+        idleTimeoutMinutes: parseInt(settings.idle_timeout_minutes.toString()) || 15,
+        wakeUpPingIntervalMinutes: parseInt(settings.wakeup_ping_interval_minutes.toString()) || 5,
       }
 
       const contactPayload = {
@@ -604,6 +610,57 @@ export default function AdminSettings() {
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Pour Gmail, utilisez un "App Password" généré depuis votre compte Google.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Paramètres de sécurité */}
+          <Card className="border-0 shadow-soft bg-white">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-foreground">Paramètres de sécurité</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configurez le verrouillage automatique de la session après inactivité
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Temps d'inactivité avant verrouillage (minutes)
+                </label>
+                <Input
+                  type="number"
+                  name="idle_timeout_minutes"
+                  value={settings.idle_timeout_minutes}
+                  onChange={handleChange}
+                  min="5"
+                  max="120"
+                  placeholder="15"
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Après cette durée d'inactivité, la session sera verrouillée et l'utilisateur devra entrer son mot de passe pour continuer. 
+                  Si l'inactivité dépasse 1 heure, l'utilisateur sera redirigé vers la page de connexion. (Recommandé: 15-30 minutes)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Intervalle de wake-up ping (minutes)
+                </label>
+                <Input
+                  type="number"
+                  name="wakeup_ping_interval_minutes"
+                  value={settings.wakeup_ping_interval_minutes}
+                  onChange={handleChange}
+                  min="1"
+                  max="60"
+                  placeholder="5"
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Intervalle pour envoyer une requête à la base de données afin de la maintenir active et éviter qu'elle ne s'endorme. 
+                  Une petite requête sera envoyée automatiquement toutes les X minutes. (Recommandé: 5-10 minutes)
                 </p>
               </div>
             </CardContent>

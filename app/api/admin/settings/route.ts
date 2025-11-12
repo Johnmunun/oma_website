@@ -45,6 +45,8 @@ const settingSchema = z.object({
   siteTitle: z.string().min(1).max(200),
   siteDescription: z.string().max(500).optional().nullable(),
   logoUrl: logoUrlSchema,
+  coverImageUrl: logoUrlSchema, // Photo de couverture pour la bannière
+  heroImageUrl: logoUrlSchema, // Image de fond pour la section hero
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   fontFamily: z.string().min(1).max(100),
@@ -75,6 +77,10 @@ const settingSchema = z.object({
   smtpSecure: z.string().optional().nullable(),
   smtpUser: z.string().email().max(200).optional().nullable(),
   smtpPass: z.string().max(500).optional().nullable(), // Mot de passe, peut être vide si non modifié
+  
+  // Paramètres de sécurité
+  idleTimeoutMinutes: z.number().int().min(5).max(120).optional().nullable(), // Temps d'inactivité en minutes (5-120)
+  wakeUpPingIntervalMinutes: z.number().int().min(1).max(60).optional().nullable(), // Intervalle wake-up ping en minutes (1-60)
 })
 
 // GET /api/admin/settings
@@ -147,6 +153,8 @@ export async function GET() {
           colorGold: '#f97316',
           colorGoldDark: '#ea580c',
           colorGoldLight: '#fb923c',
+          idleTimeoutMinutes: 15, // Valeur par défaut: 15 minutes
+          wakeUpPingIntervalMinutes: 5, // Valeur par défaut: 5 minutes
         },
       })
     }
@@ -194,10 +202,12 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
 
-    // Nettoyer logoUrl avant validation (accepter chemins relatifs)
+    // Nettoyer logoUrl, coverImageUrl et heroImageUrl avant validation (accepter chemins relatifs)
     const cleanedBody = {
       ...body,
       logoUrl: body.logoUrl && body.logoUrl.trim() ? body.logoUrl.trim() : null,
+      coverImageUrl: body.coverImageUrl && body.coverImageUrl.trim() ? body.coverImageUrl.trim() : null,
+      heroImageUrl: body.heroImageUrl && body.heroImageUrl.trim() ? body.heroImageUrl.trim() : null,
     }
 
     // Valider les données

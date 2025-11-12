@@ -19,42 +19,35 @@ interface TeamMember {
   id: string
   name: string
   role: string
-  bio: string
-  image: string
-  email?: string
-  phone?: string
+  bio: string | null
+  photoUrl: string | null
+  xUrl: string | null
+  linkedinUrl: string | null
+  facebookUrl: string | null
+  instagramUrl: string | null
+  order: number
+  createdAt: string
+  updatedAt: string
 }
-
-const mockTeam: TeamMember[] = [
-  {
-    id: "1",
-    name: "Coach Bin Adan",
-    role: "CEO International",
-    bio: "Expert en communication et leadership",
-    image: "/placeholder.svg",
-    email: "coach@oma.com",
-  },
-]
 
 export default function AdminTeamPage() {
   const [team, setTeam] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
 
   useEffect(() => {
     const loadTeam = async () => {
       try {
         setIsLoading(true)
-        // @todo Remplacer par un appel API réel
-        // const res = await fetch('/api/admin/team')
-        // if (!res.ok) throw new Error('Failed to load team')
-        // const data = await res.json()
-        // setTeam(data)
+        const res = await fetch('/api/admin/team', { cache: 'no-store' })
+        if (!res.ok) throw new Error('Failed to load team')
         
-        // Simulation d'un délai de chargement
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        setTeam(mockTeam)
+        const data = await res.json()
+        if (data.success && data.data) {
+          setTeam(data.data)
+        }
       } catch (err) {
         console.error('[Admin] Erreur chargement équipe:', err)
         toast.error('Impossible de charger l\'équipe')
@@ -71,39 +64,70 @@ export default function AdminTeamPage() {
     try {
       if (!confirm("Supprimer ce membre ?")) return
       
-    // @todo Appeler l'API pour supprimer
-      // const res = await fetch(`/api/admin/team/${id}`, { method: 'DELETE' })
-      // if (!res.ok) throw new Error('Failed to delete member')
+      const res = await fetch(`/api/admin/team/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to delete member')
+      }
       
       setTeam(team.filter((m) => m.id !== id))
       toast.success('Membre supprimé avec succès')
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Admin] Erreur suppression membre:', err)
-      toast.error('Erreur lors de la suppression du membre')
+      toast.error(err.message || 'Erreur lors de la suppression du membre')
     }
   }
 
-  const handleAddMember = async (data: any) => {
+  const handleSubmitMember = async (data: any) => {
     try {
-      // @todo Appeler l'API backend pour créer le membre
-      // const res = await fetch('/api/admin/team', {
-      //   method: 'POST',
-      //   body: JSON.stringify(data)
-      // })
-      // if (!res.ok) throw new Error('Failed to create member')
+      const url = editingMember 
+        ? `/api/admin/team/${editingMember.id}`
+        : '/api/admin/team'
+      const method = editingMember ? 'PUT' : 'POST'
       
-    const newMember: TeamMember = {
-      id: String(team.length + 1),
-      ...data,
-      image: data.image ? URL.createObjectURL(data.image) : "/placeholder.svg",
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to save member')
+      }
+      
+      const responseData = await res.json()
+      if (responseData.success) {
+        // Recharger la liste
+        const loadTeam = async () => {
+          const res = await fetch('/api/admin/team', { cache: 'no-store' })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.success && data.data) {
+              setTeam(data.data)
+            }
+          }
+        }
+        await loadTeam()
+        
+        toast.success(editingMember ? 'Membre modifié avec succès' : 'Membre ajouté avec succès')
+        setIsModalOpen(false)
+        setEditingMember(null)
+      }
+    } catch (err: any) {
+      console.error('[Admin] Erreur sauvegarde membre:', err)
+      toast.error(err.message || 'Erreur lors de la sauvegarde du membre')
     }
-    setTeam([...team, newMember])
-      toast.success('Membre ajouté avec succès')
-      setIsModalOpen(false)
-    } catch (err) {
-      console.error('[Admin] Erreur ajout membre:', err)
-      toast.error('Erreur lors de l\'ajout du membre')
-    }
+  }
+
+  const handleEdit = (member: TeamMember) => {
+    setEditingMember(member)
+    setIsModalOpen(true)
+  }
+
+  const handleAdd = () => {
+    setEditingMember(null)
+    setIsModalOpen(true)
   }
 
   if (isLoading) {
@@ -117,7 +141,7 @@ export default function AdminTeamPage() {
           <h1 className="text-3xl font-bold">Équipe</h1>
           <p className="text-muted-foreground mt-1">{team.length} membres d'équipe</p>
         </div>
-        <Button size="lg" className="gap-2" onClick={() => setIsModalOpen(true)}>
+        <Button size="lg" className="gap-2" onClick={handleAdd}>
           <Plus className="w-5 h-5" />
           Ajouter un membre
         </Button>
@@ -139,13 +163,32 @@ export default function AdminTeamPage() {
         {filteredTeam.length > 0 ? (
           filteredTeam.map((member) => (
             <Card key={member.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <img src={member.image || "/placeholder.svg"} alt={member.name} className="w-full h-48 object-cover" />
+              <div className="relative h-48 bg-gradient-to-br from-muted to-muted/50">
+                {member.photoUrl ? (
+                  <img 
+                    src={member.photoUrl} 
+                    alt={member.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Users2 className="w-16 h-16 text-muted-foreground opacity-30" />
+                  </div>
+                )}
+              </div>
               <div className="p-4">
                 <h3 className="font-semibold text-lg">{member.name}</h3>
                 <p className="text-sm text-primary font-medium">{member.role}</p>
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{member.bio}</p>
+                {member.bio && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{member.bio}</p>
+                )}
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1 bg-transparent">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1 bg-transparent"
+                    onClick={() => handleEdit(member)}
+                  >
                     <Edit2 className="w-4 h-4 mr-1" />
                     Modifier
                   </Button>
@@ -164,7 +207,15 @@ export default function AdminTeamPage() {
         )}
       </div>
 
-      <TeamModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleAddMember} />
+      <TeamModal 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingMember(null)
+        }} 
+        onSubmit={handleSubmitMember}
+        initialData={editingMember}
+      />
     </div>
   )
 }

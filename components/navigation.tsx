@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Menu, X } from "lucide-react"
+import Link from "next/link"
 import { useDynamicLogo } from "@/components/theming/dynamic-logo"
 
 export function Navigation() {
@@ -9,6 +10,7 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const logoUrl = useDynamicLogo()
   const [siteTitle, setSiteTitle] = useState("OMA")
+  const [siteDescription, setSiteDescription] = useState("")
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,11 +23,18 @@ export function Navigation() {
   useEffect(() => {
     const loadSiteSettings = async () => {
       try {
-        const res = await fetch('/api/site-settings', { cache: 'no-store' })
+        const res = await fetch('/api/site-settings', { 
+          cache: 'no-store' // Pas de cache pour avoir les dernières données
+        })
         if (!res.ok) return
         const data = await res.json()
-        if (data.success && data.data?.siteTitle) {
-          setSiteTitle(data.data.siteTitle)
+        if (data.success && data.data) {
+          if (data.data.siteTitle) {
+            setSiteTitle(data.data.siteTitle)
+          }
+          if (data.data.siteDescription) {
+            setSiteDescription(data.data.siteDescription)
+          }
         }
       } catch (err) {
         console.error('[Navigation] Erreur chargement settings:', err)
@@ -45,8 +54,11 @@ export function Navigation() {
     }
   }, [])
 
+  // Limiter le titre à 25 caractères
+  const truncatedTitle = siteTitle.length > 25 ? `${siteTitle.substring(0, 25)}...` : siteTitle
+
   const navLinks = [
-    { href: "#accueil", label: "Accueil" },
+    { href: "/", label: "Accueil", isHome: true },
     { href: "#formations", label: "Formations" },
     { href: "#oma-tv", label: "OMA TV" },
     { href: "#evenements", label: "Événements" },
@@ -55,41 +67,71 @@ export function Navigation() {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 max-w-full w-full overflow-x-hidden ${
         isScrolled ? "bg-primary/95 backdrop-blur-sm shadow-lg" : "bg-primary/95 backdrop-blur-sm"
       }`}
     >
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-4 max-w-full overflow-x-hidden">
         <div className="flex items-center justify-between">
-          <a href="#accueil" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-1 sm:flex-initial">
             {logoUrl ? (
-              <div className="relative inline-flex items-center justify-center">
+              <div className="relative inline-flex items-center justify-center flex-shrink-0">
                 {/* Cercle blanc derrière le logo pour garantir la visibilité */}
-                <div className="absolute w-14 h-14 bg-white rounded-full shadow-md z-0" />
-                {/* Logo par-dessus - agrandi */}
-                <img src={logoUrl} alt={siteTitle} className="h-12 w-auto relative z-10" />
+                <div className="absolute w-12 h-12 sm:w-14 sm:h-14 bg-white rounded-full shadow-md z-0" />
+                {/* Logo par-dessus - responsive */}
+                <img src={logoUrl} alt={siteTitle} className="h-10 w-auto sm:h-12 relative z-10" />
               </div>
             ) : (
-              <div className="text-2xl font-serif font-bold text-gold">{siteTitle}</div>
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-gold to-gold-dark rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                <span className="text-white font-bold text-base sm:text-lg">OMA</span>
+              </div>
             )}
-          </a>
+            {/* Titre et slogan */}
+            <div className="flex flex-col justify-center min-w-0 flex-1 sm:flex-initial">
+              <h1 className="font-serif font-bold text-base sm:text-lg md:text-xl lg:text-2xl text-primary-foreground leading-tight group-hover:text-gold transition-colors truncate">
+                {truncatedTitle}
+              </h1>
+              <p className="hidden sm:block text-[10px] md:text-xs text-primary-foreground/70 leading-tight mt-0.5 line-clamp-1">
+                Oratoire Mon Art
+              </p>
+            </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-primary-foreground hover:text-gold transition-colors inline-flex items-center gap-2"
-              >
-                {link.label}
-                {link.label === 'Formations' && (
-                  <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
-                    Avenir
-                  </span>
-                )}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              if (link.isHome) {
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm font-medium text-primary-foreground hover:text-gold transition-colors inline-flex items-center gap-2"
+                  >
+                    {link.label}
+                    {link.label === 'Formations' && (
+                      <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
+                        Avenir
+                      </span>
+                    )}
+                  </Link>
+                )
+              }
+              
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm font-medium text-primary-foreground hover:text-gold transition-colors inline-flex items-center gap-2"
+                >
+                  {link.label}
+                  {link.label === 'Formations' && (
+                    <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
+                      Avenir
+                    </span>
+                  )}
+                </a>
+              )
+            })}
           </div>
 
           {/* Mobile Menu Button */}
@@ -101,23 +143,45 @@ export function Navigation() {
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4 space-y-4">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="block text-sm font-medium text-primary-foreground hover:text-gold transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {link.label}
-                  {link.label === 'Formations' && (
-                    <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
-                      Avenir
+            {navLinks.map((link) => {
+              if (link.isHome) {
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block text-sm font-medium text-primary-foreground hover:text-gold transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {link.label}
+                      {link.label === 'Formations' && (
+                        <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
+                          Avenir
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              </a>
-            ))}
+                  </Link>
+                )
+              }
+              
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="block text-sm font-medium text-primary-foreground hover:text-gold transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {link.label}
+                    {link.label === 'Formations' && (
+                      <span className="text-[10px] leading-none px-2 py-1 rounded-full bg-secondary text-secondary-foreground shadow-sm uppercase tracking-wide">
+                        Avenir
+                      </span>
+                    )}
+                  </span>
+                </a>
+              )
+            })}
           </div>
         )}
       </div>

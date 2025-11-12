@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
+    const limit = parseInt(searchParams.get("limit") || "5")
     const status = searchParams.get("status")
     const search = searchParams.get("search")
 
@@ -60,7 +60,10 @@ export async function GET(request: NextRequest) {
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where,
-        orderBy: { startsAt: "desc" },
+        orderBy: [
+          { startsAt: "desc" },
+          { createdAt: "desc" },
+        ],
         skip,
         take: limit,
         include: {
@@ -102,10 +105,14 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API] Erreur GET admin events:", error)
     return NextResponse.json(
-      { success: false, error: "Erreur lors de la récupération des événements" },
+      { 
+        success: false, 
+        error: error?.message || "Erreur lors de la récupération des événements",
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      },
       { status: 500 },
     )
   }
@@ -119,6 +126,14 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
+    }
+
+    // Seuls les ADMIN et EDITOR peuvent créer des événements
+    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
+      return NextResponse.json(
+        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent créer des événements." },
+        { status: 403 }
+      )
     }
 
     const body = await request.json()

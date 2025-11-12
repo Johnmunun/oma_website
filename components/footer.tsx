@@ -29,7 +29,9 @@ export function Footer() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const res = await fetch('/api/site-settings', { cache: 'no-store' })
+        const res = await fetch('/api/site-settings', { 
+          next: { revalidate: 60 } // Cache 60 secondes
+        })
         if (!res.ok) return
         const data = await res.json()
         if (data.success && data.data) {

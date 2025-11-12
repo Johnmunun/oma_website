@@ -11,8 +11,7 @@ export function DynamicColors() {
     const loadColors = async () => {
       try {
         const res = await fetch('/api/theming/colors', { 
-          cache: 'no-store',
-          next: { revalidate: 0 } 
+          next: { revalidate: 60 } // Cache 60 secondes
         })
         if (!res.ok) return
 

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { TiptapEditor } from "@/components/admin/tiptap-editor"
 
 interface EventFormData {
   id?: string
@@ -256,13 +257,14 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
             {/* Description */}
             <div>
               <label className="text-sm font-medium block mb-2">Description</label>
-              <textarea
-                value={formData.description || ""}
-                onChange={(e) => handleChange("description", e.target.value || null)}
-                placeholder="Description complète de l'événement..."
-                rows={6}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gold"
+              <TiptapEditor
+                content={formData.description}
+                onChange={(html) => handleChange("description", html || null)}
+                placeholder="Description complète de l'événement... Utilisez la barre d'outils pour formater le texte."
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Utilisez la barre d'outils pour formater votre texte (gras, italique, listes, titres, etc.)
+              </p>
             </div>
 
             {/* Statut */}

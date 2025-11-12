@@ -1,0 +1,23 @@
+# robots.txt pour Réseau OMA
+# Permet aux moteurs de recherche d'indexer le site
+
+User-agent: *
+Allow: /
+
+# Interdire l'indexation des pages admin
+Disallow: /admin/
+Disallow: /api/
+
+# Interdire l'indexation des pages de connexion
+Disallow: /login
+Disallow: /auth/
+
+# Autoriser l'indexation des pages publiques
+Allow: /
+Allow: /events
+Allow: /formations
+Allow: /contact
+
+# Sitemap
+Sitemap: https://votre-domaine.com/sitemap.xml
+

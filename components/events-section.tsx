@@ -30,31 +30,39 @@ export function EventsSection() {
       try {
         setLoading(true)
         
-        // Récupérer les événements à venir
-        const upcomingRes = await fetch("/api/events?upcoming=true&limit=20", {
-          cache: "no-store",
-        })
-        if (upcomingRes.ok) {
-          const upcomingData = await upcomingRes.json()
-          if (upcomingData.success && upcomingData.data) {
-            setUpcomingEvents(upcomingData.data)
-          }
+        // Récupérer les événements en parallèle avec cache
+        const [upcomingRes, allRes] = await Promise.all([
+          fetch("/api/events?upcoming=true&limit=20", {
+            next: { revalidate: 30 }, // Cache 30 secondes
+          }),
+          fetch("/api/events?limit=50", {
+            next: { revalidate: 30 }, // Cache 30 secondes
+          })
+        ])
+        
+        // Traiter les résultats en parallèle
+        const [upcomingData, allData] = await Promise.all([
+          upcomingRes.ok ? upcomingRes.json() : { success: false },
+          allRes.ok ? allRes.json() : { success: false }
+        ])
+        
+        if (upcomingData.success && upcomingData.data) {
+          console.log("[EventsSection] Événements à venir reçus:", upcomingData.data.length)
+          setUpcomingEvents(upcomingData.data)
+        } else {
+          console.warn("[EventsSection] Pas de données pour les événements à venir:", upcomingData)
         }
 
-        // Récupérer tous les événements publiés (pour les événements passés)
-        const allRes = await fetch("/api/events?limit=50", {
-          cache: "no-store",
-        })
-        if (allRes.ok) {
-          const allData = await allRes.json()
-          if (allData.success && allData.data) {
-            const now = new Date()
-            const past = allData.data.filter((event: Event) => {
-              if (!event.startsAt) return false
-              return new Date(event.startsAt) < now
-            })
-            setPastEvents(past.slice(0, 12))
-          }
+        if (allData.success && allData.data) {
+          const now = new Date()
+          const past = allData.data.filter((event: Event) => {
+            if (!event.startsAt) return false
+            return new Date(event.startsAt) < now
+          })
+          console.log("[EventsSection] Événements passés trouvés:", past.length)
+          setPastEvents(past.slice(0, 12))
+        } else {
+          console.warn("[EventsSection] Pas de données pour tous les événements:", allData)
         }
       } catch (error) {
         console.error("[EventsSection] Erreur:", error)

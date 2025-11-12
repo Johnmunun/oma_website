@@ -11,7 +11,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Palette, Type, ImageIcon } from "lucide-react"
+import { Save, Palette, Type, ImageIcon, Loader2 } from "lucide-react"
 import { PageSkeleton } from "@/components/admin/page-skeleton"
 import { toast } from "sonner"
 import { LogoUpload } from "@/components/admin/logo-upload"
@@ -20,6 +20,8 @@ interface SiteSettings {
   // Logo et branding
   logoUrl: string
   logoAlt: string
+  coverImageUrl: string | null // Photo de couverture pour la bannière
+  heroImageUrl: string | null // Image de fond pour la section hero
 
   // Couleurs principales
   primaryColor: string
@@ -41,6 +43,8 @@ export default function AdminContentPage() {
   const [settings, setSettings] = useState<SiteSettings>({
     logoUrl: "/images/logo.png",
     logoAlt: "OMA Logo",
+    coverImageUrl: null,
+    heroImageUrl: null,
     primaryColor: "#1a1a1a",
     secondaryColor: "#d4af37",
     accentColor: "#f5f5f5",
@@ -53,6 +57,7 @@ export default function AdminContentPage() {
   })
 
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"branding" | "typography" | "content">("branding")
   const [saved, setSaved] = useState(false)
 
@@ -71,6 +76,8 @@ export default function AdminContentPage() {
           setSettings((prev) => ({
             ...prev,
             logoUrl: loadedSettings.logoUrl || prev.logoUrl,
+            coverImageUrl: loadedSettings.coverImageUrl || prev.coverImageUrl,
+            heroImageUrl: loadedSettings.heroImageUrl || prev.heroImageUrl,
             logoAlt: loadedSettings.siteTitle || prev.logoAlt,
             primaryColor: loadedSettings.primaryColor || prev.primaryColor,
             secondaryColor: loadedSettings.secondaryColor || prev.secondaryColor,
@@ -102,80 +109,212 @@ export default function AdminContentPage() {
    * Sauvegarder les modifications
    */
   const handleSave = async () => {
+    if (isSaving) return // Empêcher les doubles clics
+    
     try {
+      setIsSaving(true)
+      
+      // Valider et formater les couleurs (doivent être au format #RRGGBB)
+      const formatColor = (color: string): string => {
+        if (!color) return '#1a1a1a' // Valeur par défaut
+        // Si la couleur commence par #, vérifier qu'elle a 7 caractères (#RRGGBB)
+        if (color.startsWith('#')) {
+          // Si elle a 4 caractères (#RGB), convertir en #RRGGBB
+          if (color.length === 4) {
+            return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+          }
+          // Si elle a déjà 7 caractères, la retourner telle quelle
+          if (color.length === 7) {
+            return color
+          }
+        }
+        // Si pas de #, l'ajouter et compléter si nécessaire
+        return color.startsWith('#') ? color : `#${color}`
+      }
+      
+      // Préparer les données à envoyer
+      const payload = {
+        siteTitle: settings.logoAlt || 'Réseau OMA & OMA TV',
+        siteDescription: settings.aboutDescription || '',
+        logoUrl: settings.logoUrl || null,
+        coverImageUrl: settings.coverImageUrl || null,
+        heroImageUrl: settings.heroImageUrl || null,
+        primaryColor: formatColor(settings.primaryColor),
+        secondaryColor: formatColor(settings.secondaryColor),
+        fontFamily: settings.headingFont || 'Playfair Display',
+      }
+      
+      console.log('[Admin] Envoi des paramètres:', payload)
+      
       // Sauvegarder via l'API admin/settings
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteTitle: settings.logoAlt || 'Réseau OMA & OMA TV',
-          siteDescription: settings.aboutDescription || '',
-          logoUrl: settings.logoUrl,
-          primaryColor: settings.primaryColor,
-          secondaryColor: settings.secondaryColor,
-          fontFamily: settings.headingFont,
-        }),
+        body: JSON.stringify(payload),
+      })
+      
+      // Lire la réponse une seule fois
+      let responseData
+      try {
+        const text = await res.text()
+        responseData = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error('[Admin] Erreur parsing réponse:', parseError)
+        throw new Error('Réponse invalide du serveur')
+      }
+      
+      console.log('[Admin] Réponse API:', {
+        status: res.status,
+        ok: res.ok,
+        data: responseData,
       })
       
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to save settings')
+        const errorMessage = 
+          responseData?.error || 
+          responseData?.message || 
+          `Erreur ${res.status}: ${res.statusText}` ||
+          'Erreur lors de la mise à jour'
+        
+        console.error('[Admin] Erreur sauvegarde paramètres:', {
+          status: res.status,
+          statusText: res.statusText,
+          error: errorMessage,
+          details: responseData?.details,
+          fullResponse: responseData,
+        })
+        
+        throw new Error(errorMessage)
       }
       
-      const data = await res.json()
-      if (data.success) {
+      if (responseData.success) {
         setSaved(true)
         toast.success('Paramètres sauvegardés avec succès')
         
         // Déclencher l'événement de mise à jour
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('settings-updated'))
+          window.dispatchEvent(new CustomEvent('colors-updated'))
         }
         
         setTimeout(() => setSaved(false), 3000)
       } else {
-        throw new Error('Erreur lors de la sauvegarde')
+        throw new Error(responseData.error || responseData.message || 'Erreur lors de la sauvegarde')
       }
     } catch (err: any) {
       console.error('[Admin] Erreur sauvegarde paramètres:', err)
-      toast.error(err.message || 'Erreur lors de la sauvegarde des paramètres')
+      const errorMessage = err.message || 'Erreur lors de la sauvegarde des paramètres'
+      toast.error(errorMessage)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   /**
    * Sauvegarder automatiquement après l'upload du logo
    */
-  const handleSaveAfterUpload = async (logoUrl: string) => {
+  const handleSaveAfterUpload = async (url: string | null, field: "logoUrl" | "coverImageUrl" | "heroImageUrl" = "logoUrl") => {
     try {
+      // Valider et formater les couleurs (doivent être au format #RRGGBB)
+      const formatColor = (color: string): string => {
+        if (!color) return '#1a1a1a' // Valeur par défaut
+        // Si la couleur commence par #, vérifier qu'elle a 7 caractères (#RRGGBB)
+        if (color.startsWith('#')) {
+          // Si elle a 4 caractères (#RGB), convertir en #RRGGBB
+          if (color.length === 4) {
+            return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+          }
+          // Si elle a déjà 7 caractères, la retourner telle quelle
+          if (color.length === 7) {
+            return color
+          }
+        }
+        // Si pas de #, l'ajouter et compléter si nécessaire
+        return color.startsWith('#') ? color : `#${color}`
+      }
+      
+      const updateData: any = {
+        siteTitle: settings.logoAlt || 'Réseau OMA & OMA TV',
+        siteDescription: settings.aboutDescription || '',
+        logoUrl: field === 'logoUrl' ? (url || null) : (settings.logoUrl || null),
+        coverImageUrl: field === 'coverImageUrl' ? (url || null) : (settings.coverImageUrl || null),
+        heroImageUrl: field === 'heroImageUrl' ? (url || null) : (settings.heroImageUrl || null),
+        primaryColor: formatColor(settings.primaryColor),
+        secondaryColor: formatColor(settings.secondaryColor),
+        fontFamily: settings.headingFont || 'Playfair Display',
+      }
+      
+      console.log('[Admin] Envoi sauvegarde automatique:', {
+        field,
+        url,
+        updateData,
+      })
+      
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteTitle: settings.logoAlt || 'Réseau OMA & OMA TV',
-          siteDescription: settings.aboutDescription || '',
-          logoUrl: logoUrl, // Utiliser l'URL fournie
-          primaryColor: settings.primaryColor,
-          secondaryColor: settings.secondaryColor,
-          fontFamily: settings.headingFont,
-        }),
+        body: JSON.stringify(updateData),
+      })
+      
+      // Lire la réponse de manière robuste
+      let responseData
+      try {
+        const text = await res.text()
+        responseData = text ? JSON.parse(text) : {}
+      } catch (parseError) {
+        console.error('[Admin] Erreur parsing réponse sauvegarde automatique:', parseError)
+        throw new Error('Réponse invalide du serveur')
+      }
+      
+      console.log('[Admin] Réponse sauvegarde automatique:', {
+        status: res.status,
+        ok: res.ok,
+        data: responseData,
       })
       
       if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Failed to save settings')
+        const errorMessage = 
+          responseData?.error || 
+          responseData?.message || 
+          `Erreur ${res.status}: ${res.statusText}` ||
+          'Erreur lors de la mise à jour'
+        
+        console.error('[Admin] Erreur sauvegarde automatique:', {
+          status: res.status,
+          statusText: res.statusText,
+          error: errorMessage,
+          details: responseData?.details,
+          fullResponse: responseData,
+        })
+        
+        // Afficher un toast d'erreur pour informer l'utilisateur
+        toast.error(`Erreur lors de la sauvegarde: ${errorMessage}`)
+        return
       }
       
-      const data = await res.json()
-      if (data.success) {
+      if (responseData.success) {
+        // Mettre à jour le state local avec les nouvelles valeurs
+        if (field === 'logoUrl') {
+          setSettings((prev) => ({ ...prev, logoUrl: url || prev.logoUrl }))
+        } else if (field === 'coverImageUrl') {
+          setSettings((prev) => ({ ...prev, coverImageUrl: url }))
+        }
+        
         // Déclencher l'événement de mise à jour
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('settings-updated'))
           window.dispatchEvent(new CustomEvent('colors-updated'))
         }
+        
+        toast.success(`${field === 'logoUrl' ? 'Logo' : 'Photo de couverture'} sauvegardé avec succès`)
+      } else {
+        const errorMsg = responseData.error || responseData.message || 'Erreur lors de la sauvegarde'
+        console.error('[Admin] Sauvegarde automatique échouée:', errorMsg)
+        toast.error(`Erreur: ${errorMsg}`)
       }
     } catch (err: any) {
       console.error('[Admin] Erreur sauvegarde automatique logo:', err)
-      // Ne pas afficher d'erreur toast pour la sauvegarde automatique
+      toast.error(`Erreur lors de la sauvegarde: ${err.message || 'Erreur inconnue'}`)
     }
   }
 
@@ -195,9 +334,28 @@ export default function AdminContentPage() {
           <h1 className="text-3xl font-bold">Gestion du contenu</h1>
           <p className="text-muted-foreground mt-1">Personnalisez l'apparence et le contenu de votre site</p>
         </div>
-        <Button size="lg" onClick={handleSave} className={`gap-2 transition-all ${saved ? "bg-green-600" : ""}`}>
-          <Save className="w-4 h-4" />
-          {saved ? "Sauvegardé !" : "Sauvegarder les modifications"}
+        <Button 
+          size="lg" 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`gap-2 transition-all ${saved ? "bg-green-600" : ""}`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Sauvegarde en cours...
+            </>
+          ) : saved ? (
+            <>
+              <Save className="w-4 h-4" />
+              Sauvegardé !
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              Sauvegarder les modifications
+            </>
+          )}
         </Button>
       </div>
 
@@ -277,6 +435,46 @@ export default function AdminContentPage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       URL stockée dans ImageKit. Cliquez pour sélectionner et copier.
                     </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Photo de couverture (Bannière) */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Photo de couverture (Bannière)
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Photo de couverture affichée sur la page d'accueil (style YouTube). Recommandé : 1920x600px minimum.
+              </p>
+              <div className="space-y-4">
+                <LogoUpload
+                  currentLogoUrl={settings.coverImageUrl || ""}
+                  onUploadComplete={(url) => {
+                    handleChange("coverImageUrl", url)
+                    setTimeout(() => {
+                      handleSaveAfterUpload(url, "coverImageUrl")
+                    }, 500)
+                  }}
+                  onRemove={() => {
+                    handleChange("coverImageUrl", null)
+                    handleSaveAfterUpload(null, "coverImageUrl")
+                  }}
+                  folder="/banners"
+                />
+                
+                {settings.coverImageUrl && (
+                  <div>
+                    <label className="text-sm font-medium block mb-2">URL de la photo de couverture</label>
+                    <Input
+                      type="text"
+                      value={settings.coverImageUrl}
+                      readOnly
+                      className="font-mono text-xs bg-muted"
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
                   </div>
                 )}
               </div>
@@ -370,6 +568,41 @@ export default function AdminContentPage() {
                     className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                     rows={3}
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-2 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Image de fond Hero
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Image de fond pour la section hero. Si non définie, l'image par défaut sera utilisée.
+                  </p>
+                  <LogoUpload
+                    currentLogoUrl={settings.heroImageUrl || ""}
+                    onUploadComplete={(url) => {
+                      handleChange("heroImageUrl", url)
+                      setTimeout(() => {
+                        handleSaveAfterUpload(url, "heroImageUrl")
+                      }, 500)
+                    }}
+                    onRemove={() => {
+                      handleChange("heroImageUrl", null)
+                      handleSaveAfterUpload(null, "heroImageUrl")
+                    }}
+                    folder="/hero"
+                  />
+                  {settings.heroImageUrl && (
+                    <div className="mt-2">
+                      <label className="text-sm font-medium block mb-2">URL de l'image hero</label>
+                      <Input
+                        type="text"
+                        value={settings.heroImageUrl}
+                        readOnly
+                        className="font-mono text-xs bg-muted"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

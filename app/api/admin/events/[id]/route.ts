@@ -99,6 +99,14 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
     }
 
+    // Seuls les ADMIN et EDITOR peuvent modifier des événements
+    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
+      return NextResponse.json(
+        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent modifier des événements." },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
     const body = await request.json()
 
@@ -206,6 +214,14 @@ export async function DELETE(
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
+    }
+
+    // Seuls les ADMIN et EDITOR peuvent supprimer des événements
+    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
+      return NextResponse.json(
+        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent supprimer des événements." },
+        { status: 403 }
+      )
     }
 
     const { id } = await params

@@ -10,17 +10,20 @@ import { prisma } from '@/lib/prisma'
 
 // GET /api/site-settings
 // Récupère les paramètres du site (publique)
+// Cache: 60 secondes (revalidation)
+export const revalidate = 60
+
 export async function GET() {
   try {
-    // Récupérer les settings
-    let setting = await prisma.setting.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    })
-
-    // Récupérer les contacts
-    let contact = await prisma.contact.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    })
+    // Récupérer les settings et contacts en parallèle
+    const [setting, contact] = await Promise.all([
+      prisma.setting.findFirst({
+        orderBy: { updatedAt: 'desc' },
+      }),
+      prisma.contact.findFirst({
+        orderBy: { updatedAt: 'desc' },
+      })
+    ])
 
     // Valeurs par défaut si aucun paramètre n'existe
     const defaultSettings = {
@@ -28,6 +31,8 @@ export async function GET() {
       siteDescription:
         'Plateforme internationale de formation en communication et leadership',
       logoUrl: '/placeholder-logo.png',
+      coverImageUrl: null,
+      heroImageUrl: null,
       primaryColor: '#D4AF37',
       secondaryColor: '#1a1a1a',
       fontFamily: 'Playfair Display',

@@ -18,6 +18,12 @@ export const prisma =
       process.env.NODE_ENV === 'development'
         ? ['error', 'warn']
         : ['error'],
+    // Optimisation: connection pooling pour de meilleures performances
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
   }).$extends({
     query: {
       $allOperations({ operation, model, args, query }) {

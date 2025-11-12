@@ -23,13 +23,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Vérifier les permissions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
+    // Tous les rôles (ADMIN, EDITOR, VIEWER) peuvent voir les messages
+    // Les permissions de modification seront vérifiées dans PATCH
 
     const { searchParams } = new URL(request.url)
     const isRead = searchParams.get('isRead')

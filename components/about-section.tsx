@@ -1,6 +1,91 @@
+"use client"
+
 import { Sparkles } from "lucide-react"
+import { EmblaCarousel } from "@/components/ui/embla-carousel"
+import { useState, useEffect } from "react"
 
 export function AboutSection() {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Stats pour le carousel
+  const stats = [
+    { value: "2019", label: "Année de création" },
+    { value: "6", label: "Pays en Afrique, Asie et Europe" },
+    { value: "1000+", label: "Talents accompagnés" },
+  ]
+
+  // Leaders pour le carousel
+  const leaders = [
+    {
+      image: "/images/leader-albin-speaking.jpg",
+      name: "Coach Bin Adan",
+      role: "Fondateur & Directeur Réseau OMA",
+      description: "Expert en art oratoire et communication, passionné par le développement du leadership et l'accompagnement des talents.",
+    },
+    {
+      image: "/images/coach-bin-professional.jpg",
+      name: "Leader bin",
+      role: "Directeur OMA TV",
+      description: "Spécialiste en médias et communication digitale, il dirige la production de contenus inspirants pour OMA TV.",
+    },
+  ]
+
+  // Vue desktop (grille)
+  const statsDesktopView = (
+    <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+      {stats.map((stat, index) => (
+        <div key={index} className="text-center">
+          <div className="text-5xl font-bold text-gold mb-2">{stat.value}</div>
+          <p className="text-muted-foreground">{stat.label}</p>
+        </div>
+      ))}
+    </div>
+  )
+
+  const leadersDesktopView = (
+    <div className="grid md:grid-cols-2 gap-8 mt-16 max-w-5xl mx-auto">
+      {leaders.map((leader, index) => (
+        <div key={index} className="bg-card rounded-lg p-8 shadow-lg border border-border">
+          <img
+            src={leader.image}
+            alt={leader.name}
+            className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-gold"
+            loading="lazy"
+          />
+          <h3 className="font-serif font-bold text-2xl text-center mb-2">{leader.name}</h3>
+          <p className="text-gold text-center mb-4">{leader.role}</p>
+          <p className="text-muted-foreground text-center leading-relaxed">{leader.description}</p>
+        </div>
+      ))}
+    </div>
+  )
+
+  // Slides pour le carousel mobile
+  const statsSlides = stats.map((stat, index) => (
+    <div key={index} className="text-center px-4">
+      <div className="text-4xl sm:text-5xl font-bold text-gold mb-2">{stat.value}</div>
+      <p className="text-muted-foreground text-sm sm:text-base">{stat.label}</p>
+    </div>
+  ))
+
+  const leadersSlides = leaders.map((leader, index) => (
+    <div key={index} className="bg-card rounded-lg p-6 sm:p-8 shadow-lg border border-border mx-2">
+      <img
+        src={leader.image}
+        alt={leader.name}
+        className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto mb-4 object-cover border-4 border-gold"
+        loading="lazy"
+      />
+      <h3 className="font-serif font-bold text-xl sm:text-2xl text-center mb-2">{leader.name}</h3>
+      <p className="text-gold text-center mb-4 text-sm sm:text-base">{leader.role}</p>
+      <p className="text-muted-foreground text-center leading-relaxed text-sm sm:text-base">{leader.description}</p>
+    </div>
+  ))
+
   return (
     <section className="py-24 bg-background">
       <div className="container mx-auto px-4">
@@ -22,49 +107,35 @@ export function AboutSection() {
           </blockquote>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div className="text-center">
-            <div className="text-5xl font-bold text-gold mb-2">2019</div>
-            <p className="text-muted-foreground">Année de création</p>
-          </div>
-          <div className="text-center">
-            <div className="text-5xl font-bold text-gold mb-2">6</div>
-            <p className="text-muted-foreground">Pays en Afrique, Asie et Europe</p>
-          </div>
-          <div className="text-center">
-            <div className="text-5xl font-bold text-gold mb-2">1000+</div>
-            <p className="text-muted-foreground">Talents accompagnés</p>
-          </div>
-        </div>
+        {/* Stats - Carousel mobile / Grille desktop */}
+        {isMounted && (
+          <EmblaCarousel
+            breakpoint="md"
+            desktopView={statsDesktopView}
+            slideClassName="w-[80%] sm:w-[60%]"
+            options={{
+              align: "center",
+              containScroll: "trimSnaps",
+            }}
+          >
+            {statsSlides}
+          </EmblaCarousel>
+        )}
 
-        <div className="grid md:grid-cols-2 gap-8 mt-16 max-w-5xl mx-auto">
-          <div className="bg-card rounded-lg p-8 shadow-lg border border-border">
-            <img
-              src="/images/leader-albin-speaking.jpg"
-              alt="Coach Bin Adan"
-              className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-gold"
-            />
-            <h3 className="font-serif font-bold text-2xl text-center mb-2">Coach Bin Adan</h3>
-            <p className="text-gold text-center mb-4">Fondateur & Directeur Réseau OMA</p>
-            <p className="text-muted-foreground text-center leading-relaxed">
-              Expert en art oratoire et communication, passionné par le développement du leadership et l'accompagnement
-              des talents.
-            </p>
-          </div>
-          <div className="bg-card rounded-lg p-8 shadow-lg border border-border">
-            <img
-              src="/images/coach-bin-professional.jpg"
-              alt="Leader Albin-Jovial"
-              className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-gold"
-            />
-            <h3 className="font-serif font-bold text-2xl text-center mb-2">Leader bin</h3>
-            <p className="text-gold text-center mb-4">Directeur OMA TV</p>
-            <p className="text-muted-foreground text-center leading-relaxed">
-              Spécialiste en médias et communication digitale, il dirige la production de contenus inspirants pour OMA
-              TV.
-            </p>
-          </div>
-        </div>
+        {/* Leaders - Carousel mobile / Grille desktop */}
+        {isMounted && (
+          <EmblaCarousel
+            breakpoint="md"
+            desktopView={leadersDesktopView}
+            slideClassName="w-[90%] sm:w-[80%]"
+            options={{
+              align: "center",
+              containScroll: "trimSnaps",
+            }}
+          >
+            {leadersSlides}
+          </EmblaCarousel>
+        )}
       </div>
     </section>
   )

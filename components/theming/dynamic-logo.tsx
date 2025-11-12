@@ -13,8 +13,7 @@ export function DynamicLogo() {
     const loadLogo = async () => {
       try {
         const res = await fetch('/api/site-settings', { 
-          cache: 'no-store',
-          next: { revalidate: 0 } 
+          next: { revalidate: 60 } // Cache 60 secondes
         })
         if (!res.ok) return
 
@@ -59,8 +58,7 @@ export function useDynamicLogo() {
     const loadLogo = async () => {
       try {
         const res = await fetch('/api/site-settings', { 
-          cache: 'no-store',
-          next: { revalidate: 0 } 
+          next: { revalidate: 60 } // Cache 60 secondes
         })
         if (!res.ok) return
 

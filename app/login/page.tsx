@@ -1,20 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { useEffect } from 'react'
 import { Lock, Mail, ArrowLeft, AlertCircle, ShieldAlert } from 'lucide-react'
+import { useDynamicLogo } from '@/components/theming/dynamic-logo'
 
 export default function LoginPage() {
   const router = useRouter()
   const params = useSearchParams()
   const redirect = params.get('redirect') || '/admin'
   const errorParam = params.get('error')
+  const logoUrl = useDynamicLogo()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -42,14 +43,17 @@ export default function LoginPage() {
       // Gérer les erreurs de manière robuste
       if (result?.error) {
         const errMsg = result.error.toLowerCase()
+        console.error('[Login] Erreur de connexion:', result.error)
         
         if (errMsg.includes('identifiants invalides') || 
             errMsg.includes('invalid') || 
-            errMsg.includes('credentials')) {
+            errMsg.includes('credentials') ||
+            errMsg.includes('email et mot de passe requis')) {
           setError("E-mail ou mot de passe incorrect.")
         } else if (errMsg.includes('désactivé') || 
                    errMsg.includes('disabled') || 
-                   errMsg.includes('inactive')) {
+                   errMsg.includes('inactive') ||
+                   errMsg.includes('compte désactivé')) {
           setError("Votre compte est désactivé. Contactez un administrateur.")
         } else if (errMsg.includes('json') || 
                    errMsg.includes('parse') || 
@@ -57,7 +61,7 @@ export default function LoginPage() {
           setError("Erreur de communication avec le serveur. Veuillez réessayer.")
           console.error('[Login] Erreur JSON:', result.error)
         } else {
-          setError('Une erreur est survenue lors de la connexion. Merci de réessayer.')
+          setError(`Erreur: ${result.error}. Vérifiez vos identifiants ou contactez un administrateur.`)
         }
         setLoading(false)
         return
@@ -114,12 +118,26 @@ export default function LoginPage() {
 
             <div className="relative">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center font-bold text-lg shadow-lg">
-                  OMA
-                </div>
-        </div>
+                {logoUrl ? (
+                  <div className="relative inline-flex items-center justify-center">
+                    {/* Cercle blanc derrière le logo pour garantir la visibilité */}
+                    <div className="absolute w-14 h-14 bg-white rounded-full shadow-md z-0" />
+                    {/* Logo par-dessus */}
+                    <img 
+                      src={logoUrl} 
+                      alt="Réseau OMA" 
+                      className="h-12 w-auto object-contain relative z-10"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center font-bold text-lg shadow-lg">
+                    OMA
+                  </div>
+                )}
+              </div>
               <h1 className="text-2xl font-bold mb-2">Connexion administrateur</h1>
-              <p className="text-blue-100/80 text-sm">Accédez au panneau de contrôle</p>
+              <p className="text-blue-100/80 text-sm mb-1">Accédez au panneau de contrôle</p>
+              <p className="text-gold font-semibold text-sm italic">We are the best</p>
             </div>
           </div>
 

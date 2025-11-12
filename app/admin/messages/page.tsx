@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { PageSkeleton } from "@/components/admin/page-skeleton"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { toast } from "sonner"
+import { useSession } from "next-auth/react"
 import {
   Mail,
   MailOpen,
@@ -38,6 +39,13 @@ interface ContactMessage {
 }
 
 export default function AdminMessages() {
+  const { data: session } = useSession()
+  const userRole = session?.user?.role
+  const isAdmin = userRole === "ADMIN"
+  const isEditor = userRole === "EDITOR"
+  const isViewer = userRole === "VIEWER"
+  const canEdit = isAdmin || isEditor // Les VIEWER peuvent seulement voir
+  
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
@@ -295,37 +303,39 @@ export default function AdminMessages() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-4 border-t border-border">
-                  <Button
-                    variant={selectedMessage.isRead ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => markAsRead(selectedMessage.id, selectedMessage.isRead)}
-                    className="flex-1"
-                  >
-                    {selectedMessage.isRead ? (
-                      <>
-                        <Circle className="w-4 h-4 mr-2" />
-                        Marquer non lu
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Marquer lu
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      (window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject || "Votre message"}`)
-                    }
-                    className="flex-1"
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Répondre
-                  </Button>
-                </div>
+                {canEdit && (
+                  <div className="flex gap-2 pt-4 border-t border-border">
+                    <Button
+                      variant={selectedMessage.isRead ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => markAsRead(selectedMessage.id, selectedMessage.isRead)}
+                      className="flex-1"
+                    >
+                      {selectedMessage.isRead ? (
+                        <>
+                          <Circle className="w-4 h-4 mr-2" />
+                          Marquer non lu
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Marquer lu
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        (window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject || "Votre message"}`)
+                      }
+                      className="flex-1"
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Répondre
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ) : (
