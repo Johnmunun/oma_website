@@ -40,8 +40,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr" className={`${playfair.variable} ${poppins.variable} overflow-x-hidden max-w-full`}>
-      <body className="font-sans antialiased overflow-x-hidden max-w-full w-full">
+    <html 
+      lang="fr" 
+      className={`${playfair.variable} ${poppins.variable} overflow-x-hidden max-w-full`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased overflow-x-hidden max-w-full w-full" suppressHydrationWarning>
         <CacheInitScript />
         <TrackingPixels />
         <DynamicColors />

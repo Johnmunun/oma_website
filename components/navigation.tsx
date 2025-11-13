@@ -9,12 +9,14 @@ import { SkeletonSiteName } from "@/components/theming/skeleton-site-name"
 import {
   getCachedSiteTitle,
   setCachedSiteTitle,
+  getCachedLogo,
 } from "@/lib/cache/visual-settings-cache"
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const logoUrl = useDynamicLogo()
+  const [cachedLogo, setCachedLogo] = useState<string | null>(null)
   const [siteTitle, setSiteTitle] = useState<string>(() => {
     // Initialiser avec le cache si disponible
     if (typeof window !== 'undefined') {
@@ -38,6 +40,16 @@ export function Navigation() {
     }
     return true
   })
+
+  // Charger le logo depuis le cache côté client uniquement
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const logo = 
+        (window as any).__OMA_CACHE__?.logo ||
+        getCachedLogo()
+      setCachedLogo(logo)
+    }
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -127,7 +139,7 @@ export function Navigation() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-1 sm:flex-initial">
             {/* Logo avec skeleton */}
-            {isLoading && !logoUrl && !getCachedLogo() ? (
+            {isLoading && !logoUrl && !cachedLogo ? (
               <SkeletonLogo />
             ) : logoUrl ? (
               <div className="relative inline-flex items-center justify-center flex-shrink-0">
