@@ -11,7 +11,7 @@ import { VisitTracker } from "@/components/analytics/visit-tracker"
 import { TrackingPixels } from "@/components/tracking/tracking-pixels"
 import { PageTransition } from "@/components/animations/page-transition"
 import { SmoothNavigation } from "@/components/animations/smooth-navigation"
-import { CacheInitScript } from "@/lib/cache/init-cache-script"
+import { CacheInitScript } from "@/lib/cache"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
