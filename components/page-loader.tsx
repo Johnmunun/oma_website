@@ -21,7 +21,7 @@ export function PageLoader() {
           <div className="absolute inset-0 rounded-full border-4 border-gold/20" />
           <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-gold border-r-gold animate-spin" />
         </div>
-        <p className="text-muted-foreground font-medium">Chargement...</p>
+        {/* Texte de chargement supprimé pour éviter tout flash visuel */}
       </div>
     </div>
   )

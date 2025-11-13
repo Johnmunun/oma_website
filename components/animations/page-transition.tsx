@@ -10,7 +10,8 @@ interface PageTransitionProps {
 
 /**
  * Composant pour gérer les transitions entre les pages
- * Détecte les changements de route et applique une animation
+ * Détecte les changements de route et applique une animation fluide
+ * Désactivé sur la page d'accueil pour un chargement instantané
  */
 export function PageTransition({ children, transitionType = 'fade' }: PageTransitionProps) {
   const pathname = usePathname()
@@ -18,32 +19,48 @@ export function PageTransition({ children, transitionType = 'fade' }: PageTransi
   const [displayChildren, setDisplayChildren] = useState(children)
   const [key, setKey] = useState(0)
 
+  // Désactiver les transitions sur la page d'accueil
+  const isHomePage = pathname === '/'
+
   useEffect(() => {
-    // Démarrer la transition
+    // Pas de transition sur la page d'accueil
+    if (isHomePage) {
+      setDisplayChildren(children)
+      setKey((prev) => prev + 1)
+      return
+    }
+
+    // Démarrer la transition pour les autres pages
     setIsTransitioning(true)
 
-    // Après un court délai, changer le contenu
+    // Après un court délai, changer le contenu avec fade-in
     const timer = setTimeout(() => {
       setDisplayChildren(children)
       setKey((prev) => prev + 1)
       setIsTransitioning(false)
-    }, 150)
+    }, 200)
 
     return () => clearTimeout(timer)
-  }, [pathname])
+  }, [pathname, isHomePage, children])
 
-  // Mettre à jour les enfants quand ils changent (sans transition)
+  // Mettre à jour les enfants quand ils changent (sans transition si pas de changement de route)
   useEffect(() => {
-    if (!isTransitioning) {
+    if (!isTransitioning || isHomePage) {
       setDisplayChildren(children)
     }
-  }, [children, isTransitioning])
+  }, [children, isTransitioning, isHomePage])
 
-  const transitionClass =
-    transitionType === 'slide' ? 'page-transition-slide' : 'page-transition-enter'
+  // Pas de transition sur la page d'accueil
+  if (isHomePage) {
+    return <>{children}</>
+  }
+
+  const transitionClass = isTransitioning
+    ? 'opacity-0 transition-opacity duration-300 ease-in-out'
+    : 'opacity-100 transition-opacity duration-300 ease-in-out'
 
   return (
-    <div key={key} className={isTransitioning ? transitionClass : ''} style={{ minHeight: '100vh' }}>
+    <div key={key} className={transitionClass} style={{ minHeight: '100vh' }}>
       {displayChildren}
     </div>
   )

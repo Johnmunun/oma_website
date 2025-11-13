@@ -10,6 +10,8 @@ import { DynamicColors } from "@/components/theming/dynamic-colors"
 import { VisitTracker } from "@/components/analytics/visit-tracker"
 import { TrackingPixels } from "@/components/tracking/tracking-pixels"
 import { PageTransition } from "@/components/animations/page-transition"
+import { SmoothNavigation } from "@/components/animations/smooth-navigation"
+import { CacheInitScript } from "@/lib/cache/init-cache-script"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -40,10 +42,12 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${playfair.variable} ${poppins.variable} overflow-x-hidden max-w-full`}>
       <body className="font-sans antialiased overflow-x-hidden max-w-full w-full">
+        <CacheInitScript />
         <TrackingPixels />
         <DynamicColors />
+        <SmoothNavigation />
         <NextAuthSessionProvider>
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={null}>
             <VisitTracker />
             <PageTransition transitionType="fade">
               {children}

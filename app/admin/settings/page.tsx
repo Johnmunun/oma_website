@@ -8,6 +8,12 @@ import { PageSkeleton } from "@/components/admin/page-skeleton"
 import { AdminPageHeader } from "@/components/admin/admin-page-header"
 import { toast } from "sonner"
 import { Plus, Trash2, Save, RotateCcw } from "lucide-react"
+import {
+  setCachedColors,
+  setCachedLogo,
+  setCachedSiteTitle,
+  type ThemeColors,
+} from "@/lib/cache/visual-settings-cache"
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState({
@@ -234,6 +240,44 @@ export default function AdminSettings() {
       if (settingsData.success && contactData.success) {
         setMessage({ type: "success", text: "Paramètres du site mis à jour avec succès" })
         toast.success("Paramètres sauvegardés avec succès")
+        
+        // Mettre à jour le cache local immédiatement
+        if (typeof window !== 'undefined') {
+          // Mettre à jour les couleurs dans le cache
+          const colors: ThemeColors = {
+            colorBackground: settings.colorBackground,
+            colorForeground: settings.colorForeground,
+            colorCard: settings.colorCard,
+            colorCardForeground: settings.colorCardForeground,
+            colorPrimary: settings.colorPrimary,
+            colorPrimaryForeground: settings.colorPrimaryForeground,
+            colorSecondary: settings.colorSecondary,
+            colorSecondaryForeground: settings.colorSecondaryForeground,
+            colorMuted: settings.colorMuted,
+            colorMutedForeground: settings.colorMutedForeground,
+            colorAccent: settings.colorAccent,
+            colorAccentForeground: settings.colorAccentForeground,
+            colorBorder: settings.colorBorder,
+            colorInput: settings.colorInput,
+            colorRing: settings.colorRing,
+            colorGold: settings.colorGold,
+            colorGoldDark: settings.colorGoldDark,
+            colorGoldLight: settings.colorGoldLight,
+          }
+          setCachedColors(colors)
+          
+          // Mettre à jour le logo dans le cache
+          if (settings.logo_url) {
+            setCachedLogo(settings.logo_url)
+          }
+          
+          // Mettre à jour le nom du site dans le cache
+          if (settings.site_title) {
+            setCachedSiteTitle(settings.site_title)
+          }
+          
+          console.log('[AdminSettings] ✅ Cache local mis à jour après sauvegarde')
+        }
         
         // Recharger les données pour afficher les modifications immédiatement
         await loadSettings()
