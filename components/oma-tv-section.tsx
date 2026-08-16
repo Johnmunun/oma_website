@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Play, Youtube, Facebook, Instagram, Linkedin, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { EmblaCarousel } from "@/components/ui/embla-carousel"
+import { TikTokIcon, OMA_TIKTOK_URL } from "@/components/icons/tiktok-icon"
 
 interface Media {
   id: string
@@ -299,6 +300,18 @@ export function OmaTvSection() {
         <div className="text-center mt-12">
           <p className="text-lg mb-6">Suivez-nous sur nos réseaux sociaux</p>
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-2 border-gold text-gold hover:bg-gold hover:text-primary bg-transparent text-sm sm:text-base"
+              asChild
+            >
+              <a href={OMA_TIKTOK_URL} target="_blank" rel="noopener noreferrer">
+                <TikTokIcon className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline">TikTok</span>
+                <span className="sm:hidden">TT</span>
+              </a>
+            </Button>
             <Button
               size="lg"
               variant="outline"

@@ -11,6 +11,7 @@ import { useDynamicLogo } from '@/components/theming/dynamic-logo'
 import { Facebook, Instagram, Youtube, Twitter, Linkedin, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { TikTokIcon, OMA_TIKTOK_URL } from '@/components/icons/tiktok-icon'
 
 interface SiteSettings {
   coverImageUrl?: string | null
@@ -19,6 +20,7 @@ interface SiteSettings {
   youtube?: string | null
   twitter?: string | null
   linkedin?: string | null
+  tiktok?: string | null
 }
 
 export function DynamicBanner() {
@@ -47,6 +49,7 @@ export function DynamicBanner() {
               youtube: data.data.youtube || null,
               twitter: data.data.twitter || null,
               linkedin: data.data.linkedin || null,
+              tiktok: data.data.tiktok || OMA_TIKTOK_URL,
             })
           } else {
             console.warn('[DynamicBanner] Pas de données dans la réponse:', data)
@@ -74,6 +77,7 @@ export function DynamicBanner() {
     { icon: Facebook, url: settings.facebook, label: 'Facebook', color: 'text-blue-600' },
     { icon: Instagram, url: settings.instagram, label: 'Instagram', color: 'text-pink-600' },
     { icon: Youtube, url: settings.youtube, label: 'YouTube', color: 'text-red-600' },
+    { icon: TikTokIcon, url: settings.tiktok || OMA_TIKTOK_URL, label: 'TikTok', color: 'text-foreground' },
     { icon: Twitter, url: settings.twitter, label: 'Twitter', color: 'text-sky-500' },
     { icon: Linkedin, url: settings.linkedin, label: 'LinkedIn', color: 'text-blue-700' },
     { icon: MessageCircle, url: settings.facebook ? `https://wa.me/${settings.facebook.replace(/[^0-9]/g, '')}` : null, label: 'WhatsApp', color: 'text-green-600' },

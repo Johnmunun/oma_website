@@ -2,6 +2,7 @@
 
 import { MessageCircle, Mail, Phone, Facebook, Instagram, Youtube, Twitter, Linkedin } from "lucide-react"
 import { useEffect, useState } from "react"
+import { TikTokIcon, OMA_TIKTOK_URL } from "@/components/icons/tiktok-icon"
 
 interface SiteSettings {
   email: string
@@ -11,6 +12,7 @@ interface SiteSettings {
   youtube: string
   twitter: string
   linkedin: string
+  tiktok: string
   site_title?: string
 }
 
@@ -24,6 +26,7 @@ export function Footer() {
     youtube: "",
     twitter: "",
     linkedin: "",
+    tiktok: OMA_TIKTOK_URL,
   })
 
   useEffect(() => {
@@ -47,6 +50,7 @@ export function Footer() {
             youtube: data.data.youtube || "",
             twitter: data.data.twitter || "",
             linkedin: data.data.linkedin || "",
+            tiktok: data.data.tiktok || OMA_TIKTOK_URL,
           })
         }
       } catch (err) {
@@ -73,6 +77,7 @@ export function Footer() {
     { icon: Facebook, url: settings.facebook, name: "Facebook" },
     { icon: Instagram, url: settings.instagram, name: "Instagram" },
     { icon: Youtube, url: settings.youtube, name: "YouTube" },
+    { icon: TikTokIcon, url: settings.tiktok || OMA_TIKTOK_URL, name: "TikTok" },
     { icon: Twitter, url: settings.twitter, name: "Twitter" },
     { icon: Linkedin, url: settings.linkedin, name: "LinkedIn" },
   ].filter(link => link.url)

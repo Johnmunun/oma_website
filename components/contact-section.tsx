@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Mail, Phone, MessageCircle, Facebook, Instagram, Youtube, Twitter, Linkedin } from "lucide-react"
+import { TikTokIcon, OMA_TIKTOK_URL } from "@/components/icons/tiktok-icon"
 
 interface SiteSettings {
   email: string
@@ -16,6 +17,7 @@ interface SiteSettings {
   youtube: string
   twitter: string
   linkedin: string
+  tiktok: string
 }
 
 export function ContactSection() {
@@ -32,6 +34,7 @@ export function ContactSection() {
     youtube: "",
     twitter: "",
     linkedin: "",
+    tiktok: OMA_TIKTOK_URL,
   })
 
   useEffect(() => {
@@ -55,6 +58,7 @@ export function ContactSection() {
             youtube: data.data.youtube || "",
             twitter: data.data.twitter || "",
             linkedin: data.data.linkedin || "",
+            tiktok: data.data.tiktok || OMA_TIKTOK_URL,
           })
         }
       } catch (err) {
@@ -161,6 +165,7 @@ export function ContactSection() {
     { icon: Facebook, url: settings.facebook, name: "Facebook" },
     { icon: Instagram, url: settings.instagram, name: "Instagram" },
     { icon: Youtube, url: settings.youtube, name: "YouTube" },
+    { icon: TikTokIcon, url: settings.tiktok || OMA_TIKTOK_URL, name: "TikTok" },
     { icon: Twitter, url: settings.twitter, name: "Twitter" },
     { icon: Linkedin, url: settings.linkedin, name: "LinkedIn" },
   ].filter(link => link.url)

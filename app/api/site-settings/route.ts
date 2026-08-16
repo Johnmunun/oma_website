@@ -64,6 +64,7 @@ export async function GET() {
       youtube: null,
       twitter: null,
       linkedin: null,
+      tiktok: 'https://www.tiktok.com/@oratoiremonarttv',
     }
 
     // Fusionner avec les données de la DB
@@ -81,6 +82,10 @@ export async function GET() {
           ? contact.telephones
           : []
         : [],
+      // TikTok OMA TV (fallback chaîne officielle)
+      tiktok:
+        (contact as { tiktok?: string | null } | null)?.tiktok ||
+        defaultContact.tiktok,
     }
 
     return NextResponse.json({
@@ -109,6 +114,7 @@ export async function GET() {
         youtube: null,
         twitter: null,
         linkedin: null,
+        tiktok: 'https://www.tiktok.com/@oratoiremonarttv',
       }
       
       return NextResponse.json({
