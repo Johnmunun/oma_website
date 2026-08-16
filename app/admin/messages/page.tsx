@@ -59,34 +59,55 @@ export default function AdminMessages() {
     try {
       setIsLoading(true)
       const params = new URLSearchParams()
-      if (filter === "unread") params.append("isRead", "false")
-      if (filter === "read") params.append("isRead", "true")
+      if (filter === "unread") params.set("isRead", "false")
+      if (filter === "read") params.set("isRead", "true")
 
-      const [messagesRes, countRes] = await Promise.all([
-        fetch(`/api/admin/messages?${params.toString()}`),
-        fetch("/api/admin/messages/count"),
-      ])
+      const query = params.toString()
+      const messagesUrl = query ? `/api/admin/messages?${query}` : "/api/admin/messages"
 
-      if (!messagesRes.ok || !countRes.ok) {
-        throw new Error("Erreur lors du chargement")
+      // Charger les messages indépendamment du compteur (évite un écran vide si count échoue)
+      const messagesRes = await fetch(messagesUrl, { cache: "no-store", credentials: "include" })
+      const messagesData = await messagesRes.json().catch(() => ({}))
+
+      if (!messagesRes.ok || !messagesData.success) {
+        const errorMsg = messagesData.error || `Erreur ${messagesRes.status}`
+        throw new Error(errorMsg)
       }
 
-      const messagesData = await messagesRes.json()
-      const countData = await countRes.json()
+      const list = Array.isArray(messagesData.data?.messages)
+        ? messagesData.data.messages
+        : Array.isArray(messagesData.data)
+          ? messagesData.data
+          : []
 
-      if (messagesData.success) {
-        setMessages(messagesData.data.messages)
+      setMessages(list)
+
+      if (typeof messagesData.data?.unreadCount === "number") {
+        setUnreadCount(messagesData.data.unreadCount)
       }
-      if (countData.success) {
-        setUnreadCount(countData.data.unreadCount)
-        // Déclencher un événement pour mettre à jour le compteur dans le sidebar
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('message-updated'))
+
+      // Compteur sidebar (non bloquant)
+      try {
+        const countRes = await fetch("/api/admin/messages/count", {
+          cache: "no-store",
+          credentials: "include",
+        })
+        if (countRes.ok) {
+          const countData = await countRes.json()
+          if (countData.success && typeof countData.data?.unreadCount === "number") {
+            setUnreadCount(countData.data.unreadCount)
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("message-updated"))
+            }
+          }
         }
+      } catch (countErr) {
+        console.warn("[Admin] Compteur messages indisponible:", countErr)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Admin] Erreur chargement messages:", err)
-      toast.error("Impossible de charger les messages")
+      setMessages([])
+      toast.error(err?.message || "Impossible de charger les messages")
     } finally {
       setIsLoading(false)
     }
