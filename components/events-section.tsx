@@ -101,6 +101,7 @@ export function EventsSection() {
       <div className="container mx-auto px-4">
         <AnimateOnScroll animation="fade-up" delay={100}>
           <div className="text-center mb-12">
+            <p className="text-gold text-sm font-semibold tracking-[0.2em] uppercase mb-4">Événements</p>
             <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
               Nos événements
             </h2>
@@ -110,29 +111,31 @@ export function EventsSection() {
           </div>
         </AnimateOnScroll>
 
-        <div className="flex justify-center gap-4 mb-12">
-          <Button
-            variant={activeTab === "upcoming" ? "default" : "outline"}
-            onClick={() => setActiveTab("upcoming")}
-            className={
-              activeTab === "upcoming"
-                ? "bg-gold hover:bg-gold-dark text-primary"
-                : "border-gold text-gold hover:bg-gold hover:text-primary"
-            }
-          >
-            À venir
-          </Button>
-          <Button
-            variant={activeTab === "past" ? "default" : "outline"}
-            onClick={() => setActiveTab("past")}
-            className={
-              activeTab === "past"
-                ? "bg-gold hover:bg-gold-dark text-primary"
-                : "border-gold text-gold hover:bg-gold hover:text-primary"
-            }
-          >
-            Moments passés
-          </Button>
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex p-1 rounded-xl bg-muted/60 border border-border/60 gap-1">
+            <Button
+              variant={activeTab === "upcoming" ? "default" : "ghost"}
+              onClick={() => setActiveTab("upcoming")}
+              className={
+                activeTab === "upcoming"
+                  ? "bg-gold hover:bg-gold-dark text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-gold hover:bg-transparent"
+              }
+            >
+              À venir
+            </Button>
+            <Button
+              variant={activeTab === "past" ? "default" : "ghost"}
+              onClick={() => setActiveTab("past")}
+              className={
+                activeTab === "past"
+                  ? "bg-gold hover:bg-gold-dark text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-gold hover:bg-transparent"
+              }
+            >
+              Moments passés
+            </Button>
+          </div>
         </div>
 
         {loading ? (

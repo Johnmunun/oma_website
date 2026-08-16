@@ -52,6 +52,7 @@ export function TeamSection() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
+            <p className="text-gold text-sm font-semibold tracking-[0.2em] uppercase mb-4">Équipe</p>
             <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">Notre équipe</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
               Des experts passionnés au service de votre développement
@@ -245,6 +246,7 @@ export function TeamSection() {
     <section id="equipe" className="py-24 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
+          <p className="text-gold text-sm font-semibold tracking-[0.2em] uppercase mb-4">Équipe</p>
           <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">Notre équipe</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
             Des experts passionnés au service de votre développement

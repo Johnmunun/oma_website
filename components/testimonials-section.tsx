@@ -95,9 +95,11 @@ export function TestimonialsSection() {
   const currentTestimonial = testimonials[currentIndex]
 
   return (
-    <section className="py-24 bg-background">
-      <div className="container mx-auto px-4">
+    <section className="py-24 bg-muted/20 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none opacity-40 section-grain" aria-hidden />
+      <div className="container mx-auto px-4 relative">
         <div className="text-center mb-16">
+          <p className="text-gold text-sm font-semibold tracking-[0.2em] uppercase mb-4">Témoignages</p>
           <h2 className="font-serif font-bold text-4xl md:text-5xl text-foreground mb-6 text-balance">
             Ce que disent nos clients
           </h2>
@@ -107,21 +109,24 @@ export function TestimonialsSection() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          <div className="bg-card rounded-lg p-8 md:p-12 shadow-xl border border-border">
-            <div className="flex justify-center mb-6">
+          <div className="relative bg-card rounded-2xl p-8 md:p-12 shadow-soft-lg border border-border/80">
+            <span className="absolute top-6 left-8 text-7xl font-serif text-gold/15 leading-none select-none" aria-hidden>
+              &ldquo;
+            </span>
+            <div className="flex justify-center mb-6 gap-0.5">
               {Array.from({ length: currentTestimonial.rating }).map((_, i) => (
-                <Star key={i} className="h-6 w-6 text-gold fill-gold" />
+                <Star key={i} className="h-5 w-5 text-gold fill-gold" />
               ))}
             </div>
-            <blockquote className="text-xl md:text-2xl text-center text-foreground mb-8 leading-relaxed text-pretty font-serif italic">
-              "{currentTestimonial.content}"
+            <blockquote className="text-xl md:text-2xl text-center text-foreground mb-8 leading-relaxed text-pretty font-serif italic relative z-[1]">
+              {currentTestimonial.content}
             </blockquote>
             <div className="flex items-center justify-center gap-4">
               <Avatar
                 src={currentTestimonial.photoUrl}
                 name={currentTestimonial.name}
                 size="lg"
-                className="border-2 border-gold"
+                className="border-2 border-gold ring-4 ring-gold/10"
               />
               <div>
                 <div className="font-semibold text-foreground">{currentTestimonial.name}</div>
@@ -139,8 +144,8 @@ export function TestimonialsSection() {
                 <button
                   key={index}
                   onClick={() => setCurrentIndex(index)}
-                  className={`w-3 h-3 rounded-full transition-all ${
-                    index === currentIndex ? "bg-gold w-8" : "bg-muted-foreground/30"
+                  className={`h-2.5 rounded-full transition-all ${
+                    index === currentIndex ? "bg-gold w-8" : "bg-muted-foreground/30 w-2.5 hover:bg-muted-foreground/50"
                   }`}
                   aria-label={`Afficher le témoignage ${index + 1}`}
                 />

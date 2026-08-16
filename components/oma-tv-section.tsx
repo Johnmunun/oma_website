@@ -205,11 +205,15 @@ export function OmaTvSection() {
   ))
 
   return (
-    <section id="oma-tv" className="py-24 bg-primary text-primary-foreground overflow-hidden">
-      <div className="container mx-auto px-4">
+    <section id="oma-tv" className="py-24 bg-primary text-primary-foreground overflow-hidden relative">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.12),transparent_60%)]" aria-hidden />
+      <div className="container mx-auto px-4 relative">
         <div className="text-center mb-16">
-          <h2 className="font-serif font-bold text-4xl md:text-5xl mb-6 text-balance">OMA TV</h2>
-          <p className="text-lg text-primary-foreground/90 max-w-2xl mx-auto text-pretty">
+          <p className="text-gold text-sm font-semibold tracking-[0.25em] uppercase mb-4">Média</p>
+          <h2 className="font-serif font-bold text-4xl md:text-5xl mb-6 text-balance">
+            <span className="text-gold">OMA</span> TV
+          </h2>
+          <p className="text-lg text-primary-foreground/85 max-w-2xl mx-auto text-pretty">
             Découvrez nos émissions et vidéos inspirantes pour développer vos compétences en communication et leadership
           </p>
         </div>
@@ -225,7 +229,7 @@ export function OmaTvSection() {
               href={featuredMediaWithThumbnail.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="relative aspect-video rounded-lg overflow-hidden shadow-2xl group block"
+              className="relative aspect-video rounded-xl overflow-hidden shadow-2xl ring-1 ring-gold/20 group block"
             >
               <img
                 src={featuredMediaWithThumbnail.thumbnailUrl || "/placeholder.svg?height=720&width=1280"}

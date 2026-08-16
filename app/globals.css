@@ -753,6 +753,34 @@
     opacity: 0;
   }
 
+  /* Hero: léger zoom cinématique */
+  @keyframes heroKenBurns {
+    0% {
+      transform: scale(1);
+    }
+    100% {
+      transform: scale(1.06);
+    }
+  }
+
+  .hero-ken-burns {
+    animation: heroKenBurns 22s ease-out forwards;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-ken-burns {
+      animation: none;
+    }
+  }
+
+  /* Texture grain subtile pour sections claires */
+  .section-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    mix-blend-mode: multiply;
+  }
+
   /* Classes pour animations on-scroll (seront activées par JS) */
   .animate-on-scroll {
     opacity: 0;

@@ -92,24 +92,28 @@ export function ScrollingEventsBanner() {
   }
 
   return (
-    <section className="relative py-16 bg-primary border-y border-gold/20 overflow-x-hidden max-w-full">
+    <section className="relative py-16 md:py-20 bg-primary border-y border-gold/20 overflow-x-hidden max-w-full">
       {/* Ligne décorative en haut */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.08),transparent_55%)]" aria-hidden />
       
-      <div className="container mx-auto px-4 max-w-full overflow-x-hidden">
+      <div className="container mx-auto px-4 max-w-full overflow-x-hidden relative">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-12 gap-4">
           <div className="flex items-center gap-4">
             <div className="h-px w-12 bg-gold" />
-            <h2 className="font-serif font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">
-              Événements à venir
-            </h2>
+            <div>
+              <p className="text-gold/70 text-xs tracking-[0.25em] uppercase mb-1">Agenda</p>
+              <h2 className="font-serif font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">
+                Événements à venir
+              </h2>
+            </div>
           </div>
           <Link 
             href="/events" 
-            className="text-gold hover:text-gold-light transition-colors flex items-center gap-2 text-xs sm:text-sm md:text-base font-medium mt-2 sm:mt-0"
+            className="text-gold hover:text-gold-light transition-colors flex items-center gap-2 text-xs sm:text-sm md:text-base font-medium mt-2 sm:mt-0 group"
           >
-            Voir tous les événements <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+            Voir tous les événements <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
 
@@ -133,10 +137,10 @@ export function ScrollingEventsBanner() {
                 className="flex-shrink-0 w-80 md:w-96 max-w-[calc(100vw-2rem)]"
               >
                 <Link href={`/events/${event.slug}`}>
-                  <div className="bg-card rounded-lg overflow-hidden shadow-xl border border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full">
+                  <div className="bg-card rounded-xl overflow-hidden shadow-xl border border-border/80 hover:border-gold/30 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full">
                     {/* Badge type d'événement en haut */}
-                    <div className="px-6 pt-4 pb-2">
-                      <div className="inline-block bg-gradient-to-r from-gold to-gold-dark text-primary px-4 py-1.5 rounded-full text-xs font-bold uppercase">
+                    <div className="px-6 pt-5 pb-2">
+                      <div className="inline-block bg-gradient-to-r from-gold to-gold-dark text-primary px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide">
                         {getEventTypeBadge(event.type)}
                       </div>
                     </div>

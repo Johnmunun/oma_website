@@ -142,20 +142,23 @@ export function NewsletterSection() {
   }
 
   return (
-    <section id="newsletter" className="py-20 bg-primary relative">
+    <section id="newsletter" className="py-20 md:py-24 bg-primary relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom,rgba(249,115,22,0.15),transparent_55%)]" aria-hidden />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" aria-hidden />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* En-tête */}
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-gold mb-4">Restez Informé</h2>
-          <p className="text-lg text-white">
-            Abonnez-vous à notre newsletter pour recevoir les derniers événements, formations et actualisations
+          <p className="text-gold/80 text-sm font-semibold tracking-[0.25em] uppercase mb-4">Newsletter</p>
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-gold mb-4">Restez informé</h2>
+          <p className="text-lg text-white/90 text-pretty">
+            Abonnez-vous à notre newsletter pour recevoir les derniers événements, formations et actualités
             directement sur WhatsApp
           </p>
         </div>
 
         {/* Formulaire */}
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto rounded-2xl border border-gold/20 bg-white/5 backdrop-blur-sm p-6 md:p-8 shadow-[0_0_60px_-20px_rgba(249,115,22,0.35)]">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Champ Email */}
             <div className="relative">
