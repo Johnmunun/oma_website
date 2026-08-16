@@ -12,6 +12,14 @@ export type DetectedMediaMeta = {
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
+/** TikTok oEmbed renvoie souvent 400 avec un UA Chrome ; les bots passent. */
+const TIKTOK_BOT_UAS = [
+  "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+  "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+  "TelegramBot (like TwitterBot)",
+  "Mozilla/5.0 (compatible; Twitterbot/1.0)",
+]
+
 export function detectPlatformFromUrl(url: string): string | null {
   if (!url) return null
   const u = url.toLowerCase()
@@ -81,7 +89,7 @@ async function resolveTikTokCanonicalUrl(url: string): Promise<string> {
       method: "GET",
       redirect: "follow",
       headers: {
-        "User-Agent": BROWSER_UA,
+        "User-Agent": TIKTOK_BOT_UAS[0],
         Accept: "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(8000),
@@ -123,28 +131,33 @@ function extractOgTitle(html: string): string | null {
 }
 
 async function fetchTikTokOEmbed(url: string): Promise<DetectedMediaMeta> {
-  const attempts = [url, normalizeTikTokUrl(url)]
-  // Variante sans query string
+  const attempts: string[] = []
+  const normalized = normalizeTikTokUrl(url)
+  attempts.push(normalized)
   try {
-    const bare = new URL(normalizeTikTokUrl(url))
+    const bare = new URL(normalized)
     bare.search = ""
-    attempts.push(bare.toString())
+    if (bare.toString() !== normalized) attempts.push(bare.toString())
   } catch {
     /* ignore */
   }
+  if (url.trim() !== normalized) attempts.unshift(url.trim())
+
+  // Un seul UA bot suffit en pratique ; fallback rapide si besoin
+  const uas = TIKTOK_BOT_UAS.slice(0, 2)
 
   for (const attemptUrl of [...new Set(attempts)]) {
-    for (let i = 0; i < 2; i++) {
+    for (const ua of uas) {
       try {
         const res = await fetch(
           `https://www.tiktok.com/oembed?url=${encodeURIComponent(attemptUrl)}`,
           {
             headers: {
-              "User-Agent": BROWSER_UA,
+              "User-Agent": ua,
               Accept: "application/json",
             },
             cache: "no-store",
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(8000),
           }
         )
         if (!res.ok) {
@@ -167,24 +180,26 @@ async function fetchTikTokOEmbed(url: string): Promise<DetectedMediaMeta> {
   return { platform: "tiktok", thumbnailUrl: null }
 }
 
-/** Fallback : scrape og:image de la page TikTok */
+/** Fallback : scrape og:image de la page TikTok (UA bot obligatoire) */
 async function fetchTikTokOgImage(url: string): Promise<DetectedMediaMeta> {
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": BROWSER_UA,
+        "User-Agent": TIKTOK_BOT_UAS[0],
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(8000),
       redirect: "follow",
     })
     if (!res.ok) return { platform: "tiktok", thumbnailUrl: null }
     const html = await res.text()
+    const thumbnailUrl = extractOgImage(html)
+    if (!thumbnailUrl) return { platform: "tiktok", thumbnailUrl: null }
     return {
       platform: "tiktok",
-      thumbnailUrl: extractOgImage(html),
+      thumbnailUrl,
       title: extractOgTitle(html),
     }
   } catch (err) {
@@ -260,6 +275,11 @@ export function getSyncThumbnail(url: string): string | null {
 async function resolveTikTokMeta(url: string): Promise<DetectedMediaMeta> {
   const canonical = await resolveTikTokCanonicalUrl(url)
   console.log("[Media] TikTok canonical:", canonical)
+
+  // Profil seul (@user) : oEmbed n'a pas de miniature
+  if (/tiktok\.com\/@[^/]+\/?$/i.test(canonical.replace(/\?.*$/, ""))) {
+    return { platform: "tiktok", thumbnailUrl: null, title: null }
+  }
 
   const oembed = await fetchTikTokOEmbed(canonical)
   if (oembed.thumbnailUrl) return oembed

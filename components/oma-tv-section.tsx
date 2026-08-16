@@ -132,6 +132,7 @@ export function OmaTvSection() {
               alt={video.title || video.alt || "Vidéo OMA TV"}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
             <div className="absolute inset-0 bg-primary/40 group-hover:bg-primary/20 transition-colors flex items-center justify-center">
               <div className="w-12 h-12 bg-gold rounded-full flex items-center justify-center hover:scale-110 transition-transform">
@@ -182,6 +183,7 @@ export function OmaTvSection() {
           alt={video.title || video.alt || "Vidéo OMA TV"}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
           loading="lazy"
+          referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-primary/40 group-hover:bg-primary/20 transition-colors flex items-center justify-center">
           <div className="w-12 h-12 bg-gold rounded-full flex items-center justify-center hover:scale-110 transition-transform">
@@ -247,6 +249,7 @@ export function OmaTvSection() {
                 alt={featuredMediaWithThumbnail.title || featuredMediaWithThumbnail.alt || "OMA TV Featured"}
                 className="w-full h-full object-cover"
                 loading="lazy"
+                referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-primary/40 group-hover:bg-primary/30 transition-colors flex items-center justify-center">
                 <div className="w-20 h-20 bg-gold rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
