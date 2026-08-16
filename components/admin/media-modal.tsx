@@ -259,6 +259,7 @@ export function MediaModal({
                   src={formData.thumbnailUrl}
                   alt="Aperçu miniature"
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                   onError={(e) => {
                     e.currentTarget.style.display = "none"
                   }}

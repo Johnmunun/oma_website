@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
     }
 
     const meta = await resolveMediaMeta(url)
-    return NextResponse.json({ success: true, data: meta })
+    return NextResponse.json({
+      success: true,
+      data: meta,
+      warning: meta.thumbnailUrl
+        ? null
+        : "Miniature TikTok introuvable pour ce lien (vidéo privée, région, ou lien invalide)",
+    })
   } catch (error) {
     console.error("[API] Erreur preview media:", error)
     return NextResponse.json(

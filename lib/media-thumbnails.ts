@@ -9,6 +9,9 @@ export type DetectedMediaMeta = {
   title?: string | null
 }
 
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+
 export function detectPlatformFromUrl(url: string): string | null {
   if (!url) return null
   const u = url.toLowerCase()
@@ -48,45 +51,180 @@ function extractInstagramShortcode(url: string): string | null {
   return match?.[1] || null
 }
 
-/** Miniature synchrone (YouTube / Instagram media URL) — sans fetch réseau */
-export function getSyncThumbnail(url: string): string | null {
-  const platform = detectPlatformFromUrl(url)
-  if (platform === "youtube") {
-    const id = extractYouTubeId(url)
-    return id ? getYouTubeThumbnail(id) : null
+/** Normalise une URL TikTok (photo→video, trim, https) */
+export function normalizeTikTokUrl(raw: string): string {
+  let url = raw.trim()
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`
+  try {
+    const u = new URL(url)
+    // /@user/photo/ID → /@user/video/ID (oEmbed plus fiable)
+    u.pathname = u.pathname.replace(/\/photo\//, "/video/")
+    // retirer query tracking inutiles sauf vraiment nécessaires
+    return u.toString()
+  } catch {
+    return url
   }
-  if (platform === "instagram") {
-    const code = extractInstagramShortcode(url)
-    // Endpoint public Instagram (fonctionne pour beaucoup de posts publics)
-    return code ? `https://www.instagram.com/p/${code}/media/?size=l` : null
+}
+
+/** Suit les redirections des liens courts vm.tiktok.com / vt.tiktok.com */
+async function resolveTikTokCanonicalUrl(url: string): Promise<string> {
+  const normalized = normalizeTikTokUrl(url)
+  const isShort =
+    /vm\.tiktok\.com|vt\.tiktok\.com|tiktok\.com\/t\//i.test(normalized)
+
+  if (!isShort && /tiktok\.com\/@[^/]+\/video\/\d+/i.test(normalized)) {
+    return normalized
+  }
+
+  try {
+    const res = await fetch(normalized, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent": BROWSER_UA,
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    // URL finale après redirects
+    if (res.url && res.url.includes("tiktok.com")) {
+      return normalizeTikTokUrl(res.url.split("?")[0])
+    }
+  } catch (err) {
+    console.warn("[Media] Résolution short-link TikTok échouée:", err)
+  }
+  return normalized
+}
+
+function extractOgImage(html: string): string | null {
+  const patterns = [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
+  ]
+  for (const pattern of patterns) {
+    const match = html.match(pattern)
+    if (match?.[1]) return match[1].replace(/&amp;/g, "&")
+  }
+  return null
+}
+
+function extractOgTitle(html: string): string | null {
+  const patterns = [
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+  ]
+  for (const pattern of patterns) {
+    const match = html.match(pattern)
+    if (match?.[1]) return match[1]
   }
   return null
 }
 
 async function fetchTikTokOEmbed(url: string): Promise<DetectedMediaMeta> {
+  const attempts = [url, normalizeTikTokUrl(url)]
+  // Variante sans query string
   try {
-    const res = await fetch(
-      `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`,
-      { next: { revalidate: 3600 } }
-    )
+    const bare = new URL(normalizeTikTokUrl(url))
+    bare.search = ""
+    attempts.push(bare.toString())
+  } catch {
+    /* ignore */
+  }
+
+  for (const attemptUrl of [...new Set(attempts)]) {
+    for (let i = 0; i < 2; i++) {
+      try {
+        const res = await fetch(
+          `https://www.tiktok.com/oembed?url=${encodeURIComponent(attemptUrl)}`,
+          {
+            headers: {
+              "User-Agent": BROWSER_UA,
+              Accept: "application/json",
+            },
+            cache: "no-store",
+            signal: AbortSignal.timeout(10000),
+          }
+        )
+        if (!res.ok) {
+          console.warn("[Media] TikTok oEmbed status", res.status, attemptUrl)
+          continue
+        }
+        const data = await res.json()
+        if (data?.thumbnail_url) {
+          return {
+            platform: "tiktok",
+            thumbnailUrl: data.thumbnail_url,
+            title: data.title || null,
+          }
+        }
+      } catch (err) {
+        console.warn("[Media] TikTok oEmbed erreur:", err)
+      }
+    }
+  }
+  return { platform: "tiktok", thumbnailUrl: null }
+}
+
+/** Fallback : scrape og:image de la page TikTok */
+async function fetchTikTokOgImage(url: string): Promise<DetectedMediaMeta> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": BROWSER_UA,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+      redirect: "follow",
+    })
     if (!res.ok) return { platform: "tiktok", thumbnailUrl: null }
-    const data = await res.json()
+    const html = await res.text()
     return {
       platform: "tiktok",
+      thumbnailUrl: extractOgImage(html),
+      title: extractOgTitle(html),
+    }
+  } catch (err) {
+    console.warn("[Media] TikTok OG scrape échoué:", err)
+    return { platform: "tiktok", thumbnailUrl: null }
+  }
+}
+
+async function fetchNoembed(url: string, platform: string | null): Promise<DetectedMediaMeta> {
+  try {
+    const res = await fetch(
+      `https://noembed.com/embed?url=${encodeURIComponent(url)}`,
+      {
+        headers: { "User-Agent": BROWSER_UA, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      }
+    )
+    if (!res.ok) return { platform, thumbnailUrl: null }
+    const data = await res.json()
+    return {
+      platform,
       thumbnailUrl: data.thumbnail_url || null,
       title: data.title || null,
     }
   } catch (err) {
-    console.warn("[Media] TikTok oEmbed échoué:", err)
-    return { platform: "tiktok", thumbnailUrl: null }
+    console.warn("[Media] noembed échoué:", err)
+    return { platform, thumbnailUrl: null }
   }
 }
 
 async function fetchMicrolinkImage(url: string, platform: string | null): Promise<DetectedMediaMeta> {
   try {
     const res = await fetch(
-      `https://api.microlink.io?url=${encodeURIComponent(url)}`,
-      { next: { revalidate: 3600 } }
+      `https://api.microlink.io?url=${encodeURIComponent(url)}&palette=false&audio=false&video=false&iframe=false`,
+      {
+        headers: { "User-Agent": BROWSER_UA, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      }
     )
     if (!res.ok) return { platform, thumbnailUrl: null }
     const json = await res.json()
@@ -105,9 +243,41 @@ async function fetchMicrolinkImage(url: string, platform: string | null): Promis
   }
 }
 
+/** Miniature synchrone (YouTube / Instagram media URL) — sans fetch réseau */
+export function getSyncThumbnail(url: string): string | null {
+  const platform = detectPlatformFromUrl(url)
+  if (platform === "youtube") {
+    const id = extractYouTubeId(url)
+    return id ? getYouTubeThumbnail(id) : null
+  }
+  if (platform === "instagram") {
+    const code = extractInstagramShortcode(url)
+    return code ? `https://www.instagram.com/p/${code}/media/?size=l` : null
+  }
+  return null
+}
+
+async function resolveTikTokMeta(url: string): Promise<DetectedMediaMeta> {
+  const canonical = await resolveTikTokCanonicalUrl(url)
+  console.log("[Media] TikTok canonical:", canonical)
+
+  const oembed = await fetchTikTokOEmbed(canonical)
+  if (oembed.thumbnailUrl) return oembed
+
+  const og = await fetchTikTokOgImage(canonical)
+  if (og.thumbnailUrl) return og
+
+  const noembed = await fetchNoembed(canonical, "tiktok")
+  if (noembed.thumbnailUrl) return noembed
+
+  const micro = await fetchMicrolinkImage(canonical, "tiktok")
+  if (micro.thumbnailUrl) return micro
+
+  return { platform: "tiktok", thumbnailUrl: null, title: oembed.title || og.title || null }
+}
+
 /**
  * Résout plateforme + miniature pour une URL média.
- * YouTube / Instagram : synchrone d'abord, puis enrichissement réseau si besoin.
  */
 export async function resolveMediaMeta(url: string): Promise<DetectedMediaMeta> {
   if (!url?.trim()) return { platform: null, thumbnailUrl: null }
@@ -120,9 +290,7 @@ export async function resolveMediaMeta(url: string): Promise<DetectedMediaMeta> 
   }
 
   if (platform === "tiktok") {
-    const oembed = await fetchTikTokOEmbed(url)
-    if (oembed.thumbnailUrl) return oembed
-    return fetchMicrolinkImage(url, "tiktok")
+    return resolveTikTokMeta(url)
   }
 
   if (platform === "instagram") {

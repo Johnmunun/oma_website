@@ -316,6 +316,7 @@ export default function AdminMediaPage() {
                     src={item.thumbnailUrl}
                     alt={item.title || item.alt || "Média"}
                     className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
                   />
                 ) : item.type === "VIDEO" ? (
                   <Video className="w-16 h-16 text-muted-foreground" />
