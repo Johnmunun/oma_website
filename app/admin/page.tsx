@@ -42,30 +42,25 @@ function StatCard({
   index?: number
 }) {
   const content = (
-    <Card className={`p-6 cursor-pointer border-0 shadow-lg bg-white rounded-2xl card-animate card-hover-effect transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-xl active:scale-[0.98] group relative overflow-hidden ${index !== undefined ? `card-animate-${index}` : ''}`}>
-      {/* Effet shimmer au hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 shimmer-effect pointer-events-none" />
-      
+    <Card className={`p-5 md:p-6 cursor-pointer border border-border/60 shadow-soft bg-white rounded-2xl card-animate transition-all duration-200 hover:shadow-md group relative overflow-hidden ${index !== undefined ? `card-animate-${index}` : ''}`}>
       <div className="flex items-start justify-between relative z-10">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-muted-foreground mb-1 transition-colors duration-200 group-hover:text-foreground">{label}</p>
-          <p className="text-3xl font-bold mt-2 text-foreground transition-transform duration-200 group-hover:scale-105">{value}</p>
-          <div className="flex items-center gap-2 mt-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+          <p className="text-2xl md:text-3xl font-semibold mt-1.5 text-foreground tracking-tight">{value}</p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             {trend && (
-              <span className={`text-xs font-medium transition-all duration-200 group-hover:scale-110 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                <span className="inline-block transition-transform duration-200 group-hover:translate-y-[-2px]">{trend.isPositive ? '↑' : '↓'}</span> {trend.value}
+              <span className={`text-xs font-medium ${trend.isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                {trend.isPositive ? '↑' : '↓'} {trend.value}
               </span>
             )}
-            <p className="text-xs text-muted-foreground transition-colors duration-200 group-hover:text-foreground/80">{subtitle}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
         </div>
-        <div className="ml-4 p-3 rounded-2xl gradient-purple-light shadow-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-lg">
-          <Icon className="w-6 h-6 text-white transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+        <div className="ml-4 p-2.5 rounded-xl bg-primary/90 shadow-soft group-hover:bg-primary transition-colors">
+          <Icon className="w-5 h-5 text-white" />
         </div>
       </div>
-      
-      {/* Indicateur de hover en bas */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform scale-x-0 group-hover:scale-x-100 origin-left" />
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gold scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
     </Card>
   )
 
@@ -88,22 +83,17 @@ function QuickAction({
 }) {
   return (
     <Link href={href}>
-      <div className="p-5 border border-border rounded-2xl cursor-pointer bg-white hover:border-primary/30 card-hover-effect shadow-sm hover:shadow-lg transition-all duration-300 ease-out hover:scale-[1.03] hover:-translate-y-1 active:scale-[0.98] group relative overflow-hidden">
-        {/* Effet shimmer au hover */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 shimmer-effect pointer-events-none" />
-        
+      <div className="p-5 border border-border/60 rounded-2xl cursor-pointer bg-white hover:border-gold/35 shadow-soft hover:shadow-md transition-all duration-200 group relative overflow-hidden h-full">
         <div className="flex items-start gap-4 relative z-10">
-          <div className="p-2.5 rounded-2xl gradient-purple-light shadow-md transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-lg">
-            <Icon className="w-5 h-5 text-white transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+          <div className="p-2.5 rounded-xl bg-primary/90 shadow-soft group-hover:bg-primary transition-colors shrink-0">
+            <Icon className="w-5 h-5 text-white" />
           </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-sm text-foreground transition-colors duration-200 group-hover:text-primary">{title}</h4>
-            <p className="text-xs text-muted-foreground mt-1.5 transition-colors duration-200 group-hover:text-foreground/70">{description}</p>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">{title}</h4>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
           </div>
         </div>
-        
-        {/* Indicateur de hover */}
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-purple-500 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform scale-x-0 group-hover:scale-x-100 origin-left" />
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gold scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
       </div>
     </Link>
   )
@@ -287,11 +277,11 @@ export default function AdminDashboard() {
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Actions rapides</h2>
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground">Actions rapides</h2>
             <p className="text-sm text-muted-foreground mt-1">Accès rapide aux fonctionnalités principales</p>
           </div>
           <Link href="/admin/events">
-            <Button className="gap-2 shadow-soft-lg hover:shadow-soft-lg transition-all gradient-purple text-white border-0">
+            <Button className="gap-2 shadow-soft hover:shadow-md transition-all bg-primary hover:bg-primary/90 text-primary-foreground border-0 rounded-xl">
               <Plus className="w-4 h-4" />
               Nouvel événement
             </Button>

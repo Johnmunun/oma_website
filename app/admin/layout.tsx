@@ -349,67 +349,65 @@ function AdminSidebar({
         />
       )}
 
-      {/* Sidebar principale - Violet foncé avec gradient premium */}
+      {/* Sidebar principale */}
       <aside
         role="navigation"
         aria-label="Navigation principale"
         className={cn(
-          "fixed left-0 top-0 h-screen bg-[var(--sidebar)] border-r border-[var(--sidebar-border)] overflow-y-auto transition-transform duration-300 ease-out z-50 md:z-auto md:relative md:transform-none w-64 shadow-2xl sidebar-scrollbar",
+          "fixed left-0 top-0 h-screen border-r border-white/10 overflow-y-auto transition-transform duration-300 ease-out z-50 md:z-auto md:relative md:transform-none w-[17rem] sidebar-scrollbar flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-          "will-change-transform" // Optimisation pour les animations
+          "will-change-transform"
         )}
         style={{
-          background: "linear-gradient(180deg, oklch(0.25 0.1 280) 0%, oklch(0.15 0.02 280) 100%)",
-          boxShadow: "4px 0 20px rgba(0, 0, 0, 0.25), 2px 0 8px rgba(0, 0, 0, 0.15)",
+          background: "linear-gradient(180deg, oklch(0.22 0.08 280) 0%, oklch(0.14 0.02 280) 100%)",
+          boxShadow: "4px 0 24px rgba(0, 0, 0, 0.2)",
         }}
       >
         {/* Logo & Fermeture mobile */}
-        <div className="flex items-center justify-between h-20 px-6 border-b border-[var(--sidebar-border)] bg-white/5 backdrop-blur-sm shadow-inner">
-          {/* Logo compact avec logo dynamique */}
-          <Link href="/admin" className="flex items-center gap-3 font-bold text-xl text-white">
-            {/* Toujours rendre la même structure pour éviter l'hydratation mismatch */}
-            <div className="relative inline-flex items-center justify-center group/logo">
-              {/* Fond élégant avec gradient et ombre professionnelle pour admin */}
-              <div className="absolute w-18 h-18 bg-gradient-to-br from-white via-white to-gray-50 rounded-2xl shadow-xl shadow-black/20 border-2 border-white/40 z-0 transition-all duration-300 group-hover/logo:shadow-2xl group-hover/logo:shadow-gold/30 group-hover/logo:scale-105" />
-              {/* Effet de glow doré au hover */}
-              <div className="absolute w-18 h-18 bg-gradient-to-br from-gold/30 via-gold/15 to-transparent rounded-2xl z-[1] opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300 blur-md" />
-              {/* Logo par-dessus - agrandi pour meilleure visibilité */}
-              <div className="relative z-10 p-2 transition-transform duration-300 group-hover/logo:scale-105">
+        <div className="flex items-center justify-between h-[4.5rem] px-5 border-b border-white/10 shrink-0">
+          <Link href="/admin" className="flex items-center gap-3 min-w-0 group/logo">
+            <div className="relative inline-flex items-center justify-center shrink-0">
+              <div className="absolute inset-0 rounded-xl bg-white/95 shadow-lg border border-white/40" />
+              <div className="relative z-10 p-1.5">
                 {isMounted && logoUrl ? (
-                  <Image 
-                    src={logoUrl} 
-                    alt={siteTitle} 
-                    width={64}
-                    height={64}
-                    className="h-16 w-auto object-contain drop-shadow-md" 
-                    sizes="64px"
+                  <Image
+                    src={logoUrl}
+                    alt={siteTitle}
+                    width={44}
+                    height={44}
+                    className="h-11 w-auto object-contain"
+                    sizes="44px"
                     quality={95}
                     priority
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl gradient-purple flex items-center justify-center text-white text-sm font-bold shadow-soft">
+                  <div className="w-11 h-11 rounded-lg bg-primary flex items-center justify-center text-gold text-xs font-bold font-serif">
                     OMA
                   </div>
                 )}
               </div>
             </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="text-sm md:text-base text-white font-bold">{siteTitle.toUpperCase()}</span>
-              <span className="text-xs text-white/70 font-normal">{siteSlogan}</span>
+            <div className="hidden sm:flex flex-col min-w-0">
+              <span className="text-sm text-white font-semibold tracking-wide truncate">{siteTitle}</span>
+              <span className="text-[11px] text-white/50 font-normal truncate">
+                {siteSlogan || "Administration"}
+              </span>
             </div>
           </Link>
-          {/* Bouton fermeture mobile */}
-          <button 
-            onClick={onClose} 
-            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+          <button
+            onClick={onClose}
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Fermer le menu"
           >
-            <X className="w-5 h-5 text-white transition-transform duration-200" />
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1" role="navigation" aria-label="Menu de navigation">
+        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto" role="navigation" aria-label="Menu de navigation">
+          <p className="px-3 pt-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+            Menu
+          </p>
           {navigationItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
 
@@ -418,26 +416,28 @@ function AdminSidebar({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ease-out group",
+                  "relative flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
                   isActive
-                    ? "gradient-purple-light text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
-                    : "text-white/80 hover:bg-white/10 hover:text-white hover:shadow-md hover:scale-[1.01] active:scale-[0.98]",
+                    ? "bg-white/12 text-white shadow-sm"
+                    : "text-white/65 hover:bg-white/8 hover:text-white",
                 )}
                 onClick={() => onClose()}
                 aria-current={isActive ? "page" : undefined}
               >
-                <span className="flex items-center gap-3">
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gold" aria-hidden />
+                )}
+                <span className="flex items-center gap-3 min-w-0">
                   <span className={cn(
-                    "transition-transform duration-200",
-                    isActive ? "text-white" : "text-white/70 group-hover:scale-110"
+                    "transition-colors duration-200 shrink-0",
+                    isActive ? "text-gold" : "text-white/50 group-hover:text-white/80"
                   )}>
                     {item.icon}
                   </span>
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
                 </span>
-                {/* Badge pour les éléments avec notification */}
                 {item.badge && (
-                  <span className="ml-auto bg-white/20 text-white text-xs font-bold rounded-full px-2.5 py-1 min-w-[24px] text-center transition-all duration-200 group-hover:bg-white/30 group-hover:scale-110 animate-pulse">
+                  <span className="ml-2 shrink-0 bg-gold text-primary text-[11px] font-bold rounded-md px-2 py-0.5 min-w-[22px] text-center">
                     {item.badge}
                   </span>
                 )}
@@ -446,16 +446,13 @@ function AdminSidebar({
           })}
         </nav>
 
-        {/* Séparateur */}
-        <div className="border-t border-white/10 my-4 mx-4" />
-
         {/* Actions utilisateur en bas */}
-        <div className="p-4 space-y-2">
-          <div className="px-4 py-3 bg-white/5 rounded-2xl flex items-center gap-3 border border-white/10 shadow-inner backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:shadow-md">
+        <div className="p-3 mt-auto border-t border-white/10 shrink-0">
+          <div className="px-3 py-3 bg-white/5 rounded-xl flex items-center gap-3 border border-white/8">
             <UserAvatar email={email ?? undefined} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">Connecté</p>
-              <p className="text-sm font-medium mt-0.5 truncate text-white">{email ?? "Utilisateur"}</p>
+              <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider">Connecté</p>
+              <p className="text-sm font-medium mt-0.5 truncate text-white/90">{email ?? "Utilisateur"}</p>
             </div>
           </div>
         </div>
@@ -532,38 +529,42 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
   }
   
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/80 shadow-lg shadow-black/5">
-      <div className="flex items-center justify-between h-20 px-4 md:px-8 max-w-full">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/75">
+      <div className="flex items-center justify-between h-[4.5rem] px-4 md:px-8 max-w-full gap-3">
           {/* Bouton menu mobile */}
           <button
             onClick={onMenuClick}
-            className="md:hidden p-2 hover:bg-muted rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+            className="md:hidden p-2 hover:bg-muted rounded-xl transition-colors"
             aria-label={sidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={sidebarOpen}
           >
-            <Menu className="w-5 h-5 transition-transform duration-200" />
+            <Menu className="w-5 h-5" />
           </button>
 
         {/* Titre de bienvenue */}
-        <div className="flex-1 ml-4 md:ml-0">
-          <h1 className="text-lg md:text-2xl font-bold text-foreground">Bienvenue {displayName}</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">Voici un aperçu de votre activité</p>
+        <div className="flex-1 ml-1 md:ml-0 min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80 mb-0.5 hidden sm:block">
+            Panel admin
+          </p>
+          <h1 className="text-base md:text-xl font-semibold text-foreground truncate">
+            Bienvenue, {displayName}
+          </h1>
         </div>
 
         {/* Actions droite */}
-        <div className="flex items-center gap-2 md:gap-4 relative">
+        <div className="flex items-center gap-2 md:gap-3 relative shrink-0">
           {/* Barre de recherche avec résultats - Desktop */}
           <div className="hidden md:flex items-center relative">
-            <Search className="absolute left-3 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
+            <Search className="absolute left-3.5 w-4 h-4 text-muted-foreground z-10 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Rechercher événements, utilisateurs, messages..."
+              placeholder="Rechercher…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery && searchResults && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
-              className="pl-10 pr-4 py-2 w-64 lg:w-80 rounded-2xl border border-border bg-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg relative z-10"
+              className="pl-10 pr-4 py-2.5 w-56 lg:w-72 rounded-xl border border-border/80 bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold/25 focus:border-gold/40 focus:bg-white transition-all relative z-10"
               aria-label="Rechercher dans l'administration"
               aria-expanded={showResults}
               aria-controls="search-results"
@@ -581,7 +582,7 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
                 id="search-results"
                 role="listbox"
                 aria-label="Résultats de recherche"
-                className="fixed bg-white border border-border rounded-2xl shadow-2xl z-[9999] max-h-[500px] overflow-y-auto"
+                className="fixed bg-white border border-border/80 rounded-xl shadow-xl z-[9999] max-h-[500px] overflow-y-auto ring-1 ring-black/5"
                 style={{
                   top: `${searchInputRef.current.getBoundingClientRect().bottom + 8}px`,
                   left: `${searchInputRef.current.getBoundingClientRect().left}px`,
@@ -672,11 +673,11 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
           </button>
 
           {/* Profil utilisateur */}
-          <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 rounded-2xl hover:bg-muted/50 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md">
+          <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1.5 rounded-xl border border-transparent hover:border-border/60 hover:bg-muted/40 transition-colors">
             <UserAvatar email={email ?? undefined} />
             <div className="hidden sm:block">
               <p className="text-xs md:text-sm font-medium truncate max-w-[160px]">{email ?? 'Utilisateur'}</p>
-              <p className="text-xs text-muted-foreground">Connecté</p>
+              <p className="text-[11px] text-muted-foreground">Connecté</p>
             </div>
           </div>
 
@@ -684,7 +685,7 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
           <Button
             variant="ghost"
             size="sm"
-            className="p-2 hover:bg-muted/50 rounded-2xl transition-all duration-200 shadow-sm hover:shadow-md hover:scale-110 active:scale-95"
+            className="p-2.5 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-colors"
             onClick={async () => {
               await signOut({ redirect: false })
               toast.success('Déconnexion réussie')
@@ -693,7 +694,7 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
             title="Déconnexion"
             aria-label="Déconnexion"
           >
-            <LogOut className="w-4 h-4 transition-transform duration-200 group-hover:rotate-12" />
+            <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -767,8 +768,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminHeader onMenuClick={() => setSidebarOpen(!sidebarOpen)} sidebarOpen={sidebarOpen} />
 
         {/* Zone de contenu - Scrollable */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-white via-purple-50/30 to-white">
-          <div className="p-6 md:p-8 max-w-full">{children}</div>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-[oklch(0.985_0.004_280)] relative">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.35] admin-content-grain" aria-hidden />
+          <div className="p-5 md:p-8 max-w-full relative">{children}</div>
         </main>
       </div>
     </div>

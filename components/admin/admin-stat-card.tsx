@@ -3,7 +3,6 @@
  * @description Carte de statistique réutilisable avec le thème CRM
  */
 
-import { ReactNode } from "react"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -30,45 +29,36 @@ export function AdminStatCard({
   const content = (
     <Card
       className={cn(
-        "p-6 hover:shadow-xl transition-all duration-300 ease-out cursor-pointer border-0 shadow-soft bg-white rounded-2xl hover:scale-[1.03] active:scale-[0.98] group relative overflow-hidden",
+        "p-5 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-border/60 shadow-soft bg-white rounded-2xl group relative overflow-hidden",
         className
       )}
     >
-      {/* Effet shimmer au hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 shimmer-effect pointer-events-none" />
-      
       <div className="flex items-start justify-between relative z-10">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-muted-foreground mb-1 transition-colors duration-200 group-hover:text-foreground">{label}</p>
-          <p className="text-3xl font-bold mt-2 text-foreground transition-transform duration-200 group-hover:scale-105">{value}</p>
-          <div className="flex items-center gap-2 mt-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+          <p className="text-2xl md:text-3xl font-semibold mt-1.5 text-foreground tracking-tight">{value}</p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             {trend && (
               <span
                 className={cn(
-                  "text-xs font-medium transition-all duration-200 group-hover:scale-110",
-                  trend.isPositive ? "text-green-600" : "text-red-600"
+                  "text-xs font-medium",
+                  trend.isPositive ? "text-emerald-600" : "text-red-600"
                 )}
               >
-                <span className="inline-block transition-transform duration-200 group-hover:translate-y-[-2px]">{trend.isPositive ? "↑" : "↓"}</span> {trend.value}
+                {trend.isPositive ? "↑" : "↓"} {trend.value}
               </span>
             )}
-            {subtitle && <p className="text-xs text-muted-foreground transition-colors duration-200 group-hover:text-foreground/80">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
-        <div className="ml-4 p-3 rounded-xl gradient-purple-light shadow-soft transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-lg">
-          <Icon className="w-6 h-6 text-white transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+        <div className="ml-4 p-2.5 rounded-xl bg-primary/90 shadow-soft group-hover:bg-primary transition-colors">
+          <Icon className="w-5 h-5 text-white" />
         </div>
       </div>
-      
-      {/* Indicateur de hover en bas */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-purple-500 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform scale-x-0 group-hover:scale-x-100 origin-left" />
+
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gold scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
     </Card>
   )
 
   return href ? <Link href={href}>{content}</Link> : content
 }
-
-
-
-
-
