@@ -312,7 +312,7 @@ model Media {
   type         MediaType
   title        String? // Titre du média (ex: "Émission OMA TV - Épisode 1")
   description  String? // Description du média
-  platform     String? // Plateforme source (youtube, facebook, instagram, etc.)
+  platform     String? // Plateforme source (youtube, facebook, instagram, tiktok, etc.)
   thumbnailUrl String? // URL de la miniature (pour les vidéos)
   alt          String? // Texte alternatif
   width        Int?

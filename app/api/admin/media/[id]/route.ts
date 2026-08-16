@@ -196,6 +196,8 @@ export async function PUT(
         platform = 'facebook'
       } else if (url.includes('instagram.com') && !platform) {
         platform = 'instagram'
+      } else if ((url.includes('tiktok.com') || url.includes('vm.tiktok.com')) && !platform) {
+        platform = 'tiktok'
       } else if ((url.includes('twitter.com') || url.includes('x.com')) && !platform) {
         platform = 'twitter'
       } else if (url.includes('linkedin.com') && !platform) {
