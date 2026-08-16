@@ -1,7 +1,17 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Youtube, Facebook, Instagram, Link as LinkIcon, Loader2 } from "lucide-react"
+import {
+  X,
+  Youtube,
+  Facebook,
+  Instagram,
+  Link as LinkIcon,
+  Loader2,
+  Play,
+  Upload,
+  ImagePlus,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { detectPlatformFromUrl, getSyncThumbnail } from "@/lib/media-thumbnails"
+import { TikTokIcon } from "@/components/icons/tiktok-icon"
 
 export interface MediaFormData {
   url: string
@@ -64,8 +75,18 @@ export function MediaModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [detectedPlatform, setDetectedPlatform] = useState<string | null>(null)
   const [isResolvingThumb, setIsResolvingThumb] = useState(false)
+  const [isUploadingThumb, setIsUploadingThumb] = useState(false)
+  /** true = miniature choisie manuellement (upload / URL), ne pas écraser par l’auto */
+  const [thumbManual, setThumbManual] = useState(false)
+  const thumbManualRef = useRef(false)
   const previewTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const thumbInputRef = useRef<HTMLInputElement | null>(null)
   const isEdit = mode === "edit" || Boolean(initialData?.url)
+
+  const markThumbManual = (value: boolean) => {
+    thumbManualRef.current = value
+    setThumbManual(value)
+  }
 
   // Préremplir / reset à chaque ouverture
   useEffect(() => {
@@ -86,11 +107,14 @@ export function MediaModal({
         eventId: initialData.eventId || null,
       })
       setDetectedPlatform(platform)
+      markThumbManual(Boolean(initialData.thumbnailUrl))
     } else {
       setFormData(EMPTY_FORM)
       setDetectedPlatform(null)
+      markThumbManual(false)
     }
     setIsResolvingThumb(false)
+    setIsUploadingThumb(false)
   }, [initialData, isOpen])
 
   useEffect(() => {
@@ -108,7 +132,7 @@ export function MediaModal({
       ...prev,
       url,
       platform: keepPlatform || platform || prev.platform,
-      thumbnailUrl: syncThumb || prev.thumbnailUrl,
+      thumbnailUrl: thumbManualRef.current ? prev.thumbnailUrl : syncThumb || prev.thumbnailUrl,
       type: platform === "youtube" || platform === "tiktok" || platform === "instagram" || platform === "facebook"
         ? "VIDEO"
         : prev.type,
@@ -129,7 +153,9 @@ export function MediaModal({
         setFormData((prev) => ({
           ...prev,
           platform: keepPlatform || data.data.platform || prev.platform,
-          thumbnailUrl: data.data.thumbnailUrl || prev.thumbnailUrl || syncThumb,
+          thumbnailUrl: thumbManualRef.current
+            ? prev.thumbnailUrl
+            : data.data.thumbnailUrl || prev.thumbnailUrl || syncThumb,
           title: prev.title || data.data.title || null,
         }))
       }
@@ -137,6 +163,51 @@ export function MediaModal({
       console.warn("[MediaModal] Preview échoué:", err)
     } finally {
       setIsResolvingThumb(false)
+    }
+  }
+
+  const handleThumbnailUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image (JPG, PNG, WEBP…)")
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 10 Mo")
+      return
+    }
+
+    try {
+      setIsUploadingThumb(true)
+      const body = new FormData()
+      body.append("file", file)
+      body.append("folder", "/media/thumbnails")
+
+      const res = await fetch("/api/uploads", {
+        method: "POST",
+        body,
+        credentials: "include",
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        throw new Error(error.error || "Erreur lors de l'upload")
+      }
+
+      const data = await res.json()
+      if (data.success && data.data?.url) {
+        markThumbManual(true)
+        setFormData((prev) => ({ ...prev, thumbnailUrl: data.data.url }))
+        toast.success("Miniature uploadée")
+      } else {
+        throw new Error(data.error || "Erreur inconnue")
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors de l'upload"
+      console.error("[MediaModal] Upload miniature:", err)
+      toast.error(message)
+    } finally {
+      setIsUploadingThumb(false)
+      if (thumbInputRef.current) thumbInputRef.current.value = ""
     }
   }
 
@@ -157,14 +228,53 @@ export function MediaModal({
       case "instagram":
         return <Instagram className="w-5 h-5 text-pink-600" />
       case "tiktok":
-        return (
-          <svg className="w-5 h-5 text-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.73a8.18 8.18 0 0 0 4.76 1.52V6.84a4.84 4.84 0 0 1-1-.15z" />
-          </svg>
-        )
+        return <TikTokIcon className="w-5 h-5 text-foreground" />
       default:
         return <LinkIcon className="w-5 h-5" />
     }
+  }
+
+  const previewPlatform = formData.platform || detectedPlatform
+
+  const PlayBadge = ({ size = "md" }: { size?: "sm" | "md" }) => {
+    const outer = size === "sm" ? "w-12 h-12" : "w-16 h-16"
+    const play = size === "sm" ? "h-5 w-5" : "h-7 w-7"
+    const logo = size === "sm" ? "w-6 h-6" : "w-7 h-7"
+
+    if (previewPlatform === "tiktok") {
+      return (
+        <div
+          className={`${outer} rounded-full bg-black/80 ring-2 ring-white/90 shadow-lg flex items-center justify-center`}
+          aria-hidden
+        >
+          <TikTokIcon className={`${logo} text-white`} />
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className={`${outer} rounded-full bg-black/75 ring-2 ring-white/90 shadow-lg flex items-center justify-center relative`}
+        aria-hidden
+      >
+        <Play className={`${play} text-white ml-0.5`} fill="currentColor" />
+        {previewPlatform === "youtube" && (
+          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-red-600 shadow">
+            <Youtube className="w-3.5 h-3.5" />
+          </span>
+        )}
+        {previewPlatform === "instagram" && (
+          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-pink-600 shadow">
+            <Instagram className="w-3.5 h-3.5" />
+          </span>
+        )}
+        {previewPlatform === "facebook" && (
+          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-600 shadow">
+            <Facebook className="w-3.5 h-3.5" />
+          </span>
+        )}
+      </div>
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,13 +356,13 @@ export function MediaModal({
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Miniature auto pour YouTube, TikTok et Instagram
+              Miniature auto pour YouTube / TikTok / Instagram — ou upload manuel ci-dessous
             </p>
           </div>
 
-          {/* Aperçu miniature */}
-          {(formData.thumbnailUrl || isResolvingThumb) && (
-            <div className="rounded-xl overflow-hidden border border-border bg-muted aspect-video relative">
+          {/* Aperçu miniature (style lecteur vidéo) */}
+          {(formData.thumbnailUrl || isResolvingThumb || isUploadingThumb) && (
+            <div className="rounded-xl overflow-hidden border border-border bg-muted aspect-video relative group">
               {formData.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -265,8 +375,13 @@ export function MediaModal({
                   }}
                 />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
                   <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {formData.thumbnailUrl && formData.type === "VIDEO" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
+                  <PlayBadge />
                 </div>
               )}
             </div>
@@ -357,25 +472,92 @@ export function MediaModal({
           </div>
 
           {formData.type === "VIDEO" && (
-            <div>
-              <Label htmlFor="thumbnailUrl">URL de la miniature</Label>
-              <Input
-                id="thumbnailUrl"
-                name="thumbnailUrl"
-                type="url"
-                value={formData.thumbnailUrl || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    thumbnailUrl: e.target.value || null,
-                  }))
-                }
-                placeholder="Générée automatiquement…"
-                className="w-full mt-2"
+            <div className="space-y-3">
+              <Label>Miniature</Label>
+
+              <input
+                ref={thumbInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                id="media-thumb-upload"
+                disabled={isUploadingThumb}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleThumbnailUpload(file)
+                }}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Remplie auto pour YouTube / TikTok / Instagram (modifiable)
-              </p>
+
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => !isUploadingThumb && thumbInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    thumbInputRef.current?.click()
+                  }
+                }}
+                className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-gold/60 transition-colors bg-muted/30"
+              >
+                {isUploadingThumb ? (
+                  <div className="flex flex-col items-center gap-2 py-2">
+                    <Loader2 className="w-7 h-7 animate-spin text-gold" />
+                    <p className="text-sm text-muted-foreground">Upload en cours…</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-1">
+                    {formData.thumbnailUrl ? (
+                      <ImagePlus className="w-7 h-7 text-muted-foreground" />
+                    ) : (
+                      <Upload className="w-7 h-7 text-muted-foreground" />
+                    )}
+                    <p className="text-sm font-medium">
+                      {formData.thumbnailUrl
+                        ? "Changer la miniature (image)"
+                        : "Uploader une miniature (image)"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">JPG, PNG, WEBP — max 10 Mo</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="thumbnailUrl" className="text-muted-foreground font-normal">
+                  Ou coller une URL de miniature
+                </Label>
+                <Input
+                  id="thumbnailUrl"
+                  name="thumbnailUrl"
+                  type="url"
+                  value={formData.thumbnailUrl || ""}
+                  onChange={(e) => {
+                    const value = e.target.value || null
+                    markThumbManual(Boolean(value))
+                    setFormData((prev) => ({
+                      ...prev,
+                      thumbnailUrl: value,
+                    }))
+                  }}
+                  placeholder="https://… ou générée automatiquement"
+                  className="w-full mt-2"
+                />
+              </div>
+
+              {thumbManual && formData.url && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-0 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    markThumbManual(false)
+                    void resolvePreview(formData.url, formData.platform)
+                  }}
+                >
+                  Régénérer automatiquement depuis l’URL
+                </Button>
+              )}
             </div>
           )}
 
@@ -424,7 +606,7 @@ export function MediaModal({
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting || isResolvingThumb} className="flex-1">
+            <Button type="submit" disabled={isSubmitting || isResolvingThumb || isUploadingThumb} className="flex-1">
               {isSubmitting
                 ? isEdit
                   ? "Modification…"

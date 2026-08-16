@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Edit2, Trash2, ImageIcon, Video, File, Search, Youtube, Facebook, Instagram, ExternalLink, Eye, EyeOff } from "lucide-react"
+import { Plus, Edit2, Trash2, ImageIcon, Video, File, Search, Youtube, Facebook, Instagram, ExternalLink, Eye, EyeOff, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { MediaModal, MediaFormData } from "@/components/admin/media-modal"
 import { PageSkeleton } from "@/components/admin/page-skeleton"
+import { TikTokIcon } from "@/components/icons/tiktok-icon"
 import { toast } from "sonner"
 
 interface Media {
@@ -193,11 +194,7 @@ export default function AdminMediaPage() {
       case "instagram":
         return <Instagram className="w-4 h-4 text-pink-600" />
       case "tiktok":
-        return (
-          <svg className="w-4 h-4 text-foreground" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.73a8.18 8.18 0 0 0 4.76 1.52V6.84a4.84 4.84 0 0 1-1-.15z" />
-          </svg>
-        )
+        return <TikTokIcon className="w-4 h-4 text-foreground" />
       default:
         return <ExternalLink className="w-4 h-4" />
     }
@@ -312,6 +309,7 @@ export default function AdminMediaPage() {
               {/* Miniature ou aperçu */}
               <div className="aspect-video bg-muted flex items-center justify-center relative">
                 {item.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={item.thumbnailUrl}
                     alt={item.title || item.alt || "Média"}
@@ -325,9 +323,38 @@ export default function AdminMediaPage() {
                 ) : (
                   <File className="w-16 h-16 text-muted-foreground" />
                 )}
+                {/* Bouton play + logo plateforme */}
+                {item.type === "VIDEO" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                    {item.platform === "tiktok" ? (
+                      <div className="w-14 h-14 rounded-full bg-black/80 ring-2 ring-white/90 shadow-lg flex items-center justify-center">
+                        <TikTokIcon className="w-7 h-7 text-white" />
+                      </div>
+                    ) : (
+                      <div className="relative w-14 h-14 rounded-full bg-black/75 ring-2 ring-white/90 shadow-lg flex items-center justify-center">
+                        <Play className="h-6 w-6 text-white ml-0.5" fill="currentColor" />
+                        {item.platform === "youtube" && (
+                          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-red-600 shadow">
+                            <Youtube className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                        {item.platform === "instagram" && (
+                          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-pink-600 shadow">
+                            <Instagram className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                        {item.platform === "facebook" && (
+                          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-600 shadow">
+                            <Facebook className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Badge plateforme */}
                 {item.platform && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-2 right-2 bg-background/90 rounded-md p-1.5 shadow">
                     {getPlatformIcon(item.platform)}
                   </div>
                 )}
