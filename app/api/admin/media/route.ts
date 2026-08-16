@@ -10,65 +10,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { resolveMediaMeta } from '@/lib/media-thumbnails'
+
+const emptyToNull = (val: unknown) =>
+  val === '' || val === undefined ? null : val
 
 // Schéma de validation pour créer un média
 const createMediaSchema = z.object({
   url: z.string().url('URL invalide'),
   type: z.enum(['IMAGE', 'VIDEO', 'FILE']),
-  title: z.string().max(200).optional().nullable(),
-  description: z.string().max(1000).optional().nullable(),
-  platform: z.string().max(50).optional().nullable(), // youtube, facebook, instagram, etc.
-  thumbnailUrl: z.string().url('URL de miniature invalide').optional().nullable(),
-  alt: z.string().max(200).optional().nullable(),
+  title: z.preprocess(emptyToNull, z.string().max(200).nullable().optional()),
+  description: z.preprocess(emptyToNull, z.string().max(1000).nullable().optional()),
+  platform: z.preprocess(emptyToNull, z.string().max(50).nullable().optional()),
+  thumbnailUrl: z.preprocess(emptyToNull, z.string().url('URL de miniature invalide').nullable().optional()),
+  alt: z.preprocess(emptyToNull, z.string().max(200).nullable().optional()),
   width: z.number().int().positive().optional().nullable(),
   height: z.number().int().positive().optional().nullable(),
-  folder: z.string().max(100).optional().nullable(),
-  eventId: z.string().uuid().optional().nullable(),
+  folder: z.preprocess(emptyToNull, z.string().max(100).nullable().optional()),
+  eventId: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
   order: z.number().int().min(0).default(0).optional(),
   isPublished: z.boolean().default(true).optional(),
 })
-
-// Fonction pour extraire l'ID d'une vidéo YouTube (améliorée)
-function extractYouTubeId(url: string): string | null {
-  if (!url) return null
-  
-  // Nettoyer l'URL
-  const cleanUrl = url.trim()
-  
-  // Patterns pour différents formats d'URL YouTube
-  const patterns = [
-    // https://www.youtube.com/watch?v=VIDEO_ID
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    // https://youtu.be/VIDEO_ID
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/embed/VIDEO_ID
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/v/VIDEO_ID
-    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/watch?v=VIDEO_ID&feature=...
-    /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
-    // Format court avec paramètres
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/,
-  ]
-  
-  for (const pattern of patterns) {
-    const match = cleanUrl.match(pattern)
-    if (match && match[1] && match[1].length === 11) {
-      console.log('[Media] ID YouTube extrait:', match[1], 'depuis:', cleanUrl)
-      return match[1]
-    }
-  }
-  
-  console.warn('[Media] Impossible d\'extraire l\'ID YouTube de:', cleanUrl)
-  return null
-}
-
-// Fonction pour générer une miniature YouTube
-function getYouTubeThumbnail(videoId: string): string {
-  // maxresdefault.jpg est la meilleure qualité, mais peut ne pas exister pour toutes les vidéos
-  // On peut aussi utiliser hqdefault.jpg ou mqdefault.jpg comme fallback
-  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-}
 
 // GET /api/admin/media
 // Récupère tous les médias
@@ -171,45 +133,17 @@ export async function POST(request: NextRequest) {
     // Valider les données
     const validatedData = createMediaSchema.parse(body)
 
-    // Détecter automatiquement la plateforme et générer la miniature
-    let platform = validatedData.platform
-    let thumbnailUrl = validatedData.thumbnailUrl
-
-    if (validatedData.url) {
-      const url = validatedData.url.toLowerCase()
-      
-      // Détecter YouTube
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        if (!platform) {
-          platform = 'youtube'
-        }
-        // Toujours générer la miniature YouTube si elle n'est pas fournie
-        if (!thumbnailUrl) {
-          const videoId = extractYouTubeId(validatedData.url)
-          if (videoId) {
-            thumbnailUrl = getYouTubeThumbnail(videoId)
-            console.log('[Media] Miniature YouTube générée:', thumbnailUrl)
-          } else {
-            console.warn('[Media] Impossible de générer la miniature YouTube pour:', validatedData.url)
-          }
-        }
-      } else if (url.includes('facebook.com') && !platform) {
-        platform = 'facebook'
-      } else if (url.includes('instagram.com') && !platform) {
-        platform = 'instagram'
-      } else if ((url.includes('tiktok.com') || url.includes('vm.tiktok.com')) && !platform) {
-        platform = 'tiktok'
-      } else if ((url.includes('twitter.com') || url.includes('x.com')) && !platform) {
-        platform = 'twitter'
-      } else if (url.includes('linkedin.com') && !platform) {
-        platform = 'linkedin'
-      }
-    }
+    // Détecter plateforme + générer miniature (YouTube / TikTok / Instagram…)
+    const meta = await resolveMediaMeta(validatedData.url)
+    const platform = validatedData.platform || meta.platform
+    const thumbnailUrl = validatedData.thumbnailUrl || meta.thumbnailUrl
+    const title = validatedData.title || meta.title || null
 
     // Créer le média
     const media = await prisma.media.create({
       data: {
         ...validatedData,
+        title,
         platform,
         thumbnailUrl,
       },

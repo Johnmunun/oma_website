@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { X, Youtube, Facebook, Instagram, Link as LinkIcon } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { X, Youtube, Facebook, Instagram, Link as LinkIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { detectPlatformFromUrl, getSyncThumbnail } from "@/lib/media-thumbnails"
 
 export interface MediaFormData {
   url: string
@@ -31,103 +32,120 @@ export interface MediaFormData {
 interface MediaModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit?: (data: MediaFormData) => void
+  onSubmit?: (data: MediaFormData) => Promise<void> | void
   initialData?: MediaFormData | null
+  mode?: "create" | "edit"
+}
+
+const EMPTY_FORM: MediaFormData = {
+  url: "",
+  type: "VIDEO",
+  title: null,
+  description: null,
+  platform: null,
+  thumbnailUrl: null,
+  alt: null,
+  order: 0,
+  isPublished: true,
+  eventId: null,
 }
 
 /**
- * Modal pour ajouter/modifier un média (lien YouTube, Facebook, etc.)
+ * Modal pour ajouter/modifier un média (lien YouTube, TikTok, Instagram, etc.)
  */
 export function MediaModal({
   isOpen,
   onClose,
   onSubmit,
   initialData,
+  mode = "create",
 }: MediaModalProps) {
-  const [formData, setFormData] = useState<MediaFormData>({
-    url: "",
-    type: "VIDEO",
-    title: null,
-    description: null,
-    platform: null,
-    thumbnailUrl: null,
-    alt: null,
-    order: 0,
-    isPublished: true,
-    eventId: null,
-  })
+  const [formData, setFormData] = useState<MediaFormData>(EMPTY_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [detectedPlatform, setDetectedPlatform] = useState<string | null>(null)
+  const [isResolvingThumb, setIsResolvingThumb] = useState(false)
+  const previewTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isEdit = mode === "edit" || Boolean(initialData?.url)
 
-  // Réinitialiser le formulaire quand le modal s'ouvre ou que initialData change
+  // Préremplir / reset à chaque ouverture
   useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        // Mode édition : pré-remplir avec les données existantes
-        setFormData({
-          url: initialData.url || "",
-          type: initialData.type || "VIDEO",
-          title: initialData.title || null,
-          description: initialData.description || null,
-          platform: initialData.platform || null,
-          thumbnailUrl: initialData.thumbnailUrl || null,
-          alt: initialData.alt || null,
-          order: initialData.order || 0,
-          isPublished: initialData.isPublished ?? true,
-          eventId: initialData.eventId || null,
-        })
-        setDetectedPlatform(initialData.platform || null)
-      } else {
-        // Mode création : formulaire vide
-        setFormData({
-          url: "",
-          type: "VIDEO",
-          title: null,
-          description: null,
-          platform: null,
-          thumbnailUrl: null,
-          alt: null,
-          order: 0,
-          isPublished: true,
-          eventId: null,
-        })
-        setDetectedPlatform(null)
-      }
+    if (!isOpen) return
+
+    if (initialData) {
+      const platform = initialData.platform || detectPlatformFromUrl(initialData.url || "")
+      setFormData({
+        url: initialData.url || "",
+        type: initialData.type || "VIDEO",
+        title: initialData.title || null,
+        description: initialData.description || null,
+        platform: platform || null,
+        thumbnailUrl: initialData.thumbnailUrl || getSyncThumbnail(initialData.url || "") || null,
+        alt: initialData.alt || null,
+        order: initialData.order ?? 0,
+        isPublished: initialData.isPublished ?? true,
+        eventId: initialData.eventId || null,
+      })
+      setDetectedPlatform(platform)
+    } else {
+      setFormData(EMPTY_FORM)
+      setDetectedPlatform(null)
     }
+    setIsResolvingThumb(false)
   }, [initialData, isOpen])
 
-  // Détecter automatiquement la plateforme à partir de l'URL
-  const detectPlatform = (url: string) => {
-    if (!url) {
-      setDetectedPlatform(null)
-      return
+  useEffect(() => {
+    return () => {
+      if (previewTimeout.current) clearTimeout(previewTimeout.current)
     }
+  }, [])
 
-    const urlLower = url.toLowerCase()
-    if (urlLower.includes("youtube.com") || urlLower.includes("youtu.be")) {
-      setDetectedPlatform("youtube")
-    } else if (urlLower.includes("facebook.com") || urlLower.includes("fb.watch")) {
-      setDetectedPlatform("facebook")
-    } else if (urlLower.includes("instagram.com")) {
-      setDetectedPlatform("instagram")
-    } else if (urlLower.includes("tiktok.com") || urlLower.includes("vm.tiktok.com")) {
-      setDetectedPlatform("tiktok")
-    } else if (urlLower.includes("twitter.com") || urlLower.includes("x.com")) {
-      setDetectedPlatform("twitter")
-    } else if (urlLower.includes("linkedin.com")) {
-      setDetectedPlatform("linkedin")
-    } else {
-      setDetectedPlatform(null)
+  const resolvePreview = async (url: string, keepPlatform?: string | null) => {
+    const platform = detectPlatformFromUrl(url)
+    const syncThumb = getSyncThumbnail(url)
+
+    setDetectedPlatform(platform)
+    setFormData((prev) => ({
+      ...prev,
+      url,
+      platform: keepPlatform || platform || prev.platform,
+      thumbnailUrl: syncThumb || prev.thumbnailUrl,
+      type: platform === "youtube" || platform === "tiktok" || platform === "instagram" || platform === "facebook"
+        ? "VIDEO"
+        : prev.type,
+    }))
+
+    // Enrichissement réseau (TikTok oEmbed, Microlink, etc.)
+    if (!url || url.length < 12) return
+    setIsResolvingThumb(true)
+    try {
+      const res = await fetch(`/api/admin/media/preview?url=${encodeURIComponent(url)}`, {
+        cache: "no-store",
+        credentials: "include",
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.success && data.data) {
+        setDetectedPlatform(data.data.platform || platform)
+        setFormData((prev) => ({
+          ...prev,
+          platform: keepPlatform || data.data.platform || prev.platform,
+          thumbnailUrl: data.data.thumbnailUrl || prev.thumbnailUrl || syncThumb,
+          title: prev.title || data.data.title || null,
+        }))
+      }
+    } catch (err) {
+      console.warn("[MediaModal] Preview échoué:", err)
+    } finally {
+      setIsResolvingThumb(false)
     }
   }
 
   const handleUrlChange = (url: string) => {
-    setFormData({ ...formData, url })
-    detectPlatform(url)
-    // Si la plateforme n'est pas encore définie, utiliser la détection
-    if (!formData.platform) {
-      setFormData({ ...formData, url, platform: detectedPlatform })
-    }
+    setFormData((prev) => ({ ...prev, url }))
+    if (previewTimeout.current) clearTimeout(previewTimeout.current)
+    previewTimeout.current = setTimeout(() => {
+      void resolvePreview(url)
+    }, 450)
   }
 
   const getPlatformIcon = (platform: string | null) => {
@@ -151,35 +169,25 @@ export function MediaModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.url?.trim()) {
+      toast.error("L'URL est obligatoire")
+      return
+    }
+
     setIsSubmitting(true)
-
-    toast.info("Processus en cours...", {
-      duration: 2000,
-    })
-
     try {
-      // S'assurer que "none" est converti en null
-      const dataToSubmit = {
+      const dataToSubmit: MediaFormData = {
         ...formData,
-        platform: formData.platform === "none" ? null : formData.platform,
+        url: formData.url.trim(),
+        platform: formData.platform === "none" ? null : formData.platform || detectedPlatform,
+        thumbnailUrl: formData.thumbnailUrl || getSyncThumbnail(formData.url) || null,
+        title: formData.title || null,
+        description: formData.description || null,
       }
       await onSubmit?.(dataToSubmit)
-      setFormData({
-        url: "",
-        type: "VIDEO",
-        title: null,
-        description: null,
-        platform: null,
-        thumbnailUrl: null,
-        alt: null,
-        order: 0,
-        isPublished: true,
-        eventId: null,
-      })
-      setDetectedPlatform(null)
       onClose()
-    } catch (error) {
-      // L'erreur sera gérée par la page admin
+    } catch {
+      // Erreur déjà toastée par la page parent
     } finally {
       setIsSubmitting(false)
     }
@@ -189,36 +197,28 @@ export function MediaModal({
 
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/50 z-40 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Modal coulissante depuis la droite */}
-      <div
-        className={`fixed right-0 top-0 h-screen w-full sm:w-96 bg-background border-l border-border shadow-xl z-50 overflow-y-auto transition-transform duration-300 transform ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* En-tête modal */}
-        <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between">
+      <div className="fixed right-0 top-0 h-screen w-full sm:w-[28rem] bg-background border-l border-border shadow-xl z-50 overflow-y-auto">
+        <div className="sticky top-0 bg-background border-b border-border p-6 flex items-center justify-between z-10">
           <h2 className="text-xl font-bold">
-            {initialData ? "Modifier le média" : "Nouveau média"}
+            {isEdit ? "Modifier le média" : "Nouveau média"}
           </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-muted rounded transition-colors"
             aria-label="Fermer"
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Formulaire */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* URL du média */}
           <div>
             <Label htmlFor="url">URL du média *</Label>
             <Input
@@ -227,28 +227,56 @@ export function MediaModal({
               type="url"
               value={formData.url}
               onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="https://www.youtube.com/watch?v=... ou TikTok / Instagram"
               required
               className="w-full mt-2"
             />
-            {detectedPlatform && (
+            {(detectedPlatform || isResolvingThumb) && (
               <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                {getPlatformIcon(detectedPlatform)}
-                <span>Plateforme détectée : {detectedPlatform}</span>
+                {isResolvingThumb ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  getPlatformIcon(detectedPlatform)
+                )}
+                <span>
+                  {isResolvingThumb
+                    ? "Génération de la miniature…"
+                    : `Plateforme détectée : ${detectedPlatform}`}
+                </span>
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Lien YouTube, Facebook, Instagram, etc.
+              Miniature auto pour YouTube, TikTok et Instagram
             </p>
           </div>
 
-          {/* Type de média */}
+          {/* Aperçu miniature */}
+          {(formData.thumbnailUrl || isResolvingThumb) && (
+            <div className="rounded-xl overflow-hidden border border-border bg-muted aspect-video relative">
+              {formData.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={formData.thumbnailUrl}
+                  alt="Aperçu miniature"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <Label htmlFor="type">Type de média *</Label>
             <Select
               value={formData.type}
               onValueChange={(value: "IMAGE" | "VIDEO" | "FILE") =>
-                setFormData({ ...formData, type: value })
+                setFormData((prev) => ({ ...prev, type: value }))
               }
             >
               <SelectTrigger className="w-full mt-2">
@@ -262,13 +290,15 @@ export function MediaModal({
             </Select>
           </div>
 
-          {/* Plateforme */}
           <div>
             <Label htmlFor="platform">Plateforme</Label>
             <Select
               value={formData.platform || detectedPlatform || "none"}
               onValueChange={(value) =>
-                setFormData({ ...formData, platform: value === "none" ? null : value })
+                setFormData((prev) => ({
+                  ...prev,
+                  platform: value === "none" ? null : value,
+                }))
               }
             >
               <SelectTrigger className="w-full mt-2">
@@ -286,7 +316,6 @@ export function MediaModal({
             </Select>
           </div>
 
-          {/* Titre */}
           <div>
             <Label htmlFor="title">Titre (max 200 caractères)</Label>
             <Input
@@ -295,9 +324,8 @@ export function MediaModal({
               value={formData.title || ""}
               onChange={(e) => {
                 const value = e.target.value
-                // Limiter à 200 caractères
                 if (value.length <= 200) {
-                  setFormData({ ...formData, title: value || null })
+                  setFormData((prev) => ({ ...prev, title: value || null }))
                 }
               }}
               placeholder="Ex: Émission OMA TV - Épisode 1"
@@ -305,11 +333,10 @@ export function MediaModal({
               maxLength={200}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              {(formData.title?.length || 0)} / 200 caractères
+              {formData.title?.length || 0} / 200 caractères
             </p>
           </div>
 
-          {/* Description */}
           <div>
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -317,7 +344,10 @@ export function MediaModal({
               name="description"
               value={formData.description || ""}
               onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value || null })
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value || null,
+                }))
               }
               placeholder="Description du média..."
               rows={3}
@@ -325,51 +355,57 @@ export function MediaModal({
             />
           </div>
 
-          {/* Miniature (pour vidéos) */}
           {formData.type === "VIDEO" && (
             <div>
-              <Label htmlFor="thumbnailUrl">URL de la miniature (optionnel)</Label>
+              <Label htmlFor="thumbnailUrl">URL de la miniature</Label>
               <Input
                 id="thumbnailUrl"
                 name="thumbnailUrl"
                 type="url"
                 value={formData.thumbnailUrl || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, thumbnailUrl: e.target.value || null })
+                  setFormData((prev) => ({
+                    ...prev,
+                    thumbnailUrl: e.target.value || null,
+                  }))
                 }
-                placeholder="https://..."
+                placeholder="Générée automatiquement…"
                 className="w-full mt-2"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Générée automatiquement pour YouTube
+                Remplie auto pour YouTube / TikTok / Instagram (modifiable)
               </p>
             </div>
           )}
 
-          {/* Ordre */}
           <div>
-            <Label htmlFor="order">Ordre d'affichage</Label>
+            <Label htmlFor="order">Ordre d&apos;affichage</Label>
             <Input
               id="order"
               name="order"
               type="number"
               min="0"
-              value={formData.order || 0}
+              value={formData.order ?? 0}
               onChange={(e) =>
-                setFormData({ ...formData, order: parseInt(e.target.value) || 0 })
+                setFormData((prev) => ({
+                  ...prev,
+                  order: parseInt(e.target.value) || 0,
+                }))
               }
               className="w-full mt-2"
             />
           </div>
 
-          {/* Publié */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="isPublished"
               checked={formData.isPublished ?? true}
               onChange={(e) =>
-                setFormData({ ...formData, isPublished: e.target.checked })
+                setFormData((prev) => ({
+                  ...prev,
+                  isPublished: e.target.checked,
+                }))
               }
               className="w-4 h-4"
             />
@@ -378,7 +414,6 @@ export function MediaModal({
             </Label>
           </div>
 
-          {/* Boutons d'action */}
           <div className="flex gap-3 pt-6 border-t border-border">
             <Button
               type="button"
@@ -388,13 +423,13 @@ export function MediaModal({
             >
               Annuler
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
+            <Button type="submit" disabled={isSubmitting || isResolvingThumb} className="flex-1">
               {isSubmitting
-                ? initialData
-                  ? "Modification en cours..."
-                  : "Création en cours..."
-                : initialData
-                  ? "Modifier"
+                ? isEdit
+                  ? "Modification…"
+                  : "Création…"
+                : isEdit
+                  ? "Enregistrer"
                   : "Créer"}
             </Button>
           </div>
@@ -403,4 +438,3 @@ export function MediaModal({
     </>
   )
 }
-

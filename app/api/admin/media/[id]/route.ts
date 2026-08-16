@@ -11,65 +11,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { resolveMediaMeta } from '@/lib/media-thumbnails'
+
+const emptyToNull = (val: unknown) =>
+  val === '' || val === undefined ? null : val
 
 // Schéma de validation pour la mise à jour
 const updateMediaSchema = z.object({
   url: z.string().url('URL invalide').optional(),
   type: z.enum(['IMAGE', 'VIDEO', 'FILE']).optional(),
-  title: z.string().max(200).optional().nullable(),
-  description: z.string().max(1000).optional().nullable(),
-  platform: z.string().max(50).optional().nullable(),
-  thumbnailUrl: z.string().url('URL de miniature invalide').optional().nullable(),
-  alt: z.string().max(200).optional().nullable(),
+  title: z.preprocess(emptyToNull, z.string().max(200).nullable().optional()),
+  description: z.preprocess(emptyToNull, z.string().max(1000).nullable().optional()),
+  platform: z.preprocess(emptyToNull, z.string().max(50).nullable().optional()),
+  thumbnailUrl: z.preprocess(emptyToNull, z.string().url('URL de miniature invalide').nullable().optional()),
+  alt: z.preprocess(emptyToNull, z.string().max(200).nullable().optional()),
   width: z.number().int().positive().optional().nullable(),
   height: z.number().int().positive().optional().nullable(),
-  folder: z.string().max(100).optional().nullable(),
-  eventId: z.string().uuid().optional().nullable(),
+  folder: z.preprocess(emptyToNull, z.string().max(100).nullable().optional()),
+  eventId: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
   order: z.number().int().min(0).optional(),
   isPublished: z.boolean().optional(),
 })
-
-// Fonction pour extraire l'ID d'une vidéo YouTube (améliorée)
-function extractYouTubeId(url: string): string | null {
-  if (!url) return null
-  
-  // Nettoyer l'URL
-  const cleanUrl = url.trim()
-  
-  // Patterns pour différents formats d'URL YouTube
-  const patterns = [
-    // https://www.youtube.com/watch?v=VIDEO_ID
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    // https://youtu.be/VIDEO_ID
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/embed/VIDEO_ID
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/v/VIDEO_ID
-    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-    // https://www.youtube.com/watch?v=VIDEO_ID&feature=...
-    /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
-    // Format court avec paramètres
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/,
-  ]
-  
-  for (const pattern of patterns) {
-    const match = cleanUrl.match(pattern)
-    if (match && match[1] && match[1].length === 11) {
-      console.log('[Media] ID YouTube extrait:', match[1], 'depuis:', cleanUrl)
-      return match[1]
-    }
-  }
-  
-  console.warn('[Media] Impossible d\'extraire l\'ID YouTube de:', cleanUrl)
-  return null
-}
-
-// Fonction pour générer une miniature YouTube
-function getYouTubeThumbnail(videoId: string): string {
-  // maxresdefault.jpg est la meilleure qualité, mais peut ne pas exister pour toutes les vidéos
-  // On peut aussi utiliser hqdefault.jpg ou mqdefault.jpg comme fallback
-  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-}
 
 // GET /api/admin/media/[id]
 // Récupère un média spécifique
@@ -169,40 +131,20 @@ export async function PUT(
       )
     }
 
-    // Détecter automatiquement la plateforme et générer la miniature si l'URL change
-    let platform = validatedData.platform || existingMedia.platform
-    let thumbnailUrl = validatedData.thumbnailUrl || existingMedia.thumbnailUrl
+    // Détecter plateforme + miniature si URL fournie / manquante
+    let platform = validatedData.platform ?? existingMedia.platform
+    let thumbnailUrl = validatedData.thumbnailUrl ?? existingMedia.thumbnailUrl
+    let title = validatedData.title !== undefined ? validatedData.title : existingMedia.title
 
-    if (validatedData.url) {
-      const url = validatedData.url.toLowerCase()
-      
-      // Si l'URL a changé ou si c'est YouTube, régénérer la miniature
-      const urlChanged = validatedData.url !== existingMedia.url
-      
-      // Détecter YouTube
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        if (!platform) {
-          platform = 'youtube'
-        }
-        // Régénérer la miniature si l'URL a changé ou si elle n'existe pas
-        if (urlChanged || !thumbnailUrl) {
-          const videoId = extractYouTubeId(validatedData.url)
-          if (videoId) {
-            thumbnailUrl = getYouTubeThumbnail(videoId)
-            console.log('[Media] Miniature YouTube régénérée:', thumbnailUrl)
-          }
-        }
-      } else if (url.includes('facebook.com') && !platform) {
-        platform = 'facebook'
-      } else if (url.includes('instagram.com') && !platform) {
-        platform = 'instagram'
-      } else if ((url.includes('tiktok.com') || url.includes('vm.tiktok.com')) && !platform) {
-        platform = 'tiktok'
-      } else if ((url.includes('twitter.com') || url.includes('x.com')) && !platform) {
-        platform = 'twitter'
-      } else if (url.includes('linkedin.com') && !platform) {
-        platform = 'linkedin'
-      }
+    const urlToResolve = validatedData.url || existingMedia.url
+    const urlChanged = Boolean(validatedData.url && validatedData.url !== existingMedia.url)
+    const needsThumb = urlChanged || !thumbnailUrl
+
+    if (urlToResolve && (needsThumb || !platform)) {
+      const meta = await resolveMediaMeta(urlToResolve)
+      if (!platform) platform = meta.platform
+      if (needsThumb && meta.thumbnailUrl) thumbnailUrl = meta.thumbnailUrl
+      if ((!title || title === '') && meta.title) title = meta.title
     }
 
     // Mettre à jour le média
@@ -210,6 +152,7 @@ export async function PUT(
       where: { id: params.id },
       data: {
         ...validatedData,
+        ...(title !== undefined && { title }),
         ...(platform && { platform }),
         ...(thumbnailUrl && { thumbnailUrl }),
       },

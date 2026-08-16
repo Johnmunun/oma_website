@@ -96,12 +96,14 @@ export default function AdminMediaPage() {
 
       if (data.success) {
         toast.success("Média créé avec succès")
-        loadMedia()
         setIsModalOpen(false)
+        setEditingMedia(null)
+        await loadMedia()
       }
     } catch (error: any) {
       console.error("[Admin] Erreur création média:", error)
       toast.error(error.message || "Erreur lors de la création du média")
+      throw error
     }
   }
 
@@ -121,13 +123,14 @@ export default function AdminMediaPage() {
 
       if (data.success) {
         toast.success("Média mis à jour avec succès")
-        loadMedia()
         setIsModalOpen(false)
         setEditingMedia(null)
+        await loadMedia()
       }
     } catch (error: any) {
       console.error("[Admin] Erreur mise à jour média:", error)
       toast.error(error.message || "Erreur lors de la mise à jour")
+      throw error
     }
   }
 
@@ -290,7 +293,13 @@ export default function AdminMediaPage() {
               : "Commencez par ajouter un nouveau média (lien YouTube, Facebook, etc.)"}
           </p>
           {!searchQuery && typeFilter === "all" && platformFilter === "all" && (
-            <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+            <Button
+              onClick={() => {
+                setEditingMedia(null)
+                setIsModalOpen(true)
+              }}
+              className="gap-2"
+            >
               <Plus className="w-4 h-4" />
               Ajouter un média
             </Button>
@@ -418,33 +427,38 @@ export default function AdminMediaPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal — key force le remount create vs edit */}
       <MediaModal
+        key={editingMedia?.id || "create"}
         isOpen={isModalOpen}
+        mode={editingMedia ? "edit" : "create"}
         onClose={() => {
           setIsModalOpen(false)
           setEditingMedia(null)
         }}
         onSubmit={
           editingMedia
-            ? (data) => {
-                // S'assurer que l'ID est bien passé lors de la modification
-                handleUpdate(editingMedia.id, data)
+            ? async (data) => {
+                await handleUpdate(editingMedia.id, data)
               }
             : handleCreate
         }
-        initialData={editingMedia ? {
-          url: editingMedia.url,
-          type: editingMedia.type,
-          title: editingMedia.title,
-          description: editingMedia.description,
-          platform: editingMedia.platform,
-          thumbnailUrl: editingMedia.thumbnailUrl,
-          alt: editingMedia.alt,
-          order: editingMedia.order,
-          isPublished: editingMedia.isPublished,
-          eventId: editingMedia.eventId,
-        } : null}
+        initialData={
+          editingMedia
+            ? {
+                url: editingMedia.url,
+                type: editingMedia.type,
+                title: editingMedia.title,
+                description: editingMedia.description,
+                platform: editingMedia.platform,
+                thumbnailUrl: editingMedia.thumbnailUrl,
+                alt: editingMedia.alt,
+                order: editingMedia.order,
+                isPublished: editingMedia.isPublished,
+                eventId: editingMedia.eventId,
+              }
+            : null
+        }
       />
     </div>
   )
