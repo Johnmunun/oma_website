@@ -7,7 +7,7 @@ import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Lock, Mail, ArrowLeft, AlertCircle, ShieldAlert } from 'lucide-react'
+import { Lock, Mail, ArrowLeft, AlertCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react'
 import { useDynamicLogo } from '@/components/theming/dynamic-logo'
 
 export default function LoginPage() {
@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   // S'assurer que le composant est monté côté client avant d'afficher le logo dynamique
   useEffect(() => {
@@ -87,7 +88,7 @@ export default function LoginPage() {
         toast.success('Connexion réussie')
         // Petit délai pour s'assurer que la session est bien créée
         setTimeout(() => {
-      router.push(redirect)
+          router.push(redirect)
           router.refresh()
         }, 100)
       } else {
@@ -117,141 +118,153 @@ export default function LoginPage() {
   }, [errorParam, params])
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
+    <main className="min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden bg-primary">
+      {/* Atmosphere de fond — style OMA */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(249,115,22,0.08),transparent_45%)]" />
+        <div className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:48px_48px]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+      </div>
 
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+      <div className="w-full max-w-[420px] relative z-10">
+        {/* Retour accueil */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-primary-foreground/60 hover:text-gold transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Retour à l&apos;accueil
+        </Link>
 
-      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-slate-400/20 rounded-full blur-3xl animate-pulse delay-700" />
+        <div className="rounded-2xl border border-gold/20 bg-card/95 backdrop-blur-xl shadow-[0_0_80px_-20px_rgba(249,115,22,0.35)] overflow-hidden">
+          {/* En-tête marque */}
+          <div className="relative px-8 pt-8 pb-6 text-center border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent">
+            <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
-      <div className="w-full max-w-md relative">
-        <div className="bg-background/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl shadow-slate-500/10 overflow-hidden">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 p-8 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-20 translate-x-20" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-16 -translate-x-16" />
-
-            <div className="relative">
-              <div className="inline-flex items-center justify-center w-18 h-18 rounded-2xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 backdrop-blur-sm border border-white/30 shadow-xl mb-4 group/logo transition-all duration-300 group-hover/logo:shadow-2xl group-hover/logo:shadow-gold/20 group-hover/logo:scale-105">
-                {/* Toujours rendre la même structure pour éviter l'erreur d'hydratation */}
-                <div className="relative inline-flex items-center justify-center w-full h-full">
-                  {/* Fond élégant avec gradient */}
-                  <div className="absolute w-16 h-16 bg-gradient-to-br from-white via-white to-gray-50 rounded-xl shadow-lg z-0" />
-                  {/* Effet de glow doré au hover */}
-                  <div className="absolute w-16 h-16 bg-gradient-to-br from-gold/20 via-gold/10 to-transparent rounded-xl z-[1] opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300 blur-sm" />
-                  {/* Logo par-dessus - seulement après le montage côté client */}
-                  {mounted && logoUrl ? (
-                    <div className="relative z-10 p-1.5 transition-transform duration-300 group-hover/logo:scale-105">
-                      <img 
-                        src={logoUrl} 
-                        alt="Réseau OMA" 
-                        className="h-14 w-auto object-contain drop-shadow-sm"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center font-bold text-lg shadow-lg relative z-10">
-                      OMA
-                    </div>
-                  )}
-                </div>
+            <div className="inline-flex items-center justify-center mb-5">
+              <div className="relative flex items-center justify-center w-[4.5rem] h-[4.5rem] rounded-2xl bg-primary border border-gold/30 shadow-lg ring-4 ring-gold/10">
+                {mounted && logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Réseau OMA"
+                    className="h-12 w-auto object-contain p-1.5"
+                  />
+                ) : (
+                  <span className="font-serif font-bold text-lg text-gold tracking-wide">OMA</span>
+                )}
               </div>
-              <h1 className="text-2xl font-bold mb-2">Connexion administrateur</h1>
-              <p className="text-blue-100/80 text-sm mb-1">Accédez au panneau de contrôle</p>
-              <p className="text-gold font-semibold text-sm italic">We are the best</p>
             </div>
+
+            <p className="font-serif text-gold tracking-[0.3em] uppercase text-xs mb-2">
+              Réseau OMA
+            </p>
+            <h1 className="font-serif text-2xl md:text-[1.65rem] font-bold text-foreground mb-1.5">
+              Espace administrateur
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Connectez-vous pour gérer le contenu
+            </p>
           </div>
 
           <div className="p-8">
-        {errorParam === 'forbidden' && (
-              <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            {errorParam === 'forbidden' && (
+              <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
                 <div className="flex gap-3">
-                  <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <ShieldAlert className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-destructive">Accès refusé</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Votre compte n'est pas autorisé. Contactez un administrateur ou utilisez une adresse autorisée.
+                      Votre compte n&apos;est pas autorisé. Contactez un administrateur ou utilisez une adresse autorisée.
                     </p>
                   </div>
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            )}
 
             <form onSubmit={onSubmit} className="space-y-5" noValidate>
-          <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-foreground">
+                  Email
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 bg-background/50 border-border/60 focus:border-primary transition-colors"
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 h-12 bg-background border-border/70 focus-visible:border-gold focus-visible:ring-gold/30 rounded-xl transition-colors"
                     placeholder="admin@exemple.com"
-                    aria-invalid={error ? "true" : "false"}
-                    aria-describedby={error ? "login-error" : undefined}
-            />
-          </div>
+                    aria-invalid={error ? 'true' : 'false'}
+                    aria-describedby={error ? 'login-error' : undefined}
+                  />
+                </div>
               </div>
 
-          <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-foreground">Mot de passe</label>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Mot de passe
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 h-11 bg-background/50 border-border/60 focus:border-primary transition-colors"
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-11 h-12 bg-background border-border/70 focus-visible:border-gold focus-visible:ring-gold/30 rounded-xl transition-colors"
                     placeholder="••••••••"
-                    aria-invalid={error ? "true" : "false"}
-                    aria-describedby={error ? "login-error" : undefined}
-            />
-          </div>
+                    aria-invalid={error ? 'true' : 'false'}
+                    aria-describedby={error ? 'login-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md"
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {error && (
-                <div 
+                <div
                   id="login-error"
                   role="alert"
-                  className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
+                  className="flex items-start gap-2 p-3.5 bg-destructive/10 border border-destructive/20 rounded-xl"
                   aria-live="polite"
                 >
-                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
                   <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 dark:from-slate-800 dark:to-slate-900 dark:hover:from-slate-700 dark:hover:to-slate-800 shadow-lg transition-all duration-200"
+                className="w-full h-12 rounded-xl bg-gold hover:bg-gold-dark text-primary font-semibold shadow-[0_0_32px_-8px_rgba(249,115,22,0.55)] transition-all duration-200"
                 disabled={loading}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     Connexion…
                   </span>
                 ) : (
-                  "Se connecter"
+                  'Se connecter'
                 )}
-          </Button>
-        </form>
+              </Button>
+            </form>
 
-            <div className="mt-6 pt-6 border-t border-border/50">
-              <p className="text-xs text-center text-muted-foreground mb-4">
-          Seuls les comptes autorisés peuvent accéder au panneau d'administration.
-              </p>
-              <Link href="/" className="block">
-                <Button variant="ghost" size="sm" className="w-full hover:bg-muted/50">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Retour à l'accueil
-            </Button>
-          </Link>
-            </div>
+            <p className="mt-6 text-xs text-center text-muted-foreground leading-relaxed">
+              Accès réservé aux comptes administrateurs autorisés.
+            </p>
           </div>
         </div>
       </div>
