@@ -3,6 +3,89 @@
  * @description Utilitaires pour l'analyse des données de visiteurs
  */
 
+type GeoResult = { country: string | null; city: string | null }
+
+const geoCache = new Map<string, GeoResult>()
+const GEO_CACHE_MAX = 800
+
+function isPrivateIP(ip: string): boolean {
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "localhost" ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.") ||
+    ip.startsWith("127.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)
+  )
+}
+
+function cacheGeo(ip: string, result: GeoResult): GeoResult {
+  if (geoCache.size >= GEO_CACHE_MAX) {
+    const first = geoCache.keys().next().value
+    if (first) geoCache.delete(first)
+  }
+  geoCache.set(ip, result)
+  return result
+}
+
+/**
+ * Géolocalise le visiteur via headers Vercel/Cloudflare, sinon lookup IP public.
+ */
+export async function resolveVisitorGeo(
+  request: { headers: Headers | { get: (key: string) => string | null } },
+  ip: string | null
+): Promise<GeoResult> {
+  try {
+    const headers = request.headers
+    const vercelCountry = headers.get("x-vercel-ip-country")
+    const vercelCity = headers.get("x-vercel-ip-city")
+    const cfCountry = headers.get("cf-ipcountry")
+
+    if (vercelCountry && vercelCountry !== "XX" && vercelCountry !== "T1") {
+      let city: string | null = null
+      if (vercelCity) {
+        try {
+          city = decodeURIComponent(vercelCity)
+        } catch {
+          city = vercelCity
+        }
+      }
+      return { country: vercelCountry.toUpperCase(), city }
+    }
+
+    if (cfCountry && cfCountry !== "XX" && cfCountry !== "T1") {
+      return { country: cfCountry.toUpperCase(), city: null }
+    }
+
+    if (!ip || isPrivateIP(ip)) return { country: null, city: null }
+
+    const cached = geoCache.get(ip)
+    if (cached) return cached
+
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(2500),
+    })
+    if (!res.ok) return cacheGeo(ip, { country: null, city: null })
+
+    const data = await res.json()
+    if (!data?.success) return cacheGeo(ip, { country: null, city: null })
+
+    const country =
+      typeof data.country_code === "string" && data.country_code.length === 2
+        ? data.country_code.toUpperCase()
+        : null
+    const city = typeof data.city === "string" && data.city.trim() ? data.city.trim() : null
+
+    return cacheGeo(ip, { country, city })
+  } catch (err) {
+    console.warn("[Analytics] Géolocalisation échouée:", err)
+    return { country: null, city: null }
+  }
+}
+
 /**
  * Détecte le type d'appareil à partir du User-Agent
  */

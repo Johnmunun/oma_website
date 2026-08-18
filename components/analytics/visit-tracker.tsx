@@ -82,17 +82,22 @@ export function VisitTracker() {
       
       // Envoyer la durée de visite (navigator.sendBeacon pour fiabilité)
       if (navigator.sendBeacon) {
-        const data = JSON.stringify({
-          url: window.location.href,
-          path: pathname || '/',
-          referer: document.referrer || null,
-          screenWidth: window.screen.width,
-          screenHeight: window.screen.height,
-          language: navigator.language || null,
-          sessionId: sessionIdRef.current,
-          duration,
-        })
-        
+        const data = new Blob(
+          [
+            JSON.stringify({
+              url: window.location.href,
+              path: pathname || '/',
+              referer: document.referrer || null,
+              screenWidth: window.screen.width,
+              screenHeight: window.screen.height,
+              language: navigator.language || null,
+              sessionId: sessionIdRef.current,
+              duration,
+            }),
+          ],
+          { type: 'application/json' }
+        )
+
         navigator.sendBeacon('/api/analytics/track', data)
       }
     }

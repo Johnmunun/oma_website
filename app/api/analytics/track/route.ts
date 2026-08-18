@@ -8,45 +8,69 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { detectDevice, detectBrowser, detectOS, getClientIP } from '@/lib/analytics'
+import { detectDevice, detectBrowser, detectOS, getClientIP, resolveVisitorGeo } from '@/lib/analytics'
 
-// Schéma de validation pour les données de visite
+const emptyToNull = (v: unknown) =>
+  v === '' || v === 'null' || v === undefined ? null : v
+
 const trackVisitSchema = z.object({
   url: z.string().url(),
-  path: z.string(),
-  referer: z.string().url().optional().nullable(),
+  path: z.string().min(1),
+  referer: z.preprocess(emptyToNull, z.string().url().nullable().optional()),
   screenWidth: z.number().int().positive().optional().nullable(),
   screenHeight: z.number().int().positive().optional().nullable(),
-  language: z.string().optional().nullable(),
-  sessionId: z.string().optional().nullable(),
+  language: z.preprocess(emptyToNull, z.string().nullable().optional()),
+  sessionId: z.preprocess(emptyToNull, z.string().nullable().optional()),
   duration: z.number().int().min(0).optional().nullable(),
 })
 
+async function parseTrackBody(request: NextRequest) {
+  const contentType = request.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    return request.json()
+  }
+  const text = await request.text()
+  return text ? JSON.parse(text) : {}
+}
+
 // POST /api/analytics/track
-// Enregistre une visite
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    
-    // Valider les données
+    const body = await parseTrackBody(request)
     const validatedData = trackVisitSchema.parse(body)
-    
-    // Récupérer les informations de la requête
+
     const userAgent = request.headers.get('user-agent')
     const referer = validatedData.referer || request.headers.get('referer') || null
     const ip = getClientIP(request)
-    
-    // Détecter les informations du navigateur
+
+    // Mise à jour de durée : ne pas créer une seconde visite
+    if (validatedData.duration && validatedData.sessionId) {
+      try {
+        const lastVisit = await prisma.visit.findFirst({
+          where: {
+            sessionId: validatedData.sessionId,
+            path: validatedData.path,
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, createdAt: true },
+        })
+        if (lastVisit && Date.now() - lastVisit.createdAt.getTime() < 45 * 60 * 1000) {
+          await prisma.visit.update({
+            where: { id: lastVisit.id },
+            data: { duration: validatedData.duration },
+          })
+          return NextResponse.json({ success: true, data: { id: lastVisit.id, updated: true } })
+        }
+      } catch (err) {
+        console.warn('[API] Mise à jour durée visite échouée:', err)
+      }
+    }
+
     const device = detectDevice(userAgent)
     const browser = detectBrowser(userAgent)
     const os = detectOS(userAgent)
-    
-    // Pour la géolocalisation, on pourrait utiliser un service externe
-    // Pour l'instant, on laisse null (peut être ajouté plus tard avec un service comme ipapi.co)
-    const country = null
-    const city = null
-    
-    // Créer la visite dans la base de données
+    const geo = await resolveVisitorGeo(request, ip)
+
     const visit = await prisma.visit.create({
       data: {
         ip,
@@ -55,8 +79,8 @@ export async function POST(request: NextRequest) {
         url: validatedData.url,
         path: validatedData.path,
         method: 'GET',
-        country,
-        city,
+        country: geo.country,
+        city: geo.city,
         device,
         browser,
         os,
@@ -65,10 +89,10 @@ export async function POST(request: NextRequest) {
         language: validatedData.language || null,
         sessionId: validatedData.sessionId || null,
         duration: validatedData.duration || null,
-        userId: null, // Sera rempli si l'utilisateur est connecté
+        userId: null,
       },
     })
-    
+
     return NextResponse.json({
       success: true,
       data: { id: visit.id },
@@ -80,19 +104,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     console.error('[API] Erreur track visit:', error)
     return NextResponse.json(
-      { success: false, error: 'Erreur lors de l\'enregistrement de la visite' },
+      { success: false, error: "Erreur lors de l'enregistrement de la visite" },
       { status: 500 }
     )
   }
 }
-
-
-
-
-
-
-
-

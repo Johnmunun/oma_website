@@ -6,14 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/admin/analytics
-// Récupère les statistiques d'analytics
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json(
@@ -22,7 +21,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Vérifier les permissions
     if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
       return NextResponse.json(
         { success: false, error: 'Accès refusé' },
@@ -30,13 +28,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Récupérer les paramètres de requête
     const { searchParams } = new URL(request.url)
-    const period = searchParams.get('period') || '7d' // 7d, 30d, 90d, all
+    const period = searchParams.get('period') || '7d'
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    // Calculer les dates selon la période
     let dateFrom: Date
     const dateTo = endDate ? new Date(endDate) : new Date()
 
@@ -44,6 +40,10 @@ export async function GET(request: NextRequest) {
       dateFrom = new Date(startDate)
     } else {
       switch (period) {
+        case '24h':
+          dateFrom = new Date()
+          dateFrom.setHours(dateFrom.getHours() - 24)
+          break
         case '7d':
           dateFrom = new Date()
           dateFrom.setDate(dateFrom.getDate() - 7)
@@ -58,12 +58,11 @@ export async function GET(request: NextRequest) {
           break
         case 'all':
         default:
-          dateFrom = new Date(0) // Toutes les dates
+          dateFrom = new Date(0)
           break
       }
     }
 
-    // Construire le filtre de date
     const dateFilter = period !== 'all' ? {
       createdAt: {
         gte: dateFrom,
@@ -71,163 +70,180 @@ export async function GET(request: NextRequest) {
       },
     } : {}
 
-    // Statistiques générales
+    const dateWhere =
+      period === 'all'
+        ? Prisma.sql`TRUE`
+        : Prisma.sql`"createdAt" >= ${dateFrom} AND "createdAt" <= ${dateTo}`
+
+    const chartFrom =
+      period === 'all'
+        ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+        : dateFrom
+
     const [
       totalVisits,
-      uniqueVisitors,
-      totalPageViews,
+      uniqueRow,
+      extraRow,
+      avgDuration,
       visitsByDay,
       visitsByPath,
       visitsByCountry,
+      visitsByCity,
       visitsByDevice,
       visitsByBrowser,
       visitsByOS,
+      visitsByLanguage,
       topReferrers,
     ] = await Promise.all([
-      // Total des visites
-      prisma.visit.count({
-        where: dateFilter,
-      }),
+      prisma.visit.count({ where: dateFilter }),
 
-      // Visiteurs uniques (basé sur IP)
-      prisma.visit.groupBy({
-        by: ['ip'],
+      prisma.$queryRaw<Array<{ count: number }>>`
+        SELECT COUNT(DISTINCT COALESCE("sessionId", "ip"))::int as count
+        FROM "Visit"
+        WHERE ${dateWhere}
+      `,
+
+      prisma.$queryRaw<Array<{
+        uniqueCountries: number
+        uniqueCities: number
+        bounceSessions: number
+        totalSessions: number
+        pagesPerSession: number
+      }>>`
+        WITH filtered AS (
+          SELECT "country", "city", COALESCE("sessionId", "ip") as sid
+          FROM "Visit"
+          WHERE ${dateWhere}
+        )
+        SELECT
+          COUNT(DISTINCT "country") FILTER (WHERE "country" IS NOT NULL)::int as "uniqueCountries",
+          COUNT(DISTINCT "city") FILTER (WHERE "city" IS NOT NULL)::int as "uniqueCities",
+          (
+            SELECT COUNT(*)::int FROM (
+              SELECT sid FROM filtered WHERE sid IS NOT NULL GROUP BY sid HAVING COUNT(*) = 1
+            ) b
+          ) as "bounceSessions",
+          (
+            SELECT COUNT(*)::int FROM (
+              SELECT sid FROM filtered WHERE sid IS NOT NULL GROUP BY sid
+            ) s
+          ) as "totalSessions",
+          COALESCE((
+            SELECT AVG(c)::float FROM (
+              SELECT COUNT(*)::int as c FROM filtered WHERE sid IS NOT NULL GROUP BY sid
+            ) p
+          ), 0) as "pagesPerSession"
+        FROM filtered
+      `,
+
+      prisma.visit.aggregate({
         where: {
           ...dateFilter,
-          ip: { not: null },
+          duration: { gt: 0 },
         },
-        _count: true,
+        _avg: { duration: true },
       }),
 
-      // Total des pages vues (même chose que totalVisits pour l'instant)
-      prisma.visit.count({
-        where: dateFilter,
-      }),
-
-      // Visites par jour (PostgreSQL compatible)
       prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-        SELECT 
+        SELECT
           DATE_TRUNC('day', "createdAt")::date as date,
           COUNT(*)::int as count
         FROM "Visit"
-        WHERE "createdAt" >= ${dateFrom}
+        WHERE "createdAt" >= ${chartFrom}
           AND "createdAt" <= ${dateTo}
         GROUP BY DATE_TRUNC('day', "createdAt")::date
         ORDER BY date ASC
       `,
 
-      // Visites par chemin
       prisma.visit.groupBy({
         by: ['path'],
         where: dateFilter,
         _count: true,
-        orderBy: {
-          _count: {
-            path: 'desc',
-          },
-        },
-        take: 10,
+        orderBy: { _count: { path: 'desc' } },
+        take: 12,
       }),
 
-      // Visites par pays
       prisma.visit.groupBy({
         by: ['country'],
-        where: {
-          ...dateFilter,
-          country: { not: null },
-        },
+        where: { ...dateFilter, country: { not: null } },
         _count: true,
-        orderBy: {
-          _count: {
-            country: 'desc',
-          },
-        },
-        take: 10,
+        orderBy: { _count: { country: 'desc' } },
+        take: 15,
       }),
 
-      // Visites par appareil
+      prisma.visit.groupBy({
+        by: ['city'],
+        where: { ...dateFilter, city: { not: null } },
+        _count: true,
+        orderBy: { _count: { city: 'desc' } },
+        take: 12,
+      }),
+
       prisma.visit.groupBy({
         by: ['device'],
-        where: {
-          ...dateFilter,
-          device: { not: null },
-        },
+        where: { ...dateFilter, device: { not: null } },
         _count: true,
-        orderBy: {
-          _count: {
-            device: 'desc',
-          },
-        },
+        orderBy: { _count: { device: 'desc' } },
       }),
 
-      // Visites par navigateur
       prisma.visit.groupBy({
         by: ['browser'],
-        where: {
-          ...dateFilter,
-          browser: { not: null },
-        },
+        where: { ...dateFilter, browser: { not: null } },
         _count: true,
-        orderBy: {
-          _count: {
-            browser: 'desc',
-          },
-        },
+        orderBy: { _count: { browser: 'desc' } },
         take: 10,
       }),
 
-      // Visites par OS
       prisma.visit.groupBy({
         by: ['os'],
-        where: {
-          ...dateFilter,
-          os: { not: null },
-        },
+        where: { ...dateFilter, os: { not: null } },
         _count: true,
-        orderBy: {
-          _count: {
-            os: 'desc',
-          },
-        },
+        orderBy: { _count: { os: 'desc' } },
         take: 10,
       }),
 
-      // Top référents
+      prisma.visit.groupBy({
+        by: ['language'],
+        where: { ...dateFilter, language: { not: null } },
+        _count: true,
+        orderBy: { _count: { language: 'desc' } },
+        take: 8,
+      }),
+
       prisma.visit.groupBy({
         by: ['referer'],
-        where: {
-          ...dateFilter,
-          referer: { not: null },
-        },
+        where: { ...dateFilter, referer: { not: null } },
         _count: true,
-        orderBy: {
-          _count: {
-            referer: 'desc',
-          },
-        },
-        take: 10,
+        orderBy: { _count: { referer: 'desc' } },
+        take: 12,
       }),
     ])
 
-    // Calculer la durée moyenne de visite
-    const avgDuration = await prisma.visit.aggregate({
-      where: {
-        ...dateFilter,
-        duration: { not: null },
-      },
-      _avg: {
-        duration: true,
-      },
-    })
+    const extras = extraRow[0] || {
+      uniqueCountries: 0,
+      uniqueCities: 0,
+      bounceSessions: 0,
+      totalSessions: 0,
+      pagesPerSession: 0,
+    }
+
+    const bounceRate =
+      extras.totalSessions > 0
+        ? Math.round((extras.bounceSessions / extras.totalSessions) * 100)
+        : 0
 
     return NextResponse.json({
       success: true,
       data: {
         overview: {
           totalVisits,
-          uniqueVisitors: uniqueVisitors.length,
-          totalPageViews,
+          uniqueVisitors: Number(uniqueRow[0]?.count || 0),
+          totalPageViews: totalVisits,
           avgDuration: avgDuration._avg.duration ? Math.round(avgDuration._avg.duration) : 0,
+          bounceRate,
+          pagesPerSession: Number(Number(extras.pagesPerSession || 0).toFixed(1)),
+          uniqueCountries: Number(extras.uniqueCountries || 0),
+          uniqueCities: Number(extras.uniqueCities || 0),
         },
         visitsByDay: visitsByDay.map((item) => ({
           date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : String(item.date),
@@ -241,6 +257,10 @@ export async function GET(request: NextRequest) {
           country: item.country,
           count: item._count,
         })),
+        visitsByCity: visitsByCity.map((item) => ({
+          city: item.city,
+          count: item._count,
+        })),
         visitsByDevice: visitsByDevice.map((item) => ({
           device: item.device,
           count: item._count,
@@ -251,6 +271,10 @@ export async function GET(request: NextRequest) {
         })),
         visitsByOS: visitsByOS.map((item) => ({
           os: item.os,
+          count: item._count,
+        })),
+        visitsByLanguage: visitsByLanguage.map((item) => ({
+          language: item.language,
           count: item._count,
         })),
         topReferrers: topReferrers.map((item) => ({
@@ -271,4 +295,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
