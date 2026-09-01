@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { MessageCircle, Mail, Phone, Facebook, Instagram, Youtube, Twitter, Linkedin } from "lucide-react"
 import { useEffect, useState } from "react"
 import { TikTokIcon, OMA_TIKTOK_URL } from "@/components/icons/tiktok-icon"
@@ -121,9 +122,9 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#formations" className="text-primary-foreground/80 hover:text-gold transition-colors">
-                  Formations
-                </a>
+                <Link href="/about" className="text-primary-foreground/80 hover:text-gold transition-colors">
+                  About Us
+                </Link>
               </li>
               <li>
                 <a href="#oma-tv" className="text-primary-foreground/80 hover:text-gold transition-colors">

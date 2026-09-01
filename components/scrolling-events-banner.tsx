@@ -17,7 +17,12 @@ interface Event {
   showOnBanner?: boolean // Optionnel pour compatibilité avec l'ancienne structure
 }
 
-export function ScrollingEventsBanner() {
+interface ScrollingEventsBannerProps {
+  /** Réduit l'espace supérieur pour une transition fluide depuis le hero */
+  attachedToHero?: boolean
+}
+
+export function ScrollingEventsBanner({ attachedToHero = false }: ScrollingEventsBannerProps) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -92,7 +97,11 @@ export function ScrollingEventsBanner() {
   }
 
   return (
-    <section className="relative py-16 md:py-20 bg-primary border-y border-gold/20 overflow-x-hidden max-w-full">
+    <section
+      className={`relative bg-primary border-y border-gold/20 overflow-x-hidden max-w-full ${
+        attachedToHero ? "py-12 md:py-16 -mt-px" : "py-16 md:py-20"
+      }`}
+    >
       {/* Ligne décorative en haut */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,rgba(249,115,22,0.08),transparent_55%)]" aria-hidden />

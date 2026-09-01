@@ -23,10 +23,9 @@ export default function Home() {
     <main className="min-h-screen overflow-x-hidden max-w-full w-full">
       <Navigation />
       <HeroSection />
-      <ScrollingEventsBanner />
+      <ScrollingEventsBanner attachedToHero />
       <AboutSection />
       <DomainsSection />
-      {/*<FormationsSection /> */}
       <EventsSection />
       <OmaTvSection />
       <TestimonialsSection />
