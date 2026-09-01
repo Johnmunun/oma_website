@@ -47,6 +47,7 @@ const settingSchema = z.object({
   logoUrl: logoUrlSchema,
   coverImageUrl: logoUrlSchema, // Photo de couverture pour la bannière
   heroImageUrl: logoUrlSchema, // Image de fond pour la section hero
+  aboutHeroImageUrl: logoUrlSchema, // Image de fond pour la page À propos
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   secondaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   fontFamily: z.string().min(1).max(100),
@@ -208,6 +209,7 @@ export async function PUT(request: NextRequest) {
       logoUrl: body.logoUrl && body.logoUrl.trim() ? body.logoUrl.trim() : null,
       coverImageUrl: body.coverImageUrl && body.coverImageUrl.trim() ? body.coverImageUrl.trim() : null,
       heroImageUrl: body.heroImageUrl && body.heroImageUrl.trim() ? body.heroImageUrl.trim() : null,
+      aboutHeroImageUrl: body.aboutHeroImageUrl && body.aboutHeroImageUrl.trim() ? body.aboutHeroImageUrl.trim() : null,
     }
 
     // Valider les données

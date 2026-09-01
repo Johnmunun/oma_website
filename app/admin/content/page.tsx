@@ -22,6 +22,7 @@ interface SiteSettings {
   logoAlt: string
   coverImageUrl: string | null // Photo de couverture pour la bannière
   heroImageUrl: string | null // Image de fond pour la section hero
+  aboutHeroImageUrl: string | null // Image de fond pour la page À propos
 
   // Couleurs principales
   primaryColor: string
@@ -45,6 +46,7 @@ export default function AdminContentPage() {
     logoAlt: "OMA Logo",
     coverImageUrl: null,
     heroImageUrl: null,
+    aboutHeroImageUrl: null,
     primaryColor: "#1a1a1a",
     secondaryColor: "#d4af37",
     accentColor: "#f5f5f5",
@@ -78,6 +80,7 @@ export default function AdminContentPage() {
             logoUrl: loadedSettings.logoUrl || prev.logoUrl,
             coverImageUrl: loadedSettings.coverImageUrl || prev.coverImageUrl,
             heroImageUrl: loadedSettings.heroImageUrl || prev.heroImageUrl,
+            aboutHeroImageUrl: loadedSettings.aboutHeroImageUrl || prev.aboutHeroImageUrl,
             logoAlt: loadedSettings.siteTitle || prev.logoAlt,
             primaryColor: loadedSettings.primaryColor || prev.primaryColor,
             secondaryColor: loadedSettings.secondaryColor || prev.secondaryColor,
@@ -139,6 +142,7 @@ export default function AdminContentPage() {
         logoUrl: settings.logoUrl || null,
         coverImageUrl: settings.coverImageUrl || null,
         heroImageUrl: settings.heroImageUrl || null,
+        aboutHeroImageUrl: settings.aboutHeroImageUrl || null,
         primaryColor: formatColor(settings.primaryColor),
         secondaryColor: formatColor(settings.secondaryColor),
         fontFamily: settings.headingFont || 'Playfair Display',
@@ -213,7 +217,7 @@ export default function AdminContentPage() {
   /**
    * Sauvegarder automatiquement après l'upload du logo
    */
-  const handleSaveAfterUpload = async (url: string | null, field: "logoUrl" | "coverImageUrl" | "heroImageUrl" = "logoUrl") => {
+  const handleSaveAfterUpload = async (url: string | null, field: "logoUrl" | "coverImageUrl" | "heroImageUrl" | "aboutHeroImageUrl" = "logoUrl") => {
     try {
       // Valider et formater les couleurs (doivent être au format #RRGGBB)
       const formatColor = (color: string): string => {
@@ -239,6 +243,7 @@ export default function AdminContentPage() {
         logoUrl: field === 'logoUrl' ? (url || null) : (settings.logoUrl || null),
         coverImageUrl: field === 'coverImageUrl' ? (url || null) : (settings.coverImageUrl || null),
         heroImageUrl: field === 'heroImageUrl' ? (url || null) : (settings.heroImageUrl || null),
+        aboutHeroImageUrl: field === 'aboutHeroImageUrl' ? (url || null) : (settings.aboutHeroImageUrl || null),
         primaryColor: formatColor(settings.primaryColor),
         secondaryColor: formatColor(settings.secondaryColor),
         fontFamily: settings.headingFont || 'Playfair Display',
@@ -622,6 +627,41 @@ export default function AdminContentPage() {
                     className="w-full px-3 py-2 border border-border rounded-lg text-sm"
                     rows={3}
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-2 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Image de fond (page À propos)
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Image affichée en arrière-plan flouté en haut de la page /about. Une image par défaut est utilisée si non définie.
+                  </p>
+                  <LogoUpload
+                    currentLogoUrl={settings.aboutHeroImageUrl || ""}
+                    onUploadComplete={(url) => {
+                      handleChange("aboutHeroImageUrl", url)
+                      setTimeout(() => {
+                        handleSaveAfterUpload(url, "aboutHeroImageUrl")
+                      }, 500)
+                    }}
+                    onRemove={() => {
+                      handleChange("aboutHeroImageUrl", null)
+                      handleSaveAfterUpload(null, "aboutHeroImageUrl")
+                    }}
+                    folder="/about"
+                  />
+                  {settings.aboutHeroImageUrl && (
+                    <div className="mt-2">
+                      <label className="text-sm font-medium block mb-2">URL de l&apos;image</label>
+                      <Input
+                        type="text"
+                        value={settings.aboutHeroImageUrl}
+                        readOnly
+                        className="font-mono text-xs bg-muted"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

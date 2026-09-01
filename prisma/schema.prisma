@@ -87,6 +87,7 @@ model Setting {
   logoUrl                  String?  @default("/placeholder-logo.png")
   coverImageUrl            String? // Photo de couverture pour la bannière (style YouTube)
   heroImageUrl             String? // Image de fond pour la section hero
+  aboutHeroImageUrl        String? // Image de fond floutée pour la page À propos
   primaryColor             String   @default("#f97316")
   secondaryColor           String   @default("#1a1a1a")
   fontFamily               String   @default("Playfair Display")
