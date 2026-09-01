@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { requireAuth, requireEditorOrAdmin } from '@/lib/authz/guards'
 
 type MessageRow = {
   id: string
@@ -126,12 +127,10 @@ async function fetchMessagesRaw(options: {
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
+    const authError = requireAuth(session)
+    if (authError) return authError
+    const roleError = requireEditorOrAdmin(session!)
+    if (roleError) return roleError
 
     const { searchParams } = new URL(request.url)
     const isReadParam = searchParams.get('isRead')

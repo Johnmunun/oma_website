@@ -6,8 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
 
 // Fonction pour extraire l'ID d'une vidéo YouTube (améliorée)
 function extractYouTubeId(url: string): string | null {
@@ -44,21 +44,8 @@ function getYouTubeThumbnail(videoId: string): string {
 export async function POST(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('media.upload')
+    if (isPermissionDenied(session)) return session
 
     // Récupérer toutes les vidéos YouTube sans miniature
     const videosWithoutThumbnail = await prisma.media.findMany({

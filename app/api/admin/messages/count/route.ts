@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, requireEditorOrAdmin } from '@/lib/authz/guards'
 
 function isSchemaMismatchError(error: unknown): boolean {
   const err = error as { code?: string; message?: string }
@@ -21,12 +22,10 @@ function isSchemaMismatchError(error: unknown): boolean {
 export async function GET() {
   try {
     const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
+    const authError = requireAuth(session)
+    if (authError) return authError
+    const roleError = requireEditorOrAdmin(session!)
+    if (roleError) return roleError
 
     try {
       const unreadCount = await prisma.contactMessage.count({

@@ -7,9 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
 
 // Schéma de validation pour les settings
 // logoUrl peut être une URL complète ou un chemin relatif
@@ -88,22 +88,8 @@ const settingSchema = z.object({
 // Récupère les paramètres du site
 export async function GET() {
   try {
-    // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('settings.view')
+    if (isPermissionDenied(session)) return session
 
     // Récupérer les settings
     let setting = await prisma.setting.findFirst({
@@ -184,22 +170,8 @@ export async function GET() {
 // Met à jour les paramètres du site
 export async function PUT(request: NextRequest) {
   try {
-    // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions (seuls ADMIN peuvent modifier)
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé. Seuls les administrateurs peuvent modifier les paramètres.' },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('settings.update')
+    if (isPermissionDenied(session)) return session
 
     const body = await request.json()
 

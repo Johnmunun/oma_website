@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Edit2, Trash2, Users, Search, Shield, Eye, FileEdit } from "lucide-react"
+import { Plus, Edit2, Trash2, Users, Search, Shield, Eye, FileEdit, UserCog } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,26 +14,42 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { UserModal, UserFormData } from "@/components/admin/user-modal"
+import { AssignRoleModal } from "@/components/admin/assign-role-modal"
 import { PageSkeleton } from "@/components/admin/page-skeleton"
+import { useAdminPermissions } from "@/hooks/use-admin-permissions"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
+
+interface UserRbacRole {
+  membershipId: string
+  roleId: string
+  roleName: string
+  roleSlug: string
+  isRoot: boolean
+  structureId: string
+  structureName: string
+}
 
 interface User {
   id: string
   name: string | null
   email: string
   role: "ADMIN" | "EDITOR" | "VIEWER"
+  isRoot?: boolean
   isActive: boolean
   lastLoginAt: string | null
   createdAt: string
   updatedAt: string
+  rbacRoles?: UserRbacRole[]
 }
 
 export default function AdminUsersPage() {
   const { data: session } = useSession()
+  const { can, loaded: permissionsLoaded } = useAdminPermissions()
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [assignUser, setAssignUser] = useState<User | null>(null)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
@@ -182,26 +198,74 @@ export default function AdminUsersPage() {
     }
   }
 
-  const getRoleBadge = (role: User["role"]) => {
+  const getLegacyRoleBadge = (role?: User["role"]) => {
+    if (!role) return null
     const badges = {
-      ADMIN: { label: "Administrateur", icon: Shield, className: "bg-red-100 text-red-800" },
-      EDITOR: { label: "Éditeur", icon: FileEdit, className: "bg-blue-100 text-blue-800" },
-      VIEWER: { label: "Visualiseur", icon: Eye, className: "bg-green-100 text-green-800" },
-    }
+      ADMIN: { label: "Legacy · Admin", icon: Shield, className: "bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/20" },
+      EDITOR: { label: "Legacy · Éditeur", icon: FileEdit, className: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/20" },
+      VIEWER: { label: "Legacy · Lecteur", icon: Eye, className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" },
+    } as const
 
     const badge = badges[role]
+    if (!badge) return null
     const Icon = badge.icon
 
     return (
-      <Badge className={badge.className}>
+      <Badge variant="outline" className={badge.className}>
         <Icon className="w-3 h-3 mr-1" />
         {badge.label}
       </Badge>
     )
   }
 
+  const renderUserRoles = (user: User) => {
+    const rbacRoles = user.rbacRoles ?? []
+
+    if (rbacRoles.length > 0) {
+      return (
+        <div className="flex flex-col gap-1.5">
+          {rbacRoles.map((r) => (
+            <div key={r.membershipId} className="flex flex-wrap items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className={
+                  r.isRoot
+                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/30"
+                    : "bg-primary/10 text-foreground border-border"
+                }
+              >
+                <Shield className="w-3 h-3 mr-1" />
+                {r.roleName}
+                {r.isRoot ? " (ROOT)" : ""}
+              </Badge>
+              <span className="text-xs text-muted-foreground">{r.structureName}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (user.isRoot) {
+      return (
+        <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30">
+          <Shield className="w-3 h-3 mr-1" />
+          ROOT
+        </Badge>
+      )
+    }
+
+    return getLegacyRoleBadge(user.role) ?? (
+      <span className="text-sm text-muted-foreground">Aucun rôle</span>
+    )
+  }
+
   // Vérifier les permissions
-  if (session?.user && session.user.role !== "ADMIN") {
+  const hasAccess =
+    permissionsLoaded
+      ? can('users.view')
+      : session?.user?.role === 'ADMIN'
+
+  if (permissionsLoaded && !hasAccess) {
     return (
       <div className="space-y-6">
         <Card className="p-12 text-center">
@@ -285,13 +349,13 @@ export default function AdminUsersPage() {
           )}
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <table className="w-full">
+        <Card className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
             <thead className="bg-muted">
               <tr className="border-b border-border">
                 <th className="px-6 py-3 text-left text-sm font-medium">Nom</th>
                 <th className="px-6 py-3 text-left text-sm font-medium">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-medium">Rôle</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Rôles</th>
                 <th className="px-6 py-3 text-left text-sm font-medium">Statut</th>
                 <th className="px-6 py-3 text-left text-sm font-medium">Dernière connexion</th>
                 <th className="px-6 py-3 text-left text-sm font-medium">Actions</th>
@@ -304,7 +368,7 @@ export default function AdminUsersPage() {
                     {user.name || "Sans nom"}
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{user.email}</td>
-                  <td className="px-6 py-4">{getRoleBadge(user.role)}</td>
+                  <td className="px-6 py-4 align-top">{renderUserRoles(user)}</td>
                   <td className="px-6 py-4">
                     <Badge
                       variant={user.isActive ? "default" : "secondary"}
@@ -334,6 +398,15 @@ export default function AdminUsersPage() {
                         className="gap-1"
                       >
                         <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAssignUser(user)}
+                        className="gap-1"
+                        title="Attribuer un rôle RBAC"
+                      >
+                        <UserCog className="w-3 h-3" />
                       </Button>
                       <Button
                         variant="outline"
@@ -376,8 +449,31 @@ export default function AdminUsersPage() {
             ? (data) => handleUpdate(editingUser.id, data)
             : handleCreate
         }
-        initialData={editingUser}
+        initialData={
+          editingUser
+            ? {
+                name: editingUser.name ?? "",
+                email: editingUser.email,
+                isActive: editingUser.isActive,
+                rbacRoles: editingUser.rbacRoles?.map((r) => ({
+                  roleName: r.roleName,
+                  structureName: r.structureName,
+                  isRoot: r.isRoot,
+                })),
+              }
+            : null
+        }
       />
+
+      {assignUser && (
+        <AssignRoleModal
+          isOpen={!!assignUser}
+          onClose={() => setAssignUser(null)}
+          userId={assignUser.id}
+          userLabel={assignUser.email}
+          onAssigned={loadUsers}
+        />
+      )}
     </div>
   )
 }

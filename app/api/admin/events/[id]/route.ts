@@ -6,7 +6,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { requirePermission, isPermissionDenied } from "@/lib/authz/require-permission"
 import { z } from "zod"
 
 // Schéma de validation pour modifier un événement
@@ -33,10 +33,8 @@ export async function GET(
 ) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
-    }
+    const session = await requirePermission('events.view')
+    if (isPermissionDenied(session)) return session
 
     const { id } = await params
 
@@ -94,18 +92,8 @@ export async function PUT(
 ) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
-    }
-
-    // Seuls les ADMIN et EDITOR peuvent modifier des événements
-    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
-      return NextResponse.json(
-        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent modifier des événements." },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('events.manage')
+    if (isPermissionDenied(session)) return session
 
     const { id } = await params
     const body = await request.json()
@@ -211,18 +199,8 @@ export async function DELETE(
 ) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
-    }
-
-    // Seuls les ADMIN et EDITOR peuvent supprimer des événements
-    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
-      return NextResponse.json(
-        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent supprimer des événements." },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('events.manage')
+    if (isPermissionDenied(session)) return session
 
     const { id } = await params
 

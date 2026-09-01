@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,15 +18,35 @@ export interface UserFormData {
   name: string
   email: string
   password?: string
-  role: "ADMIN" | "EDITOR" | "VIEWER"
+  /** Legacy — conservé pour compatibilité DB */
+  role?: "ADMIN" | "EDITOR" | "VIEWER"
+  roleId?: string
+  structureId?: string
   isActive: boolean
+}
+
+interface RbacRoleOption {
+  id: string
+  name: string
+  isRoot: boolean
+  isActive: boolean
+  structureId: string | null
+}
+
+interface StructureOption {
+  id: string
+  name: string
+}
+
+interface UserModalInitialData extends Partial<UserFormData> {
+  rbacRoles?: Array<{ roleName: string; structureName: string; isRoot: boolean }>
 }
 
 interface UserModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit?: (data: UserFormData) => void
-  initialData?: UserFormData | null
+  initialData?: UserModalInitialData | null
 }
 
 /**
@@ -42,36 +62,97 @@ export function UserModal({
     name: "",
     email: "",
     password: "",
-    role: "EDITOR",
+    roleId: "",
+    structureId: "",
     isActive: true,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [structures, setStructures] = useState<StructureOption[]>([])
+  const [roles, setRoles] = useState<RbacRoleOption[]>([])
+  const [isLoadingRbac, setIsLoadingRbac] = useState(false)
+
+  const isEditMode = Boolean(initialData?.email)
+
+  const availableRoles = useMemo(
+    () =>
+      roles.filter(
+        (r) =>
+          r.isActive &&
+          formData.structureId &&
+          (!r.structureId || r.structureId === formData.structureId)
+      ),
+    [roles, formData.structureId]
+  )
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    setIsLoadingRbac(true)
+    Promise.all([
+      fetch("/api/admin/structures").then((r) => r.json()),
+      fetch("/api/admin/roles").then((r) => r.json()),
+    ])
+      .then(([sRes, rRes]) => {
+        if (sRes.success) {
+          const list = (sRes.data ?? []) as StructureOption[]
+          setStructures(list)
+          if (!initialData && list[0]) {
+            setFormData((prev) => ({ ...prev, structureId: list[0].id }))
+          }
+        }
+        if (rRes.success) {
+          setRoles(rRes.data ?? [])
+        }
+      })
+      .catch((error) => {
+        console.error("[UserModal] Erreur chargement RBAC:", error)
+        toast.error("Impossible de charger les rôles")
+      })
+      .finally(() => setIsLoadingRbac(false))
+  }, [isOpen, initialData])
+
+  useEffect(() => {
+    if (isEditMode || !formData.structureId) return
+    if (!formData.roleId && availableRoles[0]) {
+      setFormData((prev) => ({ ...prev, roleId: availableRoles[0].id }))
+    }
+  }, [availableRoles, formData.structureId, formData.roleId, isEditMode])
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         name: initialData.name || "",
         email: initialData.email || "",
-        password: "", // Ne pas pré-remplir le mot de passe
-        role: initialData.role || "EDITOR",
+        password: "",
+        roleId: "",
+        structureId: "",
         isActive: initialData.isActive ?? true,
       })
-      setShowPassword(false) // Masquer le champ mot de passe en mode édition
+      setShowPassword(false)
     } else {
       setFormData({
         name: "",
         email: "",
         password: "",
-        role: "EDITOR",
+        roleId: "",
+        structureId: structures[0]?.id ?? "",
         isActive: true,
       })
-      setShowPassword(true) // Afficher le champ mot de passe en mode création
+      setShowPassword(true)
     }
-  }, [initialData, isOpen])
+  }, [initialData, isOpen, structures])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!isEditMode) {
+      if (!formData.structureId || !formData.roleId) {
+        toast.error("Veuillez sélectionner une structure et un rôle")
+        return
+      }
+    }
+
     setIsSubmitting(true)
 
     toast.info("Processus en cours...", {
@@ -79,10 +160,14 @@ export function UserModal({
     })
 
     try {
-      // Si c'est une modification et qu'aucun mot de passe n'est fourni, ne pas l'envoyer
-      const dataToSubmit = { ...formData }
+      const dataToSubmit: UserFormData = { ...formData, role: "VIEWER" }
       if (initialData && !dataToSubmit.password) {
         delete dataToSubmit.password
+      }
+      if (isEditMode) {
+        delete dataToSubmit.roleId
+        delete dataToSubmit.structureId
+        delete dataToSubmit.role
       }
 
       await onSubmit?.(dataToSubmit)
@@ -90,7 +175,8 @@ export function UserModal({
         name: "",
         email: "",
         password: "",
-        role: "EDITOR",
+        roleId: "",
+        structureId: structures[0]?.id ?? "",
         isActive: true,
       })
       setShowPassword(true)
@@ -208,30 +294,87 @@ export function UserModal({
             </div>
           )}
 
-          {/* Rôle */}
-          <div>
-            <Label htmlFor="role">Rôle *</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(value: "ADMIN" | "EDITOR" | "VIEWER") =>
-                setFormData({ ...formData, role: value })
-              }
-            >
-              <SelectTrigger className="w-full mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADMIN">Administrateur</SelectItem>
-                <SelectItem value="EDITOR">Éditeur</SelectItem>
-                <SelectItem value="VIEWER">Visualiseur</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {formData.role === "ADMIN" && "Accès complet à toutes les fonctionnalités"}
-              {formData.role === "EDITOR" && "Peut ajouter des événements et voir les messages"}
-              {formData.role === "VIEWER" && "Peut seulement voir le dashboard et les messages"}
-            </p>
-          </div>
+          {/* Rôles RBAC — création */}
+          {!isEditMode && (
+            <>
+              <div>
+                <Label htmlFor="structure">Structure *</Label>
+                <Select
+                  value={formData.structureId || ""}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, structureId: value, roleId: "" })
+                  }
+                  disabled={isLoadingRbac}
+                >
+                  <SelectTrigger className="w-full mt-2">
+                    <SelectValue placeholder={isLoadingRbac ? "Chargement..." : "Choisir une structure"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {structures.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="roleId">Rôle *</Label>
+                <Select
+                  value={formData.roleId || ""}
+                  onValueChange={(value) => setFormData({ ...formData, roleId: value })}
+                  disabled={isLoadingRbac || !formData.structureId}
+                >
+                  <SelectTrigger className="w-full mt-2">
+                    <SelectValue
+                      placeholder={
+                        isLoadingRbac
+                          ? "Chargement..."
+                          : availableRoles.length === 0
+                            ? "Aucun rôle disponible"
+                            : "Choisir un rôle"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                        {r.isRoot ? " (ROOT)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Rôles configurés dans Administration → Rôles
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Rôles RBAC — édition (lecture seule) */}
+          {isEditMode && (
+            <div className="space-y-2">
+              <Label>Rôles attribués</Label>
+              {initialData?.rbacRoles && initialData.rbacRoles.length > 0 ? (
+                <div className="space-y-2 rounded-md border border-border p-3">
+                  {initialData.rbacRoles.map((r, index) => (
+                    <div key={`${r.roleName}-${r.structureName}-${index}`} className="text-sm">
+                      <span className="font-medium">{r.roleName}</span>
+                      {r.isRoot ? " (ROOT)" : ""}
+                      <span className="text-muted-foreground"> — {r.structureName}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun rôle RBAC attribué</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Utilisez le bouton d&apos;attribution (icône engrenage) dans la liste pour modifier les rôles.
+              </p>
+            </div>
+          )}
 
           {/* Statut actif */}
           <div className="flex items-center gap-2">

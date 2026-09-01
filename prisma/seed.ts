@@ -6,6 +6,7 @@
 
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { seedAuthz } from './seed-authz'
 
 const prisma = new PrismaClient()
 
@@ -118,6 +119,11 @@ async function main() {
   })
 
   console.log('✅ Utilisateur éditeur créé:', editor.email)
+
+  // ============================================
+  // 5. RBAC — permissions, rôles, structure OMA
+  // ============================================
+  await seedAuthz(prisma)
 
   console.log('\n🎉 Seed terminé avec succès!')
   console.log('\n📋 Informations de connexion:')

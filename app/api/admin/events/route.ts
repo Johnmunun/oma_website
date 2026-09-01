@@ -6,7 +6,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { requirePermission, isPermissionDenied } from "@/lib/authz/require-permission"
 import { z } from "zod"
 
 // Schéma de validation pour créer/modifier un événement
@@ -30,10 +30,8 @@ const eventSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
-    }
+    const session = await requirePermission('events.view')
+    if (isPermissionDenied(session)) return session
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
@@ -123,18 +121,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non autorisé" }, { status: 401 })
-    }
-
-    // Seuls les ADMIN et EDITOR peuvent créer des événements
-    if (session.user.role !== "ADMIN" && session.user.role !== "EDITOR") {
-      return NextResponse.json(
-        { success: false, error: "Accès refusé. Seuls les administrateurs et éditeurs peuvent créer des événements." },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('events.manage')
+    if (isPermissionDenied(session)) return session
 
     const body = await request.json()
 

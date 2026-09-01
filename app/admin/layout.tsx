@@ -30,6 +30,8 @@ import {
       Heart,
       Globe,
       Code2,
+      Shield,
+      Building2,
     } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -40,6 +42,10 @@ import { useDynamicLogo } from "@/components/theming/dynamic-logo"
 import { IdleDetector } from "@/components/admin/idle-detector"
 import { WakeUpPing } from "@/components/admin/wakeup-ping"
 import Image from "next/image"
+import {
+  useAdminPermissions,
+  ADMIN_NAV_PERMISSIONS,
+} from "@/hooks/use-admin-permissions"
 
 /**
  * Interface pour les éléments de navigation
@@ -86,6 +92,16 @@ const baseNavigationItems: NavItem[] = [
     name: "Utilisateurs",
     href: "/admin/users",
     icon: <Users className="w-5 h-5" />,
+  },
+  {
+    name: "Rôles",
+    href: "/admin/roles",
+    icon: <Shield className="w-5 h-5" />,
+  },
+  {
+    name: "Structures",
+    href: "/admin/structures",
+    icon: <Building2 className="w-5 h-5" />,
   },
   {
     name: "Messages",
@@ -147,6 +163,7 @@ function AdminSidebar({
 }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { can, isRoot, loaded: permissionsLoaded } = useAdminPermissions()
   const email = session?.user?.email || null
   const isAdmin = useMemo(() => session?.user?.role === 'ADMIN', [session])
   const isEditor = useMemo(() => session?.user?.role === 'EDITOR', [session])
@@ -308,11 +325,21 @@ function AdminSidebar({
       return item
     })
 
-    // Filtrer selon les rôles
+    // Filtrer selon les permissions RBAC (fallback legacy si pas encore chargé)
     return items.filter((item) => {
-      // Routes réservées aux ADMIN uniquement
+      const requiredPerm = ADMIN_NAV_PERMISSIONS[item.href]
+
+      if (permissionsLoaded) {
+        if (isRoot) return true
+        if (!requiredPerm) return true
+        return can(requiredPerm)
+      }
+
+      // Fallback legacy pendant le chargement / transition
       const adminOnlyRoutes = [
         "/admin/users",
+        "/admin/roles",
+        "/admin/structures",
         "/admin/settings",
         "/admin/content",
         "/admin/analytics",
@@ -321,7 +348,6 @@ function AdminSidebar({
         return false
       }
 
-      // Routes accessibles aux ADMIN et EDITOR (mais pas VIEWER)
       const editorRoutes = [
         "/admin/team",
         "/admin/testimonials",
@@ -333,10 +359,9 @@ function AdminSidebar({
         return false
       }
 
-      // Routes accessibles à tous : Dashboard, Événements, Messages
       return true
     })
-  }, [isAdmin, userRole, unreadMessagesCount, upcomingEventsCount, isMounted])
+  }, [can, isRoot, permissionsLoaded, userRole, unreadMessagesCount, upcomingEventsCount, isMounted])
 
   return (
     <>

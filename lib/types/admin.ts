@@ -8,7 +8,7 @@
 // TYPES UTILISATEURS ET AUTHENTIFICATION
 // ============================================================================
 
-export type UserRole = "admin" | "editor" | "contributor"
+export type UserRole = "ADMIN" | "EDITOR" | "VIEWER"
 
 export interface AdminUser {
   id: string

@@ -7,10 +7,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { resolveMediaMeta } from '@/lib/media-thumbnails'
+import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
 
 const emptyToNull = (val: unknown) =>
   val === '' || val === undefined ? null : val
@@ -37,21 +37,8 @@ const createMediaSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('media.view')
+    if (isPermissionDenied(session)) return session
 
     // Récupérer les paramètres de requête
     const { searchParams } = new URL(request.url)
@@ -112,21 +99,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Vérifier l'authentification
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier les permissions
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
+    const session = await requirePermission('media.upload')
+    if (isPermissionDenied(session)) return session
 
     const body = await request.json()
 

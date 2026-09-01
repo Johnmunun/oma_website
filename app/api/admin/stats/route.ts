@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import { requireAuth, requireEditorOrAdmin } from '@/lib/authz/guards'
 
 export async function GET() {
   try {
+    const session = await auth()
+    const authError = requireAuth(session)
+    if (authError) return authError
+    const roleError = requireEditorOrAdmin(session!)
+    if (roleError) return roleError
+
     const now = new Date()
     const last7Days = new Date()
     last7Days.setDate(last7Days.getDate() - 7)

@@ -38,20 +38,22 @@ model Session {
 }
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
+  id            String                 @id @default(uuid()) @db.Uuid
   name          String?
-  email         String     @unique
+  email         String                 @unique
   emailVerified DateTime?
   image         String?
   password      String?
-  role          UserRole   @default(EDITOR)
-  isActive      Boolean    @default(true)
+  role          UserRole               @default(EDITOR) // @deprecated — fallback legacy
+  isRoot        Boolean                @default(false)
+  isActive      Boolean                @default(true)
   lastLoginAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
   accounts      Account[]
   auditLogs     AuditLog[]
   sessions      Session[]
+  memberships   StructureMembership[]
 
   @@map("User")
 }
@@ -438,6 +440,103 @@ enum UserRole {
   ADMIN
   EDITOR
   VIEWER
+}
+
+// ─── RBAC multi-structure (additive, User.role conservé en fallback) ───
+
+enum StructureType {
+  OMA_INTERNAL
+  PARTNER
+  COMPANY
+  ASSOCIATION
+  MEDIA
+}
+
+enum StructureStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique
+  module      String
+  description String?
+  isSystem    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+
+  @@index([module])
+  @@map("Permission")
+}
+
+model Role {
+  id          String                 @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String                 @unique
+  description String?
+  structureId String?                @db.Uuid
+  isSystem    Boolean                @default(false)
+  isRoot      Boolean                @default(false)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  structure   Structure?             @relation(fields: [structureId], references: [id], onDelete: SetNull)
+  permissions RolePermission[]
+  memberships StructureMembership[]
+
+  @@index([structureId, isActive])
+  @@map("Role")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("RolePermission")
+}
+
+model Structure {
+  id          String                @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String                @unique
+  type        StructureType         @default(OMA_INTERNAL)
+  description String?
+  logoUrl     String?
+  status      StructureStatus       @default(ACTIVE)
+  domain      String?
+  subdomain   String?
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  roles       Role[]
+  memberships StructureMembership[]
+
+  @@index([type, isActive])
+  @@map("Structure")
+}
+
+model StructureMembership {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  structureId String    @db.Uuid
+  roleId      String    @db.Uuid
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  structure   Structure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  role        Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, structureId, roleId])
+  @@index([userId, isActive])
+  @@index([structureId, isActive])
+  @@map("StructureMembership")
 }
 
 enum PageStatus {

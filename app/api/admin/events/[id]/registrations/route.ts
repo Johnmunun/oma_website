@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
 import { z } from 'zod'
 import { sendRegistrationConfirmationEmail } from '@/lib/email'
 
@@ -24,10 +24,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
-    }
+    const session = await requirePermission('events.view')
+    if (isPermissionDenied(session)) return session
 
     const registrations = await prisma.registration.findMany({
       where: { eventId: params.id },
@@ -64,10 +62,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: 'Non autorisé' }, { status: 401 })
-    }
+    const session = await requirePermission('events.manage')
+    if (isPermissionDenied(session)) return session
 
     const body = await request.json()
     const validation = createRegistrationSchema.safeParse(body)

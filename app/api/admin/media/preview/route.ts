@@ -4,15 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
 import { resolveMediaMeta } from "@/lib/media-thumbnails"
+import { requirePermission, isPermissionDenied } from "@/lib/authz/require-permission"
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ success: false, error: "Non authentifié" }, { status: 401 })
-    }
+    const session = await requirePermission('media.view')
+    if (isPermissionDenied(session)) return session
 
     const url = request.nextUrl.searchParams.get("url")
     if (!url) {
