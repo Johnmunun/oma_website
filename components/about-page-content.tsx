@@ -98,7 +98,7 @@ export function AboutPageContent() {
                 <span className="text-sm font-semibold">Notre histoire</span>
               </div>
               <h2 className="font-serif font-bold text-3xl sm:text-4xl md:text-5xl text-foreground mb-6 text-balance">
-                Révéler votre potentiel, accompagner vos talents
+                Révéler vos talents
               </h2>
               <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 text-pretty">
                 Créé en 2019 par le Coach Bin Adan, le Réseau OMA est une plateforme internationale dédiée à

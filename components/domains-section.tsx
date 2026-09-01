@@ -3,37 +3,53 @@
 import { Mic, Calendar, Megaphone, Smartphone, GraduationCap } from "lucide-react"
 import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 import { cn } from "@/lib/utils"
+import {
+  DomainWatermark,
+  type DomainVectorVariant,
+  SectionDotsPattern,
+} from "@/components/illustrations/landing-vectors"
 
-const domains = [
+const domains: {
+  icon: typeof Mic
+  title: string
+  description: string
+  bentoClass: string
+  vector: DomainVectorVariant
+}[] = [
   {
     icon: Mic,
     title: "Art oratoire & Maîtrise de cérémonie",
     description: "Développez votre éloquence et votre présence scénique pour captiver votre audience.",
     bentoClass: "md:col-span-2 lg:col-span-4",
+    vector: "oratory",
   },
   {
     icon: Calendar,
     title: "Événementiel",
     description: "Organisez et animez des événements mémorables avec professionnalisme et charisme.",
     bentoClass: "md:col-span-1 lg:col-span-2",
+    vector: "events",
   },
   {
     icon: Megaphone,
     title: "Communication & Médias",
     description: "Maîtrisez les techniques de communication moderne et la gestion médiatique.",
     bentoClass: "lg:col-span-2",
+    vector: "media",
   },
   {
     icon: Smartphone,
     title: "Marketing digital & Publicité",
     description: "Exploitez le pouvoir du digital pour développer votre marque et votre influence.",
     bentoClass: "lg:col-span-2",
+    vector: "digital",
   },
   {
     icon: GraduationCap,
     title: "Formation & Consultation",
     description: "Bénéficiez d'un accompagnement personnalisé pour atteindre vos objectifs.",
     bentoClass: "lg:col-span-2",
+    vector: "training",
   },
 ]
 
@@ -41,11 +57,13 @@ function DomainCard({
   icon: Icon,
   title,
   description,
+  vector,
   className,
 }: {
   icon: typeof Mic
   title: string
   description: string
+  vector: DomainVectorVariant
   className?: string
 }) {
   return (
@@ -55,12 +73,18 @@ function DomainCard({
         className
       )}
     >
+      <DomainWatermark
+        variant={vector}
+        className="absolute -right-4 -bottom-4 w-28 h-28 sm:w-32 sm:h-32"
+      />
       <div className="absolute left-0 top-6 bottom-6 w-0.5 bg-gold/0 group-hover:bg-gold transition-colors duration-300 rounded-full" />
-      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gold/10 rounded-xl flex items-center justify-center mb-5 sm:mb-6 group-hover:bg-gold/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-        <Icon className="h-6 w-6 sm:h-7 sm:w-7 text-gold-text transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+      <div className="relative z-10">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gold/10 rounded-xl flex items-center justify-center mb-5 sm:mb-6 group-hover:bg-gold/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+          <Icon className="h-6 w-6 sm:h-7 sm:w-7 text-gold-text transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-5deg]" />
+        </div>
+        <h3 className="font-serif font-bold text-lg sm:text-xl mb-2 sm:mb-3 text-foreground">{title}</h3>
+        <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">{description}</p>
       </div>
-      <h3 className="font-serif font-bold text-lg sm:text-xl mb-2 sm:mb-3 text-foreground">{title}</h3>
-      <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">{description}</p>
     </div>
   )
 }
@@ -68,8 +92,9 @@ function DomainCard({
 export function DomainsSection() {
   return (
     <section className="py-20 md:py-24 bg-muted/25 relative overflow-hidden">
+      <SectionDotsPattern className="opacity-20" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/25 to-transparent" aria-hidden />
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 relative">
         <AnimateOnScroll animation="fade-up" delay={100}>
           <div className="text-center mb-12 md:mb-16">
             <p className="text-gold-text text-sm font-semibold tracking-[0.2em] uppercase mb-4">Expertise</p>
@@ -96,6 +121,7 @@ export function DomainsSection() {
                   icon={Icon}
                   title={domain.title}
                   description={domain.description}
+                  vector={domain.vector}
                 />
               </AnimateOnScroll>
             )

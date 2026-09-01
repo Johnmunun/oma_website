@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { Mail, MessageCircle, CheckCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { RingsDecoration } from "@/components/illustrations/landing-vectors"
 
 interface NewsletterFormState {
   email: string
@@ -143,6 +144,8 @@ export function NewsletterSection() {
 
   return (
     <section id="newsletter" className="py-20 md:py-24 bg-primary relative overflow-hidden">
+      <RingsDecoration className="absolute -left-16 top-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 text-gold hidden sm:block" />
+      <RingsDecoration className="absolute -right-16 top-1/3 w-40 h-40 md:w-56 md:h-56 text-gold hidden md:block opacity-70" />
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_bottom,rgba(249,115,22,0.15),transparent_55%)]" aria-hidden />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" aria-hidden />
 

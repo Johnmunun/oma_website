@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GraduationCap, Calendar, Play, ArrowRight } from "lucide-react"
 import { EntranceAnimation } from "@/components/animations/entrance-animation"
+import { HeroVectorLeft, HeroVectorRight } from "@/components/illustrations/landing-vectors"
 
 const HERO_STATS = [
   { value: "2019", label: "Année de création" },
@@ -97,6 +98,10 @@ export function HeroSection() {
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
       </div>
+
+      {/* Illustrations vectorielles décoratives */}
+      <HeroVectorLeft className="absolute left-0 top-1/4 w-24 sm:w-32 md:w-40 lg:w-48 opacity-60 md:opacity-80 hidden sm:block z-[1]" />
+      <HeroVectorRight className="absolute right-0 bottom-1/4 w-24 sm:w-32 md:w-40 lg:w-48 opacity-60 md:opacity-80 hidden sm:block z-[1]" />
 
       {/* Content */}
       <div className="container mx-auto px-4 z-10 text-center max-w-full overflow-x-hidden pt-24 pb-36 md:pt-28 md:pb-40 flex-1 flex flex-col justify-center">

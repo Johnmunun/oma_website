@@ -5,52 +5,63 @@ import { Sparkles, ArrowRight } from "lucide-react"
 import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 import { Button } from "@/components/ui/button"
 import { ABOUT_STATS } from "@/lib/about-content"
+import { AboutIllustration, SectionDotsPattern } from "@/components/illustrations/landing-vectors"
 
 export function AboutSection() {
   return (
     <section className="py-20 md:py-24 bg-background relative overflow-hidden">
+      <SectionDotsPattern className="opacity-30" />
       <div className="absolute inset-0 pointer-events-none opacity-[0.35] section-grain" aria-hidden />
       <div className="container mx-auto px-4 relative">
-        <AnimateOnScroll animation="fade-up" delay={100}>
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-gold/10 text-gold-text px-4 py-2 rounded-full mb-6 border border-gold/15">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-semibold">Réseau OMA</span>
-            </div>
-            <h2 className="font-serif font-bold text-3xl sm:text-4xl md:text-5xl text-foreground mb-6 text-balance">
-              Révéler votre potentiel, accompagner vos talents
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 text-pretty max-w-2xl mx-auto">
-              Depuis 2019, le Réseau OMA accompagne les talents en art oratoire, communication et leadership
-              à travers l&apos;Afrique, l&apos;Asie et l&apos;Europe.
-            </p>
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center max-w-6xl mx-auto">
+          <AnimateOnScroll animation="fade-up" delay={100}>
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-gold/10 text-gold-text px-4 py-2 rounded-full mb-6 border border-gold/15">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-sm font-semibold">Réseau OMA</span>
+              </div>
+              <h2 className="font-serif font-bold text-3xl sm:text-4xl md:text-5xl text-foreground mb-6 text-balance">
+                Révéler vos talents
+              </h2>
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 text-pretty max-w-xl lg:max-w-none mx-auto lg:mx-0">
+                Depuis 2019, le Réseau OMA accompagne les talents en art oratoire, communication et leadership
+                à travers l&apos;Afrique, l&apos;Asie et l&apos;Europe.
+              </p>
 
-            <div className="grid grid-cols-3 gap-3 sm:gap-6 max-w-2xl mx-auto mb-10">
-              {ABOUT_STATS.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-xl border border-gold/10 bg-muted/20 px-2 py-4 sm:px-4"
-                >
-                  <div className="font-serif font-bold text-xl sm:text-2xl md:text-3xl text-gold-text mb-1">
-                    {stat.value}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-md lg:max-w-none mx-auto lg:mx-0 mb-10">
+                {ABOUT_STATS.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-xl border border-gold/10 bg-muted/20 px-2 py-4 sm:px-4"
+                  >
+                    <div className="font-serif font-bold text-xl sm:text-2xl md:text-3xl text-gold-text mb-1">
+                      {stat.value}
+                    </div>
+                    <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground leading-tight">{stat.label}</p>
                   </div>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground leading-tight">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <Button
-              size="lg"
-              className="bg-gold hover:bg-gold-dark text-primary font-semibold"
-              asChild
-            >
-              <Link href="/about">
-                En savoir plus sur nous
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </AnimateOnScroll>
+              <Button
+                size="lg"
+                className="bg-gold hover:bg-gold-dark text-primary font-semibold w-full sm:w-auto"
+                asChild
+              >
+                <Link href="/about">
+                  En savoir plus sur nous
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </AnimateOnScroll>
+
+          <AnimateOnScroll animation="fade-left" delay={200}>
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="absolute inset-0 bg-gradient-to-br from-gold/10 via-transparent to-gold/5 rounded-3xl blur-2xl scale-90" aria-hidden />
+              <AboutIllustration className="relative z-10 w-full max-w-[280px] sm:max-w-sm md:max-w-md drop-shadow-sm" />
+            </div>
+          </AnimateOnScroll>
+        </div>
       </div>
     </section>
   )
