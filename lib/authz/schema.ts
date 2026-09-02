@@ -19,11 +19,14 @@ export function isRbacSchemaMissingError(error: unknown): boolean {
  * Permet le fallback legacy jusqu'au redémarrage du serveur.
  */
 export function isPrismaClientOutdatedError(error: unknown): boolean {
-  const err = error as { name?: string; message?: string }
+  const err = error as { name?: string; message?: string; clientVersion?: string }
   const msg = (err?.message || '').toLowerCase()
   return (
     err?.name === 'PrismaClientValidationError' ||
     msg.includes('unknown field') ||
+    msg.includes('unknown argument') ||
+    msg.includes('landingservices') ||
+    msg.includes('landingservice') ||
     msg.includes('invalid `prisma.')
   )
 }

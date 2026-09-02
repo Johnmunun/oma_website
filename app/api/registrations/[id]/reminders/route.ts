@@ -15,9 +15,10 @@ const updateReminderSchema = z.object({
 // Active ou désactive les rappels pour une inscription
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const validation = updateReminderSchema.safeParse(body)
 
@@ -35,7 +36,7 @@ export async function PATCH(
     const { enabled } = validation.data
 
     const registration = await prisma.registration.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         remindersEnabled: enabled,
         // Réinitialiser lastReminderSent si on réactive les rappels
@@ -76,11 +77,12 @@ export async function PATCH(
 // Récupère l'état des rappels pour une inscription
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const registration = await prisma.registration.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         email: true,

@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { getEffectivePermissions } from './get-effective-permissions'
+import { getAggregatedEffectivePermissions, getEffectivePermissions } from './get-effective-permissions'
 import { legacyRoleHasPermission } from './legacy'
 import { hasPermissionInSet } from './permission-aliases'
 import { isAuthzRecoverableError } from './schema'
@@ -58,7 +58,10 @@ export async function authorize(params: AuthorizeParams): Promise<AuthorizeResul
 
     let effective: Awaited<ReturnType<typeof getEffectivePermissions>>
     try {
-      effective = await getEffectivePermissions(userId, structureId)
+      effective =
+        structureId === undefined
+          ? await getAggregatedEffectivePermissions(userId)
+          : await getEffectivePermissions(userId, structureId)
     } catch (membershipError) {
       if (isAuthzRecoverableError(membershipError)) {
         console.warn('[authz] RBAC indisponible — fallback legacy')

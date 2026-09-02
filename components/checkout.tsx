@@ -9,7 +9,13 @@ import { startCheckoutSession } from "@/app/actions/stripe"
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function Checkout({ formationId }: { formationId: string }) {
-  const startCheckoutSessionForFormation = useCallback(() => startCheckoutSession(formationId), [formationId])
+  const startCheckoutSessionForFormation = useCallback(async () => {
+    const clientSecret = await startCheckoutSession(formationId)
+    if (!clientSecret) {
+      throw new Error('Impossible de démarrer le paiement')
+    }
+    return clientSecret
+  }, [formationId])
 
   return (
     <div id="checkout" className="w-full">

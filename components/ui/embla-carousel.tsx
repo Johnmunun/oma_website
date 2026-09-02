@@ -8,7 +8,8 @@
 "use client"
 
 import { useEffect, useState, useCallback, ReactNode } from "react"
-import useEmblaCarousel, { EmblaOptionsType } from "embla-carousel-react"
+import useEmblaCarousel from "embla-carousel-react"
+import type { EmblaOptionsType } from "embla-carousel"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"

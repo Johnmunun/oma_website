@@ -32,6 +32,8 @@ import {
       Code2,
       Shield,
       Building2,
+      Layers,
+      Trophy,
     } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -78,6 +80,11 @@ const baseNavigationItems: NavItem[] = [
     icon: <FileText className="w-5 h-5" />,
   },
   {
+    name: "Domaines d'expertise",
+    href: "/admin/expertise-domains",
+    icon: <Layers className="w-5 h-5" />,
+  },
+  {
     name: "Événements",
     href: "/admin/events",
     icon: <Calendar className="w-5 h-5" />,
@@ -102,6 +109,11 @@ const baseNavigationItems: NavItem[] = [
     name: "Structures",
     href: "/admin/structures",
     icon: <Building2 className="w-5 h-5" />,
+  },
+  {
+    name: "Challenges",
+    href: "/admin/challenges",
+    icon: <Trophy className="w-5 h-5" />,
   },
   {
     name: "Messages",
@@ -183,37 +195,51 @@ function AdminSidebar({
 
   // Charger le compteur de messages non lus
   useEffect(() => {
+    if (!isMounted || !session?.user) return
+
+    const controller = new AbortController()
+
     const loadUnreadCount = async () => {
       try {
-        const res = await fetch('/api/admin/messages/count')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.success) {
-            setUnreadMessagesCount(data.data.unreadCount)
+        const res = await fetch('/api/admin/messages/count', {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        if (!res.ok) {
+          if (res.status !== 401 && res.status !== 403) {
+            console.warn('[Admin] Erreur chargement compteur messages:', res.status, res.statusText)
           }
+          return
+        }
+        const data = await res.json()
+        if (data.success && typeof data.data?.unreadCount === 'number') {
+          setUnreadMessagesCount(data.data.unreadCount)
         }
       } catch (err) {
+        if (controller.signal.aborted) return
+        if (err instanceof TypeError && err.message === 'Failed to fetch') return
+        if (err instanceof DOMException && err.name === 'AbortError') return
         console.error('[Admin] Erreur chargement compteur messages:', err)
       }
     }
 
     loadUnreadCount()
-    
-    // Recharger toutes les 30 secondes pour le compteur en temps réel
+
     const interval = setInterval(loadUnreadCount, 30000)
-    
-    // Écouter les événements de mise à jour des messages
+
     const handleMessageUpdate = () => {
       loadUnreadCount()
     }
-    
+
     window.addEventListener('message-updated', handleMessageUpdate)
-    
+
     return () => {
+      controller.abort()
       clearInterval(interval)
       window.removeEventListener('message-updated', handleMessageUpdate)
     }
-  }, [])
+  }, [isMounted, session?.user])
 
   // Charger le nombre d'événements à venir
   useEffect(() => {
@@ -477,7 +503,9 @@ function AdminSidebar({
             <UserAvatar email={email ?? undefined} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-white/45 uppercase tracking-wider">Connecté</p>
-              <p className="text-sm font-medium mt-0.5 truncate text-white/90">{email ?? "Utilisateur"}</p>
+              <p className="text-sm font-medium mt-0.5 truncate text-white/90">
+                <HydratedUserEmail email={email} />
+              </p>
             </div>
           </div>
         </div>
@@ -701,7 +729,9 @@ function AdminHeader({ onMenuClick, sidebarOpen }: { onMenuClick: () => void; si
           <div className="flex items-center gap-2 md:gap-3 px-2 md:px-3 py-1.5 rounded-xl border border-transparent hover:border-border/60 hover:bg-muted/40 transition-colors">
             <UserAvatar email={email ?? undefined} />
             <div className="hidden sm:block">
-              <p className="text-xs md:text-sm font-medium truncate max-w-[160px]">{email ?? 'Utilisateur'}</p>
+              <p className="text-xs md:text-sm font-medium truncate max-w-[160px]">
+                <HydratedUserEmail email={email} />
+              </p>
               <p className="text-[11px] text-muted-foreground">Connecté</p>
             </div>
           </div>
@@ -800,6 +830,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   )
+}
+
+function HydratedUserEmail({ email }: { email: string | null }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  return <>{mounted && email ? email : 'Utilisateur'}</>
 }
 
 function UserAvatar({ email }: { email?: string }) {

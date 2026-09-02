@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import dynamic from "next/dynamic"
 import { Playfair_Display, Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
@@ -8,10 +9,15 @@ import { Toaster } from "@/components/ui/sonner"
 import { NextAuthSessionProvider } from "@/components/providers/session-provider"
 import { DynamicColors } from "@/components/theming/dynamic-colors"
 import { VisitTracker } from "@/components/analytics/visit-tracker"
-import { TrackingPixels } from "@/components/tracking/tracking-pixels"
 import { PageTransition } from "@/components/animations/page-transition"
 import { SmoothNavigation } from "@/components/animations/smooth-navigation"
 import { CacheInitScript } from "@/lib/cache"
+
+const TrackingPixels = dynamic(() =>
+  import("@/components/tracking/tracking-pixels").then((mod) => ({
+    default: mod.TrackingPixels,
+  })),
+)
 
 const playfair = Playfair_Display({
   subsets: ["latin"],

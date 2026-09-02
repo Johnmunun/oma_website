@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -29,9 +29,10 @@ const updateTeamMemberSchema = z.object({
 // Récupère un membre spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -50,7 +51,7 @@ export async function GET(
     }
 
     const member = await prisma.teamMember.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!member) {
@@ -77,9 +78,10 @@ export async function GET(
 // Met à jour un membre
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -104,7 +106,7 @@ export async function PUT(
 
     // Vérifier que le membre existe
     const existingMember = await prisma.teamMember.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingMember) {
@@ -116,7 +118,7 @@ export async function PUT(
 
     // Mettre à jour le membre
     const member = await prisma.teamMember.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
     })
 
@@ -155,9 +157,10 @@ export async function PUT(
 // Supprime un membre
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -177,7 +180,7 @@ export async function DELETE(
 
     // Vérifier que le membre existe
     const existingMember = await prisma.teamMember.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingMember) {
@@ -189,7 +192,7 @@ export async function DELETE(
 
     // Supprimer le membre
     await prisma.teamMember.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Logger l'action
@@ -198,7 +201,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'team.delete',
         target: 'TeamMember',
-        payload: { id: params.id },
+        payload: { id },
       },
     })
 

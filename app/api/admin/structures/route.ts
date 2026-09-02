@@ -5,18 +5,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { StructureStatus, StructureType } from '@prisma/client'
 import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
 import { isPrismaClientOutdatedError } from '@/lib/authz/schema'
-
-const createStructureSchema = z.object({
-  name: z.string().min(2).max(200),
-  slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/),
-  type: z.nativeEnum(StructureType).default(StructureType.OMA_INTERNAL),
-  description: z.string().max(500).optional().nullable(),
-  domain: z.string().max(200).optional().nullable(),
-  subdomain: z.string().max(100).optional().nullable(),
-})
+import {
+  createStructureSchema,
+  normalizeOptionalUrl,
+  normalizeThemeColor,
+} from '@/lib/structures/structure-schema'
+import {
+  isStructureParentCycle,
+  listStructuresForAdmin,
+  normalizeOptionalString,
+} from '@/lib/structures/structure-queries'
+import { syncStructureLandingServices } from '@/lib/structures/sync-landing-services'
 
 export async function GET() {
   try {
@@ -25,18 +26,13 @@ export async function GET() {
 
     let structures
     try {
-      structures = await prisma.structure.findMany({
-        orderBy: { name: 'asc' },
-        include: {
-          _count: { select: { memberships: true, roles: true } },
-        },
-      })
+      structures = await listStructuresForAdmin(prisma)
     } catch (error) {
       if (!isPrismaClientOutdatedError(error)) throw error
       structures = await prisma.structure.findMany({
         orderBy: { name: 'asc' },
         include: {
-          _count: { select: { memberships: true } },
+          _count: { select: { memberships: true, roles: true } },
         },
       })
     }
@@ -66,20 +62,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (data.parentId) {
+      const parent = await prisma.structure.findUnique({ where: { id: data.parentId } })
+      if (!parent) {
+        return NextResponse.json(
+          { success: false, error: 'Structure parente introuvable' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const subdomain = normalizeOptionalString(data.subdomain)
+    if (subdomain) {
+      const subTaken = await prisma.structure.findFirst({ where: { subdomain } })
+      if (subTaken) {
+        return NextResponse.json(
+          { success: false, error: 'Ce sous-domaine est déjà utilisé' },
+          { status: 409 }
+        )
+      }
+    }
+
     const structure = await prisma.structure.create({
       data: {
-        ...data,
-        status: StructureStatus.ACTIVE,
-        isActive: true,
+        name: data.name,
+        slug: data.slug,
+        type: data.type,
+        description: data.description ?? null,
+        logoUrl: normalizeOptionalUrl(data.logoUrl),
+        status: data.status,
+        parentId: data.parentId ?? null,
+        expertiseDomainId: data.expertiseDomainId ?? null,
+        showOnLanding: data.showOnLanding,
+        landingOrder: data.landingOrder,
+        landingPagePath: normalizeOptionalString(data.landingPagePath),
+        landingHeroTitle: normalizeOptionalString(data.landingHeroTitle),
+        landingHeroHighlight: normalizeOptionalString(data.landingHeroHighlight),
+        landingHeroSubtitle: normalizeOptionalString(data.landingHeroSubtitle),
+        landingThemeColor: normalizeThemeColor(data.landingThemeColor),
+        landingServicesIntro: normalizeOptionalString(data.landingServicesIntro),
+        publicUrl: normalizeOptionalUrl(data.publicUrl),
+        domain: normalizeOptionalString(data.domain),
+        subdomain,
+        isActive: data.status === 'ACTIVE',
+      },
+      include: {
+        parent: { select: { id: true, name: true, slug: true } },
+        expertiseDomain: { select: { id: true, name: true, slug: true } },
       },
     })
+
+    await syncStructureLandingServices(prisma, structure.id, data.landingServices)
 
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
         action: 'structure.create',
         target: 'Structure',
-        payload: { id: structure.id, name: structure.name },
+        payload: { id: structure.id, name: structure.name, slug: structure.slug },
       },
     })
 

@@ -34,7 +34,6 @@ const navLinks: NavLinkItem[] = [
   { href: "/about", label: "About Us", isPage: true },
   { href: "/#oma-tv", label: "OMA TV" },
   { href: "/#evenements", label: "Événements" },
-  { href: "/#contact", label: "Contact" },
 ]
 
 function NavLink({
@@ -75,37 +74,27 @@ export function Navigation({ forceSolid = false }: NavigationProps) {
   const pathname = usePathname()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
   const logoUrl = useDynamicLogo()
   const [cachedLogo, setCachedLogo] = useState<string | null>(null)
-  const [siteTitle, setSiteTitle] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return (
-        (window as Window & { __OMA_CACHE__?: { siteTitle?: string } }).__OMA_CACHE__?.siteTitle ||
-        getCachedSiteTitle() ||
-        "OMA"
-      )
-    }
-    return "OMA"
-  })
+  const [siteTitle, setSiteTitle] = useState("OMA")
   const [siteDescription, setSiteDescription] = useState("")
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      const win = window as Window & { __OMA_CACHE__?: { siteTitle?: string; logo?: string } }
-      const hasCache = win.__OMA_CACHE__?.siteTitle || win.__OMA_CACHE__?.logo || getCachedSiteTitle()
-      return !hasCache
-    }
-    return true
-  })
+  const [isLoading, setIsLoading] = useState(true)
 
   const isHome = pathname === "/"
   const showSolidNav = forceSolid || !isHome || isScrolled
+  const displayLogoUrl = hasMounted ? logoUrl || cachedLogo : null
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const logo =
-        (window as Window & { __OMA_CACHE__?: { logo?: string } }).__OMA_CACHE__?.logo ||
-        getCachedLogo()
-      setCachedLogo(logo)
+    setHasMounted(true)
+    const logo =
+      (window as Window & { __OMA_CACHE__?: { logo?: string } }).__OMA_CACHE__?.logo ||
+      getCachedLogo()
+    setCachedLogo(logo)
+
+    const cachedTitle = getCachedSiteTitle()
+    if (cachedTitle) {
+      setSiteTitle(cachedTitle)
     }
   }, [])
 
@@ -172,21 +161,18 @@ export function Navigation({ forceSolid = false }: NavigationProps) {
         <div className="container mx-auto px-4 py-3 sm:py-4 max-w-full overflow-x-hidden">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 flex-1 sm:flex-initial">
-              {isLoading && !logoUrl && !cachedLogo ? (
+              {!hasMounted || (isLoading && !displayLogoUrl) ? (
                 <SkeletonLogo />
-              ) : logoUrl ? (
+              ) : displayLogoUrl ? (
                 <div className="relative inline-flex items-center justify-center flex-shrink-0 group/logo">
-                  <div className="absolute w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br from-white via-white to-gray-50 rounded-2xl shadow-lg shadow-black/10 border border-white/50 z-0 transition-all duration-300 group-hover/logo:shadow-xl group-hover/logo:shadow-gold/20 group-hover/logo:scale-105" />
-                  <div className="absolute w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br from-gold/20 via-gold/10 to-transparent rounded-2xl z-[1] opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300 blur-sm" />
-                  <div className="relative z-10 p-1 sm:p-1.5 transition-transform duration-300 group-hover/logo:scale-105">
+                  <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-white via-white to-gray-50 shadow-lg shadow-black/10 border border-white/50 transition-all duration-300 group-hover/logo:shadow-xl group-hover/logo:shadow-gold/20 group-hover/logo:scale-105">
                     <Image
-                      src={logoUrl}
+                      src={displayLogoUrl}
                       alt={siteTitle}
-                      width={56}
-                      height={56}
-                      className="h-10 w-auto sm:h-12 md:h-14 object-contain drop-shadow-sm"
+                      fill
+                      className="object-contain p-1 sm:p-1.5 drop-shadow-sm"
                       onLoad={() => setIsLoading(false)}
-                      sizes="(max-width: 640px) 40px, 56px"
+                      sizes="(max-width: 640px) 48px, 64px"
                       quality={95}
                       priority
                     />
@@ -197,7 +183,7 @@ export function Navigation({ forceSolid = false }: NavigationProps) {
                   <span className="text-white font-bold text-sm sm:text-base md:text-lg">OMA</span>
                 </div>
               )}
-              {isLoading && !siteTitle && !getCachedSiteTitle() ? (
+              {!hasMounted || isLoading ? (
                 <SkeletonSiteName />
               ) : (
                 <div className="flex flex-col justify-center min-w-0 flex-1 sm:flex-initial">

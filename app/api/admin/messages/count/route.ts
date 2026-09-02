@@ -1,12 +1,13 @@
 /**
  * @file app/api/admin/messages/count/route.ts
- * @description Compteur de messages non lus (sidebar)
+ * @description Compteur de messages non lus (sidebar), scopé par structure
  */
 
 import { NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { requireAuth, requireEditorOrAdmin } from '@/lib/authz/guards'
+import { requireAuth } from '@/lib/authz/guards'
+import { buildMessageWhere, requireMessagesListAccess } from '@/lib/messages/message-scope'
 
 function isSchemaMismatchError(error: unknown): boolean {
   const err = error as { code?: string; message?: string }
@@ -24,13 +25,15 @@ export async function GET() {
     const session = await auth()
     const authError = requireAuth(session)
     if (authError) return authError
-    const roleError = requireEditorOrAdmin(session!)
-    if (roleError) return roleError
+
+    const scopeOrError = await requireMessagesListAccess(session!.user!.id!)
+    if (scopeOrError instanceof NextResponse) return scopeOrError
+    const scope = scopeOrError
+
+    const where = buildMessageWhere(scope, { isRead: false, isHidden: false })
 
     try {
-      const unreadCount = await prisma.contactMessage.count({
-        where: { isRead: false, isHidden: false },
-      })
+      const unreadCount = await prisma.contactMessage.count({ where })
       return NextResponse.json({ success: true, data: { unreadCount } })
     } catch (queryError) {
       if (!isSchemaMismatchError(queryError)) throw queryError
@@ -40,9 +43,7 @@ export async function GET() {
           ALTER TABLE "ContactMessage"
           ADD COLUMN IF NOT EXISTS "isHidden" BOOLEAN NOT NULL DEFAULT false
         `)
-        const unreadCount = await prisma.contactMessage.count({
-          where: { isRead: false, isHidden: false },
-        })
+        const unreadCount = await prisma.contactMessage.count({ where })
         return NextResponse.json({ success: true, data: { unreadCount } })
       } catch {
         const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
@@ -54,13 +55,13 @@ export async function GET() {
         })
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Erreur GET messages count:', error)
     return NextResponse.json(
       {
         success: false,
         error: 'Erreur lors de la récupération du compteur',
-        details: error?.message || null,
+        details: error instanceof Error ? error.message : null,
       },
       { status: 500 }
     )

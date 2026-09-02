@@ -24,11 +24,12 @@ const registrationSchema = z.object({
 // Génère un token sécurisé pour l'inscription à un événement
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const event = await prisma.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,
@@ -75,9 +76,10 @@ export async function GET(
 // Crée une inscription à un événement (publique mais sécurisée)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Rate limiting basé sur la base de données
     const ip = getClientIP(request)
     const rateLimitResult = await checkRateLimit(ip, RATE_LIMIT_CONFIGS.eventRegistration)
@@ -124,7 +126,7 @@ export async function POST(
 
     // Vérifier que l'événement existe et est publié
     const event = await prisma.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,

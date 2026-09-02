@@ -12,7 +12,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { resolveMediaMeta } from '@/lib/media-thumbnails'
 import { requirePermission, isPermissionDenied } from '@/lib/authz/require-permission'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { requireAuth, requireAdmin } from '@/lib/authz/guards'
 
 const emptyToNull = (val: unknown) =>
@@ -39,15 +39,16 @@ const updateMediaSchema = z.object({
 // Récupère un média spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await requirePermission('media.view')
     if (isPermissionDenied(session)) return session
 
     const media = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         event: {
           select: {
@@ -83,9 +84,10 @@ export async function GET(
 // Met à jour un média
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await requirePermission('media.upload')
     if (isPermissionDenied(session)) return session
@@ -97,7 +99,7 @@ export async function PUT(
 
     // Vérifier que le média existe
     const existingMedia = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingMedia) {
@@ -125,7 +127,7 @@ export async function PUT(
 
     // Mettre à jour le média
     const media = await prisma.media.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...validatedData,
         ...(title !== undefined && { title }),
@@ -149,7 +151,7 @@ export async function PUT(
         userId: session.user.id,
         action: 'media.update',
         target: 'Media',
-        payload: { id: params.id, ...validatedData },
+        payload: { id, ...validatedData },
       },
     })
 
@@ -178,9 +180,10 @@ export async function PUT(
 // Supprime un média
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     const authError = requireAuth(session)
@@ -190,7 +193,7 @@ export async function DELETE(
 
     // Vérifier que le média existe
     const existingMedia = await prisma.media.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingMedia) {
@@ -202,16 +205,16 @@ export async function DELETE(
 
     // Supprimer le média
     await prisma.media.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Logger l'action
     await prisma.auditLog.create({
       data: {
-        userId: session.user.id,
+        userId: session!.user.id,
         action: 'media.delete',
         target: 'Media',
-        payload: { id: params.id },
+        payload: { id },
       },
     })
 

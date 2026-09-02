@@ -32,13 +32,7 @@ export const imagekit = new ImageKit({
  */
 export async function getImageKitUploadToken(fileName: string, folder?: string) {
   try {
-    const authenticationParameters = imagekit.getAuthenticationParameters(
-      undefined,
-      undefined,
-      {
-        folder: folder || '/uploads',
-      }
-    )
+    const authenticationParameters = imagekit.getAuthenticationParameters()
 
     return {
       token: authenticationParameters.token,
@@ -46,6 +40,7 @@ export async function getImageKitUploadToken(fileName: string, folder?: string) 
       expire: authenticationParameters.expire,
       publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
       urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+      folder: folder || '/uploads',
     }
   } catch (error) {
     console.error('[ImageKit] Erreur génération token:', error)

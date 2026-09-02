@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
@@ -26,9 +26,10 @@ const updateUserSchema = z.object({
 // Récupère un utilisateur spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -47,7 +48,7 @@ export async function GET(
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         name: true,
@@ -86,9 +87,10 @@ export async function GET(
 // Met à jour un utilisateur
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -113,7 +115,7 @@ export async function PUT(
 
     // Vérifier que l'utilisateur existe
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingUser) {
@@ -152,7 +154,7 @@ export async function PUT(
 
     // Mettre à jour l'utilisateur
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       select: {
         id: true,
@@ -174,7 +176,7 @@ export async function PUT(
         userId: session.user.id,
         action: 'user.update',
         target: 'User',
-        payload: { id: params.id, ...validatedData },
+        payload: { id, ...validatedData },
       },
     })
 
@@ -203,9 +205,10 @@ export async function PUT(
 // Supprime un utilisateur
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -224,7 +227,7 @@ export async function DELETE(
     }
 
     // Empêcher la suppression de son propre compte
-    if (params.id === session.user.id) {
+    if (id === session.user.id) {
       return NextResponse.json(
         { success: false, error: 'Vous ne pouvez pas supprimer votre propre compte' },
         { status: 400 }
@@ -233,7 +236,7 @@ export async function DELETE(
 
     // Vérifier que l'utilisateur existe
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingUser) {
@@ -245,7 +248,7 @@ export async function DELETE(
 
     // Supprimer l'utilisateur
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Logger l'action
@@ -254,7 +257,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'user.delete',
         target: 'User',
-        payload: { id: params.id, email: existingUser.email },
+        payload: { id, email: existingUser.email },
       },
     })
 

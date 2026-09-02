@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
@@ -38,6 +38,26 @@ const seoMetaSchema = z.object({
     path: ["pageId", "slug"],
   }
 )
+
+const seoMetaUpdateSchema = z.object({
+  pageId: z.string().uuid().optional(),
+  slug: z.string().min(1).max(255).optional(),
+  title: z.string().max(60).optional().nullable(),
+  description: z.string().max(160).optional().nullable(),
+  keywords: z.string().max(500).optional().nullable(),
+  ogTitle: z.string().max(60).optional().nullable(),
+  ogDescription: z.string().max(160).optional().nullable(),
+  ogImageUrl: z.string().url().optional().nullable(),
+  ogType: z.string().max(50).optional().nullable(),
+  twitterCard: z.string().max(50).optional().nullable(),
+  twitterTitle: z.string().max(60).optional().nullable(),
+  twitterDescription: z.string().max(160).optional().nullable(),
+  twitterImageUrl: z.string().url().optional().nullable(),
+  noIndex: z.boolean().optional(),
+  noFollow: z.boolean().optional(),
+  canonicalUrl: z.string().url().optional().nullable(),
+  schemaJson: z.any().optional().nullable(),
+})
 
 // GET - Récupérer toutes les métadonnées SEO ou une spécifique
 export async function GET(request: NextRequest) {
@@ -220,7 +240,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: "ID requis" }, { status: 400 })
     }
 
-    const validatedData = seoMetaSchema.partial().parse(updateData)
+    const validatedData = seoMetaUpdateSchema.parse(updateData)
 
     // Vérifier si la métadonnée existe
     const existing = await prisma.seoMeta.findUnique({

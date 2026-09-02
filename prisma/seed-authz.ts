@@ -100,6 +100,7 @@ export async function seedAuthz(prisma: PrismaClient) {
       type: StructureType.OMA_INTERNAL,
       description: 'Structure mère du réseau OMA',
       status: StructureStatus.ACTIVE,
+      parentId: null,
       isActive: true,
     },
     create: {
@@ -109,6 +110,7 @@ export async function seedAuthz(prisma: PrismaClient) {
       type: StructureType.OMA_INTERNAL,
       description: 'Structure mère du réseau OMA',
       status: StructureStatus.ACTIVE,
+      parentId: null,
       isActive: true,
     },
   })

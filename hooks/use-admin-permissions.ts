@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { hasPermissionInSet } from '@/lib/authz/permission-aliases'
 
 type PermissionsState = {
-  permissions: Set<string>
+  permissionKeys: string[]
   isRoot: boolean
   loaded: boolean
 }
 
 export function useAdminPermissions() {
   const [state, setState] = useState<PermissionsState>({
-    permissions: new Set(),
+    permissionKeys: [],
     isRoot: false,
     loaded: false,
   })
@@ -26,7 +26,7 @@ export function useAdminPermissions() {
       const json = await res.json()
       if (json.success && json.data) {
         setState({
-          permissions: new Set(json.data.permissions ?? []),
+          permissionKeys: Array.isArray(json.data.permissions) ? json.data.permissions : [],
           isRoot: Boolean(json.data.isRoot),
           loaded: true,
         })
@@ -45,18 +45,19 @@ export function useAdminPermissions() {
   const can = useCallback(
     (permission: string) => {
       if (state.isRoot) return true
-      return hasPermissionInSet(state.permissions, permission)
+      return hasPermissionInSet(new Set(state.permissionKeys), permission)
     },
-    [state.isRoot, state.permissions]
+    [state.isRoot, state.permissionKeys]
   )
 
-  return { ...state, can, reload: load }
+  return { ...state, permissions: state.permissionKeys, can, reload: load }
 }
 
 /** Permission minimale pour afficher un lien de navigation admin */
 export const ADMIN_NAV_PERMISSIONS: Record<string, string | null> = {
   '/admin': 'stats.view',
   '/admin/content': 'content.view',
+  '/admin/challenges': 'challenges.view',
   '/admin/events': 'events.view',
   '/admin/team': 'team.view',
   '/admin/users': 'users.view',

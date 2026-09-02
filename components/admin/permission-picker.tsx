@@ -30,6 +30,7 @@ const MODULE_LABELS: Record<string, string> = {
   media: 'Médias',
   messages: 'Messages',
   content: 'Contenu',
+  expertise: 'Expertise',
   team: 'Équipe',
   testimonials: 'Témoignages',
   partners: 'Partenaires',

@@ -60,7 +60,7 @@ export function PartnerModal({ isOpen, onClose, onSubmit, initialData }: Partner
     }))
   }
 
-  const handleLogoUpload = (url: string | null) => {
+  const handleLogoUpload = (url: string) => {
     setFormData((prev) => ({ ...prev, logoUrl: url }))
   }
 
@@ -140,9 +140,8 @@ export function PartnerModal({ isOpen, onClose, onSubmit, initialData }: Partner
             <Label>Logo du partenaire</Label>
             <LogoUpload
               folder="/partners"
-              currentImageUrl={formData.logoUrl || undefined}
+              currentLogoUrl={formData.logoUrl || undefined}
               onUploadComplete={handleLogoUpload}
-              className="mt-2"
             />
             <p className="text-xs text-muted-foreground mt-1">
               Téléchargez le logo du partenaire (format recommandé: PNG, SVG)

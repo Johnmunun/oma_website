@@ -10,10 +10,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { requireAuth, requireEditorOrAdmin } from '@/lib/authz/guards'
+import { requireAuth } from '@/lib/authz/guards'
+import {
+  buildMessageWhere,
+  requireMessagesListAccess,
+  requireMessageMutationAccess,
+} from '@/lib/messages/message-scope'
 
 type MessageRow = {
   id: string
@@ -21,6 +26,7 @@ type MessageRow = {
   email: string
   subject: string | null
   message: string
+  structureId?: string | null
   isRead: boolean
   readAt: Date | null
   isHidden?: boolean
@@ -129,11 +135,14 @@ export async function GET(request: NextRequest) {
     const session = await auth()
     const authError = requireAuth(session)
     if (authError) return authError
-    const roleError = requireEditorOrAdmin(session!)
-    if (roleError) return roleError
+
+    const scopeOrError = await requireMessagesListAccess(session!.user!.id!)
+    if (scopeOrError instanceof NextResponse) return scopeOrError
+    const scope = scopeOrError
 
     const { searchParams } = new URL(request.url)
     const isReadParam = searchParams.get('isRead')
+    const structureFilter = searchParams.get('structureId')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10) || 50, 200)
     const offset = parseInt(searchParams.get('offset') || '0', 10) || 0
     const isReadFilter =
@@ -141,24 +150,49 @@ export async function GET(request: NextRequest) {
         ? isReadParam === 'true'
         : undefined
 
-    const where: Prisma.ContactMessageWhereInput = {}
-    if (typeof isReadFilter === 'boolean') {
-      where.isRead = isReadFilter
+    let structureIdFilter: string | null | undefined
+    if (structureFilter === '__oma__') {
+      structureIdFilter = null
+    } else if (structureFilter && scope.canViewAll) {
+      structureIdFilter = structureFilter
+    } else if (structureFilter && !scope.canViewAll) {
+      if (!scope.structureIds.includes(structureFilter)) {
+        return NextResponse.json(
+          { success: false, error: 'Accès refusé à cette structure' },
+          { status: 403 }
+        )
+      }
+      structureIdFilter = structureFilter
     }
-    where.isHidden = false
+
+    const where = buildMessageWhere(scope, {
+      isRead: isReadFilter,
+      isHidden: false,
+      structureId: structureIdFilter,
+    })
 
     try {
-      const [messages, total, unreadCount] = await Promise.all([
+      const [messages, total, unreadCount, structures] = await Promise.all([
         prisma.contactMessage.findMany({
           where,
           orderBy: { createdAt: 'desc' },
           take: limit,
           skip: offset,
+          include: {
+            structure: { select: { id: true, name: true } },
+          },
         }),
         prisma.contactMessage.count({ where }),
         prisma.contactMessage.count({
-          where: { isRead: false, isHidden: false },
+          where: buildMessageWhere(scope, { isRead: false, isHidden: false }),
         }),
+        scope.canViewAll
+          ? prisma.structure.findMany({
+              where: { isActive: true },
+              select: { id: true, name: true },
+              orderBy: { name: 'asc' },
+            })
+          : Promise.resolve(undefined),
       ])
 
       return NextResponse.json({
@@ -169,6 +203,8 @@ export async function GET(request: NextRequest) {
           unreadCount,
           limit,
           offset,
+          canViewAll: scope.canViewAll,
+          structures: structures ?? [],
         },
       })
     } catch (queryError) {
@@ -182,17 +218,27 @@ export async function GET(request: NextRequest) {
       const columnAdded = await ensureIsHiddenColumn()
       if (columnAdded) {
         try {
-          const [messages, total, unreadCount] = await Promise.all([
+          const [messages, total, unreadCount, structures] = await Promise.all([
             prisma.contactMessage.findMany({
               where,
               orderBy: { createdAt: 'desc' },
               take: limit,
               skip: offset,
+              include: {
+                structure: { select: { id: true, name: true } },
+              },
             }),
             prisma.contactMessage.count({ where }),
             prisma.contactMessage.count({
-              where: { isRead: false, isHidden: false },
+              where: buildMessageWhere(scope, { isRead: false, isHidden: false }),
             }),
+            scope.canViewAll
+              ? prisma.structure.findMany({
+                  where: { isActive: true },
+                  select: { id: true, name: true },
+                  orderBy: { name: 'asc' },
+                })
+              : Promise.resolve(undefined),
           ])
 
           return NextResponse.json({
@@ -203,6 +249,8 @@ export async function GET(request: NextRequest) {
               unreadCount,
               limit,
               offset,
+              canViewAll: scope.canViewAll,
+              structures: structures ?? [],
             },
           })
         } catch (retryError) {
@@ -247,21 +295,6 @@ export async function GET(request: NextRequest) {
 // PATCH /api/admin/messages?id=...
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
-    }
-
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'EDITOR') {
-      return NextResponse.json(
-        { success: false, error: 'Accès refusé' },
-        { status: 403 }
-      )
-    }
-
     const { searchParams } = new URL(request.url)
     const messageId = searchParams.get('id')
     const body = await request.json()
@@ -272,6 +305,9 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const access = await requireMessageMutationAccess(messageId, 'messages.update')
+    if (!access.ok) return access.response
 
     const updateData: Prisma.ContactMessageUpdateInput = {}
     if (typeof body.isRead === 'boolean') {
@@ -293,6 +329,9 @@ export async function PATCH(request: NextRequest) {
       const message = await prisma.contactMessage.update({
         where: { id: messageId },
         data: updateData,
+        include: {
+          structure: { select: { id: true, name: true } },
+        },
       })
 
       return NextResponse.json({

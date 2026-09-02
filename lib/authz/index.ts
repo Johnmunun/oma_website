@@ -1,5 +1,5 @@
 export { authorize, can } from './authorize'
-export { getEffectivePermissions } from './get-effective-permissions'
+export { getEffectivePermissions, getAggregatedEffectivePermissions } from './get-effective-permissions'
 export { requirePermission, isPermissionDenied } from './require-permission'
 export { requireAuth, requireEditorOrAdmin, requireAdmin } from './guards'
 export {

@@ -12,6 +12,11 @@ export interface RateLimitOptions {
   keyPrefix?: string // Préfixe pour la clé (ex: "register", "contact")
 }
 
+/** Désactivé en local pour faciliter les tests (inscriptions, contact, votes, etc.). */
+export function isRateLimitBypassed(): boolean {
+  return process.env.NODE_ENV === 'development' || process.env.RATE_LIMIT_DISABLED === 'true'
+}
+
 /**
  * Vérifie et incrémente le compteur de rate limiting
  * @param key - Clé unique (ex: IP, email, etc.)
@@ -23,9 +28,18 @@ export async function checkRateLimit(
   options: RateLimitOptions
 ): Promise<{ allowed: boolean; remaining: number; resetAt: Date }> {
   const { maxRequests, windowMs, keyPrefix = 'default' } = options
+  const resetAt = new Date(Date.now() + windowMs)
+
+  if (isRateLimitBypassed()) {
+    return {
+      allowed: true,
+      remaining: maxRequests,
+      resetAt,
+    }
+  }
+
   const fullKey = `${keyPrefix}:${key}`
   const now = new Date()
-  const resetAt = new Date(now.getTime() + windowMs)
 
   try {
     // Nettoyer les anciennes entrées (celles dont resetAt est passé)
@@ -132,6 +146,18 @@ export const RATE_LIMIT_CONFIGS = {
     maxRequests: 5,
     windowMs: 15 * 60 * 1000, // 15 minutes
     keyPrefix: 'event-register',
+  },
+  // Inscription aux challenges
+  challengeRegistration: {
+    maxRequests: 3,
+    windowMs: 15 * 60 * 1000,
+    keyPrefix: 'challenge-register',
+  },
+  // Vote public challenge
+  challengeVote: {
+    maxRequests: 5,
+    windowMs: 60 * 60 * 1000,
+    keyPrefix: 'challenge-vote',
   },
   // Formulaire de contact
   contact: {

@@ -390,19 +390,22 @@ model Translation {
 }
 
 model ContactMessage {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String
-  email     String
-  subject   String?
-  message   String
-  isRead    Boolean   @default(false)
-  readAt    DateTime?
-  isHidden  Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  email       String
+  subject     String?
+  message     String
+  structureId String?    @db.Uuid
+  isRead      Boolean    @default(false)
+  readAt      DateTime?
+  isHidden    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  structure   Structure? @relation(fields: [structureId], references: [id], onDelete: SetNull)
 
   @@index([isRead, createdAt])
   @@index([isHidden, createdAt])
   @@index([email])
+  @@index([structureId, createdAt])
   @@map("ContactMessage")
 }
 
@@ -502,23 +505,236 @@ model RolePermission {
 }
 
 model Structure {
-  id          String                @id @default(uuid()) @db.Uuid
-  name        String
-  slug        String                @unique
-  type        StructureType         @default(OMA_INTERNAL)
-  description String?
-  logoUrl     String?
-  status      StructureStatus       @default(ACTIVE)
-  domain      String?
-  subdomain   String?
-  isActive    Boolean               @default(true)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  roles       Role[]
-  memberships StructureMembership[]
+  id                String                @id @default(uuid()) @db.Uuid
+  name              String
+  slug              String                @unique
+  type              StructureType         @default(OMA_INTERNAL)
+  description       String?
+  logoUrl           String?
+  status            StructureStatus       @default(ACTIVE)
+  parentId          String?               @db.Uuid
+  expertiseDomainId String?               @db.Uuid
+  showOnLanding     Boolean               @default(false)
+  landingOrder      Int                   @default(0)
+  landingPagePath   String?
+  publicUrl         String?
+  domain            String?
+  subdomain         String?
+  landingHeroTitle    String?
+  landingHeroHighlight String?
+  landingHeroSubtitle  String?
+  landingThemeColor   String?
+  landingServicesIntro String?
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  parent            Structure?            @relation("StructureHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Structure[]           @relation("StructureHierarchy")
+  expertiseDomain   ExpertiseDomain?      @relation(fields: [expertiseDomainId], references: [id], onDelete: SetNull)
+  roles             Role[]
+  memberships       StructureMembership[]
+  challenges        Challenge[]
+  contactMessages   ContactMessage[]
+  landingServices   StructureLandingService[]
 
   @@index([type, isActive])
+  @@index([parentId])
+  @@index([expertiseDomainId])
+  @@index([showOnLanding, landingOrder])
+  @@index([subdomain])
   @@map("Structure")
+}
+
+model ExpertiseDomain {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String      @unique
+  description String?
+  iconKey     String      @default("mic")
+  sortOrder   Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  structures  Structure[]
+
+  @@index([isActive, sortOrder])
+  @@map("ExpertiseDomain")
+}
+
+model StructureLandingService {
+  id          String    @id @default(uuid()) @db.Uuid
+  structureId String    @db.Uuid
+  title       String
+  description String    @default("")
+  iconKey     String    @default("mic")
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  structure   Structure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+
+  @@index([structureId, sortOrder])
+  @@map("StructureLandingService")
+}
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CandidateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Challenge {
+  id          String          @id @default(uuid()) @db.Uuid
+  structureId String          @db.Uuid
+  name        String
+  slug        String
+  description String?
+  status      ChallengeStatus @default(DRAFT)
+  settings    Json?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  structure   Structure       @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  candidates  Candidate[]
+  videos      ChallengeVideo[]
+  juryMembers ChallengeJuryMember[]
+  juryEvaluations ChallengeJuryEvaluation[]
+  votes       ChallengeVote[]
+
+  @@unique([structureId, slug])
+  @@index([structureId, status])
+  @@map("Challenge")
+}
+
+model Candidate {
+  id          String          @id @default(uuid()) @db.Uuid
+  challengeId String          @db.Uuid
+  candidateCode String?
+  fullName    String
+  email       String
+  phone       String?
+  birthDate   DateTime?
+  age         Int?
+  parentName  String?
+  parentEmail String?
+  parentPhone String?
+  city        String?
+  notes       String?
+  reviewNotes String?
+  status      CandidateStatus @default(PENDING)
+  approvedAt  DateTime?
+  rejectedAt       DateTime?
+  videoSubmitToken String?          @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  challenge        Challenge        @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  video            ChallengeVideo?
+  juryEvaluations  ChallengeJuryEvaluation[]
+  votes            ChallengeVote[]
+
+  @@unique([challengeId, email])
+  @@unique([challengeId, candidateCode])
+  @@index([challengeId, status])
+  @@index([challengeId, createdAt])
+  @@map("Candidate")
+}
+
+enum ChallengeVideoSource {
+  YOUTUBE
+  VIMEO
+  EXTERNAL
+  UPLOAD
+}
+
+enum ChallengeVideoStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model ChallengeVideo {
+  id           String               @id @default(uuid()) @db.Uuid
+  challengeId  String               @db.Uuid
+  candidateId  String               @unique @db.Uuid
+  title        String?
+  description  String?
+  videoUrl     String
+  thumbnailUrl String?
+  source       ChallengeVideoSource @default(EXTERNAL)
+  status       ChallengeVideoStatus @default(PENDING)
+  fileId       String?
+  reviewNotes  String?
+  publishedAt  DateTime?
+  rejectedAt   DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  challenge    Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  candidate    Candidate            @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, status])
+  @@index([challengeId, createdAt])
+  @@map("ChallengeVideo")
+}
+
+model ChallengeJuryMember {
+  id          String   @id @default(uuid()) @db.Uuid
+  challengeId String   @db.Uuid
+  fullName    String
+  email       String
+  title       String?
+  bio         String?
+  accessToken String   @unique
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  evaluations ChallengeJuryEvaluation[]
+
+  @@unique([challengeId, email])
+  @@index([challengeId, isActive])
+  @@map("ChallengeJuryMember")
+}
+
+model ChallengeJuryEvaluation {
+  id           String   @id @default(uuid()) @db.Uuid
+  challengeId  String   @db.Uuid
+  juryMemberId String   @db.Uuid
+  candidateId  String   @db.Uuid
+  score        Float
+  comment      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  juryMember   ChallengeJuryMember @relation(fields: [juryMemberId], references: [id], onDelete: Cascade)
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  challenge    Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([juryMemberId, candidateId])
+  @@index([challengeId])
+  @@index([candidateId])
+  @@map("ChallengeJuryEvaluation")
+}
+
+model ChallengeVote {
+  id          String    @id @default(uuid()) @db.Uuid
+  challengeId String    @db.Uuid
+  candidateId String    @db.Uuid
+  voterKey    String
+  voterEmail  String?
+  createdAt   DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, voterKey])
+  @@index([challengeId, candidateId])
+  @@map("ChallengeVote")
 }
 
 model StructureMembership {

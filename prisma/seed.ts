@@ -7,6 +7,8 @@
 import { PrismaClient, UserRole } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { seedAuthz } from './seed-authz'
+import { seedExpertiseDomains } from './seed-expertise'
+import { seedJoyStudio } from './seed-joystudio'
 
 const prisma = new PrismaClient()
 
@@ -124,6 +126,8 @@ async function main() {
   // 5. RBAC — permissions, rôles, structure OMA
   // ============================================
   await seedAuthz(prisma)
+  await seedExpertiseDomains(prisma)
+  await seedJoyStudio(prisma)
 
   console.log('\n🎉 Seed terminé avec succès!')
   console.log('\n📋 Informations de connexion:')

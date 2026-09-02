@@ -21,14 +21,15 @@ const createRegistrationSchema = z.object({
 // Récupère toutes les inscriptions d'un événement
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await requirePermission('events.view')
     if (isPermissionDenied(session)) return session
 
     const registrations = await prisma.registration.findMany({
-      where: { eventId: params.id },
+      where: { eventId: id },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -59,9 +60,10 @@ export async function GET(
 // Crée une inscription manuellement (admin uniquement)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await requirePermission('events.manage')
     if (isPermissionDenied(session)) return session
 
@@ -83,7 +85,7 @@ export async function POST(
 
     // Vérifier que l'événement existe
     const event = await prisma.event.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,
@@ -105,7 +107,7 @@ export async function POST(
     // Vérifier si l'email n'est pas déjà inscrit
     const existing = await prisma.registration.findFirst({
       where: {
-        eventId: params.id,
+        eventId: id,
         email: email.toLowerCase(),
       },
     })
@@ -120,7 +122,7 @@ export async function POST(
     // Créer l'inscription
     const registration = await prisma.registration.create({
       data: {
-        eventId: params.id,
+        eventId: id,
         fullName,
         email: email.toLowerCase(),
         phone: phone || null,

@@ -60,6 +60,10 @@ export const CORE_PERMISSIONS: PermissionDef[] = [
   { key: 'content.view', module: 'content', description: 'Voir le contenu du site' },
   { key: 'content.update', module: 'content', description: 'Modifier le contenu du site' },
   { key: 'content.manage', module: 'content', description: 'Gestion complète du contenu (alias)' },
+  { key: 'expertise.view', module: 'expertise', description: "Voir les domaines d'expertise" },
+  { key: 'expertise.create', module: 'expertise', description: "Créer des domaines d'expertise" },
+  { key: 'expertise.update', module: 'expertise', description: "Modifier les domaines d'expertise" },
+  { key: 'expertise.delete', module: 'expertise', description: "Supprimer des domaines d'expertise" },
 
   // ── Équipe ──
   { key: 'team.view', module: 'team', description: "Voir l'équipe" },
@@ -104,6 +108,8 @@ export const FUTURE_PERMISSIONS: PermissionDef[] = [
   { key: 'challenges.create', module: 'challenges', description: 'Créer des challenges' },
   { key: 'challenges.update', module: 'challenges', description: 'Modifier des challenges' },
   { key: 'challenges.delete', module: 'challenges', description: 'Supprimer des challenges' },
+  { key: 'challenges.publish', module: 'challenges', description: 'Publier des challenges' },
+  { key: 'challenges.settings', module: 'challenges', description: 'Paramètres des challenges' },
   { key: 'candidates.view', module: 'candidates', description: 'Voir les candidats' },
   { key: 'candidates.create', module: 'candidates', description: 'Créer des candidats' },
   { key: 'candidates.update', module: 'candidates', description: 'Modifier des candidats' },

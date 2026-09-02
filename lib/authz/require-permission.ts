@@ -2,7 +2,7 @@ import 'server-only'
 
 import { NextResponse } from 'next/server'
 import type { Session } from 'next-auth'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { authorize } from './authorize'
 import { requireAuth } from './guards'
 import type { PermissionKey } from './permissions-catalog'

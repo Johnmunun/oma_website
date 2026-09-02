@@ -4,8 +4,8 @@
  */
 
 import { NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
-import { getEffectivePermissions } from '@/lib/authz/get-effective-permissions'
+import { auth } from '@/auth'
+import { getAggregatedEffectivePermissions } from '@/lib/authz/get-effective-permissions'
 import { getLegacyPermissions } from '@/lib/authz/legacy'
 import { ALL_PERMISSION_KEYS } from '@/lib/authz/permissions-catalog'
 import type { UserRole } from '@prisma/client'
@@ -20,7 +20,7 @@ export async function GET() {
       )
     }
 
-    const effective = await getEffectivePermissions(session.user.id)
+    const effective = await getAggregatedEffectivePermissions(session.user.id)
 
     if (effective.isRoot) {
       return NextResponse.json({

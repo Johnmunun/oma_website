@@ -1,71 +1,98 @@
 /**
  * @file middleware.ts
- * @description Middleware Next.js pour protéger les routes admin
- * Utilise NextAuth au lieu de Supabase
- * 
- * Note: Version optimisée pour Edge Runtime (évite les imports lourds)
+ * @description Sous-domaines structures + protection routes admin
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * Fonction légère pour vérifier l'authentification via les cookies
- * Utilise directement les cookies sans importer NextAuth/Prisma
- * 
- * Note: Cette approche vérifie simplement la présence d'un cookie de session.
- * La validation complète du rôle et de l'authentification se fera côté serveur dans les pages.
- * Cela réduit considérablement la taille du bundle Edge Runtime.
- */
 function hasSessionCookie(req: NextRequest): boolean {
-  const sessionToken = req.cookies.get('authjs.session-token')?.value || 
-                       req.cookies.get('__Secure-authjs.session-token')?.value ||
-                       req.cookies.get('next-auth.session-token')?.value ||
-                       req.cookies.get('__Secure-next-auth.session-token')?.value
-  
-  return !!sessionToken
+  return Boolean(
+    req.cookies.get('authjs.session-token')?.value ||
+      req.cookies.get('__Secure-authjs.session-token')?.value ||
+      req.cookies.get('next-auth.session-token')?.value ||
+      req.cookies.get('__Secure-next-auth.session-token')?.value
+  )
+}
+
+function getMainSiteOrigin(): string {
+  const url = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/$/, '')
+  if (url) return url
+  const domain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
+  if (domain) return `https://${domain}`
+  return 'http://localhost:3000'
+}
+
+function resolveSubdomain(host: string): string | null {
+  const siteDomain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
+
+  if (siteDomain) {
+    if (host === siteDomain || host === `www.${siteDomain}`) return null
+    const suffix = `.${siteDomain}`
+    if (host.endsWith(suffix)) {
+      const sub = host.slice(0, -suffix.length)
+      if (sub && sub !== 'www' && !sub.includes('.')) return sub
+    }
+  }
+
+  if (process.env.NODE_ENV === 'development' && host.endsWith('.localhost')) {
+    const sub = host.slice(0, -'.localhost'.length)
+    if (sub && sub !== 'www' && !sub.includes('.')) return sub
+  }
+
+  return null
 }
 
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl
+  const host = req.headers.get('host')?.split(':')[0] ?? ''
 
-  // Protéger uniquement les routes /admin (sauf /admin/unlock qui est gérée par la page elle-même)
+  const subdomain = resolveSubdomain(host)
+  if (
+    subdomain &&
+    !url.pathname.startsWith('/admin') &&
+    !url.pathname.startsWith('/api') &&
+    !url.pathname.startsWith('/_next')
+  ) {
+    if (url.pathname === '/') {
+      return NextResponse.rewrite(new URL(`/s/${subdomain}`, req.url))
+    }
+
+    const mainOrigin = getMainSiteOrigin()
+    try {
+      const mainHost = new URL(mainOrigin).host
+      if (host !== mainHost) {
+        return NextResponse.redirect(new URL(url.pathname + url.search, mainOrigin))
+      }
+    } catch {
+      // ignore invalid main origin
+    }
+  }
+
   if (!url.pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
 
-  // Autoriser l'accès à la page de déverrouillage (elle vérifie elle-même l'authentification)
   if (url.pathname === '/admin/unlock') {
     return NextResponse.next()
   }
 
   try {
-    // Vérifier la présence d'un cookie de session (approche légère pour Edge Runtime)
-    // La validation complète du rôle se fera côté serveur dans les pages
     if (!hasSessionCookie(req)) {
       const loginUrl = new URL('/login', req.url)
       loginUrl.searchParams.set('redirect', url.pathname)
       return NextResponse.redirect(loginUrl)
     }
-
-    // Pour les vérifications de rôle, on laisse les pages les gérer
-    // car elles ont accès à la session complète via auth()
-    // Le middleware vérifie juste la présence d'une session
-
-    // La vérification des rôles se fait maintenant dans les pages elles-mêmes
-    // Le middleware vérifie uniquement la présence d'une session
-    // Cela réduit la taille du bundle Edge Runtime
-
     return NextResponse.next()
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Middleware] Erreur authentification:', error)
-    // En cas d'erreur, rediriger vers login plutôt que de faire planter
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', url.pathname)
-    loginUrl.searchParams.set('error', 'auth_error')
     return NextResponse.redirect(loginUrl)
   }
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
 }

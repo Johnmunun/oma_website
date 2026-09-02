@@ -87,17 +87,17 @@ export function DynamicLogo() {
  * Utilise le cache local pour éviter le flash au chargement
  */
 export function useDynamicLogo() {
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
-    // Initialiser avec le cache si disponible (via window.__OMA_CACHE__ ou localStorage)
-    if (typeof window !== 'undefined') {
-      return (
-        (window as any).__OMA_CACHE__?.logo || getCachedLogo() || null
-      )
-    }
-    return null
-  })
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
+    const cachedLogo =
+      (typeof window !== 'undefined' && (window as Window & { __OMA_CACHE__?: { logo?: string } }).__OMA_CACHE__?.logo) ||
+      getCachedLogo()
+
+    if (cachedLogo) {
+      setLogoUrl(cachedLogo)
+    }
+
     const loadLogo = async () => {
       try {
         // Charger depuis l'API
@@ -127,10 +127,9 @@ export function useDynamicLogo() {
         }
       } catch (error) {
         console.error('[useDynamicLogo] ❌ Erreur chargement logo:', error)
-        // En cas d'erreur, utiliser le cache si disponible
-        const cachedLogo = getCachedLogo()
-        if (cachedLogo && cachedLogo !== logoUrl) {
-          setLogoUrl(cachedLogo)
+        const fallbackLogo = getCachedLogo()
+        if (fallbackLogo) {
+          setLogoUrl((current) => current ?? fallbackLogo)
           console.log('[useDynamicLogo] ✅ Utilisation du cache en cas d\'erreur')
         }
       }
@@ -147,7 +146,7 @@ export function useDynamicLogo() {
     return () => {
       window.removeEventListener('settings-updated', handleSettingsUpdate)
     }
-  }, [logoUrl])
+  }, [])
 
   return logoUrl
 }

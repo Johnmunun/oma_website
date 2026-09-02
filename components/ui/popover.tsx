@@ -21,6 +21,7 @@ function PopoverContent({
   className,
   align = 'center',
   sideOffset = 4,
+  children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -34,8 +35,38 @@ function PopoverContent({
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
+  )
+}
+
+/** Petite flèche pointant vers l'élément déclencheur (style tooltip pro) */
+function PopoverArrow({
+  className,
+  side = 'top',
+}: {
+  className?: string
+  side?: 'top' | 'bottom' | 'left' | 'right'
+}) {
+  const sidePosition: Record<typeof side, string> = {
+    top: '-bottom-[7px] border-b border-r',
+    bottom: '-top-[7px] border-l border-t',
+    left: '-right-[7px] border-r border-t',
+    right: '-left-[7px] border-b border-l',
+  }
+
+  return (
+    <span
+      aria-hidden
+      data-slot="popover-arrow"
+      className={cn(
+        'pointer-events-none absolute z-[60] block size-3 rotate-45 border-border/80 bg-popover shadow-sm',
+        sidePosition[side],
+        className,
+      )}
+    />
   )
 }
 
@@ -45,4 +76,4 @@ function PopoverAnchor({
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
 }
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor }
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor, PopoverArrow }

@@ -7,7 +7,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/auth"
 import { checkRateLimit, getClientIP, RATE_LIMIT_CONFIGS } from "@/lib/rate-limit"
 
 // Schéma de validation pour l'inscription

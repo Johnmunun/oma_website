@@ -5,7 +5,8 @@ import { Sparkles, ArrowRight } from "lucide-react"
 import { AnimateOnScroll } from "@/components/animations/animate-on-scroll"
 import { Button } from "@/components/ui/button"
 import { ABOUT_STATS } from "@/lib/about-content"
-import { AboutIllustration, SectionDotsPattern } from "@/components/illustrations/landing-vectors"
+import { EloquenceSpeakerIllustration } from "@/components/illustrations/eloquence-speaker"
+import { SectionDotsPattern } from "@/components/illustrations/landing-vectors"
 
 export function AboutSection() {
   return (
@@ -57,8 +58,8 @@ export function AboutSection() {
 
           <AnimateOnScroll animation="fade-left" delay={200}>
             <div className="relative flex justify-center lg:justify-end">
-              <div className="absolute inset-0 bg-gradient-to-br from-gold/10 via-transparent to-gold/5 rounded-3xl blur-2xl scale-90" aria-hidden />
-              <AboutIllustration className="relative z-10 w-full max-w-[280px] sm:max-w-sm md:max-w-md drop-shadow-sm" />
+              <div className="absolute inset-0 bg-gradient-to-br from-gold/15 via-transparent to-gold/8 rounded-3xl blur-2xl scale-90" aria-hidden />
+              <EloquenceSpeakerIllustration className="relative z-10 drop-shadow-lg" />
             </div>
           </AnimateOnScroll>
         </div>

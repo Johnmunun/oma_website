@@ -464,7 +464,7 @@ export default function AdminContentPage() {
                     }, 500)
                   }}
                   onRemove={() => {
-                    handleChange("coverImageUrl", null)
+                    handleChange("coverImageUrl", "")
                     handleSaveAfterUpload(null, "coverImageUrl")
                   }}
                   folder="/banners"
@@ -591,7 +591,7 @@ export default function AdminContentPage() {
                       }, 500)
                     }}
                     onRemove={() => {
-                      handleChange("heroImageUrl", null)
+                      handleChange("heroImageUrl", "")
                       handleSaveAfterUpload(null, "heroImageUrl")
                     }}
                     folder="/hero"
@@ -645,7 +645,7 @@ export default function AdminContentPage() {
                       }, 500)
                     }}
                     onRemove={() => {
-                      handleChange("aboutHeroImageUrl", null)
+                      handleChange("aboutHeroImageUrl", "")
                       handleSaveAfterUpload(null, "aboutHeroImageUrl")
                     }}
                     folder="/about"

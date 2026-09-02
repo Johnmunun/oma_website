@@ -243,7 +243,7 @@ export default function AdminEventsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | AdminEvent["status"]>("all")
-  const [filterType, setFilterType] = useState<"all" | AdminEvent["type"]>("all")
+  const [filterType, setFilterType] = useState<"all" | "online" | "inperson">("all")
   const [filterTime, setFilterTime] = useState<"all" | "upcoming" | "past">("all")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<AdminEvent | undefined>()

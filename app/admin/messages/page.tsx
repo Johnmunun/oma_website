@@ -39,6 +39,13 @@ interface ContactMessage {
   readAt: string | null
   isHidden: boolean
   createdAt: string
+  structureId?: string | null
+  structure?: { id: string; name: string } | null
+}
+
+interface StructureOption {
+  id: string
+  name: string
 }
 
 export default function AdminMessages() {
@@ -52,6 +59,9 @@ export default function AdminMessages() {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
+  const [structureFilter, setStructureFilter] = useState<string>("all")
+  const [canViewAll, setCanViewAll] = useState(false)
+  const [structures, setStructures] = useState<StructureOption[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
 
@@ -61,6 +71,8 @@ export default function AdminMessages() {
       const params = new URLSearchParams()
       if (filter === "unread") params.set("isRead", "false")
       if (filter === "read") params.set("isRead", "true")
+      if (structureFilter === "oma") params.set("structureId", "__oma__")
+      else if (structureFilter !== "all") params.set("structureId", structureFilter)
 
       const query = params.toString()
       const messagesUrl = query ? `/api/admin/messages?${query}` : "/api/admin/messages"
@@ -81,6 +93,13 @@ export default function AdminMessages() {
           : []
 
       setMessages(list)
+
+      if (typeof messagesData.data?.canViewAll === "boolean") {
+        setCanViewAll(messagesData.data.canViewAll)
+      }
+      if (Array.isArray(messagesData.data?.structures)) {
+        setStructures(messagesData.data.structures)
+      }
 
       if (typeof messagesData.data?.unreadCount === "number") {
         setUnreadCount(messagesData.data.unreadCount)
@@ -128,7 +147,7 @@ export default function AdminMessages() {
     }, 30000)
 
     return () => clearInterval(interval)
-  }, [filter])
+  }, [filter, structureFilter])
 
   const markAsRead = async (messageId: string, isRead: boolean) => {
     try {
@@ -201,31 +220,52 @@ export default function AdminMessages() {
       {/* Filtres */}
       <Card className="border-0 shadow-soft bg-white">
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <Filter className="w-5 h-5 text-muted-foreground" />
-            <div className="flex gap-2">
-            <Button
-              variant={filter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("all")}
-            >
-              Tous ({messages.length})
-            </Button>
-            <Button
-              variant={filter === "unread" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("unread")}
-            >
-              Non lus ({unreadCount})
-            </Button>
-            <Button
-              variant={filter === "read" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("read")}
-            >
-              Lus ({messages.length - unreadCount})
-            </Button>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <Filter className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={filter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter("all")}
+                >
+                  Tous ({messages.length})
+                </Button>
+                <Button
+                  variant={filter === "unread" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter("unread")}
+                >
+                  Non lus ({unreadCount})
+                </Button>
+                <Button
+                  variant={filter === "read" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter("read")}
+                >
+                  Lus
+                </Button>
+              </div>
             </div>
+
+            {canViewAll && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Structure :</span>
+                <select
+                  value={structureFilter}
+                  onChange={(e) => setStructureFilter(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="all">Toutes</option>
+                  <option value="oma">Réseau OMA (site principal)</option>
+                  {structures.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -254,10 +294,15 @@ export default function AdminMessages() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       {!message.isRead && (
                         <Badge variant="default" className="gradient-purple text-white">
                           Nouveau
+                        </Badge>
+                      )}
+                      {canViewAll && (
+                        <Badge variant="outline" className="text-xs">
+                          {message.structure?.name ?? "Réseau OMA"}
                         </Badge>
                       )}
                       <h3 className="font-semibold text-sm truncate">
@@ -303,6 +348,11 @@ export default function AdminMessages() {
                     <h2 className="text-xl font-bold mb-2">
                       {selectedMessage.subject || `Message de ${selectedMessage.name}`}
                     </h2>
+                    {canViewAll && (
+                      <Badge variant="outline" className="mb-2">
+                        {selectedMessage.structure?.name ?? "Réseau OMA"}
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <User className="w-4 h-4" />

@@ -50,9 +50,14 @@ export default function AdminRolesPage() {
   }, [])
 
   useEffect(() => {
-    if (loaded && can('roles.view')) loadRoles()
-    else if (loaded) setIsLoading(false)
-  }, [loaded, can, loadRoles])
+    if (!loaded) return
+    if (!can('roles.view')) {
+      setIsLoading(false)
+      return
+    }
+    void loadRoles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, loadRoles])
 
   const filtered = roles.filter(
     (r) =>

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/route'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -27,9 +27,10 @@ const updateTestimonialSchema = z.object({
 // Récupère un témoignage spécifique
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -48,7 +49,7 @@ export async function GET(
     }
 
     const testimonial = await prisma.testimonial.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!testimonial) {
@@ -75,9 +76,10 @@ export async function GET(
 // Met à jour un témoignage
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -102,7 +104,7 @@ export async function PUT(
 
     // Vérifier que le témoignage existe
     const existingTestimonial = await prisma.testimonial.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingTestimonial) {
@@ -124,7 +126,7 @@ export async function PUT(
 
     // Mettre à jour le témoignage
     const testimonial = await prisma.testimonial.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     })
 
@@ -134,7 +136,7 @@ export async function PUT(
         userId: session.user.id,
         action: 'testimonial.update',
         target: 'Testimonial',
-        payload: { id: params.id, ...validatedData },
+        payload: { id, ...validatedData },
       },
     })
 
@@ -163,9 +165,10 @@ export async function PUT(
 // Supprime un témoignage
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     // Vérifier l'authentification
     const session = await auth()
     if (!session?.user) {
@@ -185,7 +188,7 @@ export async function DELETE(
 
     // Vérifier que le témoignage existe
     const existingTestimonial = await prisma.testimonial.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingTestimonial) {
@@ -197,7 +200,7 @@ export async function DELETE(
 
     // Supprimer le témoignage
     await prisma.testimonial.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     // Logger l'action
@@ -206,7 +209,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'testimonial.delete',
         target: 'Testimonial',
-        payload: { id: params.id },
+        payload: { id },
       },
     })
 

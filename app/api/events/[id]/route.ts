@@ -7,11 +7,12 @@ import { type NextRequest, NextResponse } from "next/server"
 
 // GET /api/events/[id]
 // Récupère un événement spécifique
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     // TODO: Implémenter la récupération depuis la base de données
     // const event = await db.events.findUnique({
-    //   where: { id: params.id }
+    //   where: { id }
     // })
 
     // if (!event) {
@@ -33,23 +34,24 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 // PUT /api/events/[id]
 // Met à jour un événement (ADMIN UNIQUEMENT)
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     // TODO: Vérifier l'authentification admin
     // TODO: Implémenter la mise à jour en base de données
     // const updatedEvent = await db.events.update({
-    //   where: { id: params.id },
+    //   where: { id },
     //   data: body
     // })
 
-    console.log("[API] Événement mis à jour:", params.id, body)
+    console.log("[API] Événement mis à jour:", id, body)
 
     return NextResponse.json({
       success: true,
       message: "Événement mis à jour avec succès",
-      data: { id: params.id, ...body },
+      data: { id, ...body },
     })
   } catch (error) {
     console.error("[API] Erreur PUT event:", error)
@@ -59,15 +61,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 // DELETE /api/events/[id]
 // Supprime un événement (ADMIN UNIQUEMENT)
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     // TODO: Vérifier l'authentification admin
     // TODO: Implémenter la suppression en base de données
     // await db.events.delete({
-    //   where: { id: params.id }
+    //   where: { id }
     // })
 
-    console.log("[API] Événement supprimé:", params.id)
+    console.log("[API] Événement supprimé:", id)
 
     return NextResponse.json({
       success: true,

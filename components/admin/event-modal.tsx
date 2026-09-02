@@ -7,7 +7,6 @@
 
 "use client"
 
-import type React from "react"
 import React, { useState, useRef, useEffect } from "react"
 import { X, Calendar, MapPin, Type, ArrowRight, Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"

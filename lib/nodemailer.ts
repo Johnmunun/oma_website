@@ -269,6 +269,38 @@ Ce message a été envoyé depuis le formulaire de contact du site Réseau OMA.
 }
 
 /**
+ * Envoi transactionnel (notifications candidats, etc.)
+ * Ne fait pas échouer le flux métier si SMTP indisponible.
+ */
+export async function sendTransactionalEmail(options: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  fromName?: string
+}): Promise<boolean> {
+  try {
+    const transporter = await createTransporter()
+    const config = await getSMTPConfig()
+    const fromName = options.fromName ?? 'Réseau OMA'
+
+    await transporter.sendMail({
+      from: `"${fromName}" <${config.user}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text ?? options.html.replace(/<[^>]*>/g, ''),
+    })
+
+    console.log(`[Nodemailer] Email transactionnel envoyé à ${options.to}`)
+    return true
+  } catch (error) {
+    console.error('[Nodemailer] Erreur sendTransactionalEmail:', error)
+    return false
+  }
+}
+
+/**
  * Vérifier la connexion SMTP
  */
 export async function verifySMTPConnection() {
