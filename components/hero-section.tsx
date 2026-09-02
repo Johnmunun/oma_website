@@ -111,11 +111,6 @@ export function HeroSection() {
         <EntranceAnimation animation="fade-down" delay={50}>
           <HeroAnnouncementTicker tone="hero" className="mx-auto mb-8 max-w-3xl md:mb-10" />
         </EntranceAnimation>
-        <EntranceAnimation animation="fade-down" delay={100}>
-          <p className="font-serif text-gold tracking-[0.35em] uppercase text-sm md:text-base mb-6 md:mb-8">
-            Réseau OMA
-          </p>
-        </EntranceAnimation>
         <EntranceAnimation animation="fade-down" delay={250}>
           <h1 className="font-serif font-bold text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-primary-foreground mb-6 text-balance leading-[1.1]">
             Dompter la parole, c&apos;est{" "}
