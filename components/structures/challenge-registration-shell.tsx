@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StructureLogo } from '@/components/structure-logo'
+import { HeroAnnouncementTicker } from '@/components/hero-announcement-ticker'
 import type { PublicChallengePageData } from '@/lib/challenges/public-challenge-page'
 import { getStructureThemeVars } from '@/lib/structures/landing-theme'
 import { getChallengeRegistrationPath } from '@/lib/structures/public-url'
@@ -87,6 +88,11 @@ export function ChallengeRegistrationShell({
           </Link>
         </div>
       </header>
+
+      <HeroAnnouncementTicker
+        variant="structure"
+        className={cn(hasCover ? 'absolute inset-x-0 top-[4.5rem] z-20' : 'relative')}
+      />
 
       {hasCover ? (
         <div className="relative w-full overflow-hidden">

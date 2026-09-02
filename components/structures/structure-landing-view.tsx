@@ -8,6 +8,7 @@ import {
   Users,
 } from 'lucide-react'
 import { StructureLandingNav } from '@/components/structures/structure-landing-nav'
+import { HeroAnnouncementTicker } from '@/components/hero-announcement-ticker'
 import { StructureContactForm } from '@/components/structures/structure-contact-form'
 import { StructureFloatingWhatsApp } from '@/components/structures/structure-floating-whatsapp'
 import { StructureServicesSection } from '@/components/structures/structure-services-section'
@@ -54,6 +55,7 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
       />
 
       <section id="accueil" className="relative overflow-hidden pb-16 pt-10 md:pb-24 md:pt-16">
+        <HeroAnnouncementTicker variant="structure" className="mb-6 md:mb-8 rounded-xl mx-4 md:mx-auto max-w-6xl" />
         <div
           className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full blur-3xl"
           style={{ backgroundColor: 'rgba(var(--st-primary-rgb), 0.22)' }}

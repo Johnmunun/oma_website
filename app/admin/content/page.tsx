@@ -38,6 +38,13 @@ interface SiteSettings {
   heroSubtitle: string
   aboutTitle: string
   aboutDescription: string
+
+  // Annonce défilante hero
+  heroAnnouncementEnabled: boolean
+  heroAnnouncementText: string
+  heroAnnouncementLink: string
+  heroAnnouncementExpiryHours: number
+  heroAnnouncementRepublish: boolean
 }
 
 export default function AdminContentPage() {
@@ -56,6 +63,11 @@ export default function AdminContentPage() {
     heroSubtitle: "Formation professionnelle en communication",
     aboutTitle: "À propos de nous",
     aboutDescription: "Développer vos compétences...",
+    heroAnnouncementEnabled: false,
+    heroAnnouncementText: "",
+    heroAnnouncementLink: "",
+    heroAnnouncementExpiryHours: 24,
+    heroAnnouncementRepublish: false,
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -85,6 +97,11 @@ export default function AdminContentPage() {
             primaryColor: loadedSettings.primaryColor || prev.primaryColor,
             secondaryColor: loadedSettings.secondaryColor || prev.secondaryColor,
             headingFont: loadedSettings.fontFamily || prev.headingFont,
+            heroAnnouncementEnabled: loadedSettings.heroAnnouncementEnabled ?? prev.heroAnnouncementEnabled,
+            heroAnnouncementText: loadedSettings.heroAnnouncementText || prev.heroAnnouncementText,
+            heroAnnouncementLink: loadedSettings.heroAnnouncementLink || prev.heroAnnouncementLink,
+            heroAnnouncementExpiryHours:
+              loadedSettings.heroAnnouncementExpiryHours ?? prev.heroAnnouncementExpiryHours,
           }))
         }
       } catch (err) {
@@ -146,6 +163,11 @@ export default function AdminContentPage() {
         primaryColor: formatColor(settings.primaryColor),
         secondaryColor: formatColor(settings.secondaryColor),
         fontFamily: settings.headingFont || 'Playfair Display',
+        heroAnnouncementEnabled: settings.heroAnnouncementEnabled,
+        heroAnnouncementText: settings.heroAnnouncementText.trim() || null,
+        heroAnnouncementLink: settings.heroAnnouncementLink.trim() || null,
+        heroAnnouncementExpiryHours: settings.heroAnnouncementExpiryHours || 24,
+        heroAnnouncementRepublish: settings.heroAnnouncementRepublish,
       }
       
       console.log('[Admin] Envoi des paramètres:', payload)
@@ -193,6 +215,7 @@ export default function AdminContentPage() {
       
       if (responseData.success) {
         setSaved(true)
+        setSettings((prev) => ({ ...prev, heroAnnouncementRepublish: false }))
         toast.success('Paramètres sauvegardés avec succès')
         
         // Déclencher l'événement de mise à jour
@@ -608,6 +631,87 @@ export default function AdminContentPage() {
                       />
                     </div>
                   )}
+                </div>
+
+                <div className="rounded-lg border border-border p-4 space-y-4 bg-muted/30">
+                  <div>
+                    <h4 className="text-sm font-semibold">Annonce défilante (hero)</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Bandeau horizontal en haut du hero. Expire automatiquement après la durée choisie.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center justify-between gap-4 cursor-pointer">
+                    <span className="text-sm font-medium">Activer l&apos;annonce</span>
+                    <input
+                      type="checkbox"
+                      checked={settings.heroAnnouncementEnabled}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          heroAnnouncementEnabled: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                  </label>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Message</label>
+                    <textarea
+                      value={settings.heroAnnouncementText}
+                      onChange={(e) => handleChange("heroAnnouncementText", e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+                      rows={2}
+                      maxLength={500}
+                      placeholder="Ex : Inscriptions ouvertes pour la masterclass du 15 mars"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Lien (optionnel)</label>
+                    <Input
+                      type="url"
+                      value={settings.heroAnnouncementLink}
+                      onChange={(e) => handleChange("heroAnnouncementLink", e.target.value)}
+                      placeholder="https://... ou /events/mon-evenement"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Durée d&apos;affichage (heures)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={168}
+                      value={settings.heroAnnouncementExpiryHours}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          heroAnnouncementExpiryHours: Math.min(
+                            168,
+                            Math.max(1, parseInt(e.target.value, 10) || 24)
+                          ),
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Entre 1 h et 168 h (7 jours).</p>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.heroAnnouncementRepublish}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          heroAnnouncementRepublish: e.target.checked,
+                        }))
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm">Republier maintenant (redémarre le compteur d&apos;expiration)</span>
+                  </label>
                 </div>
               </div>
             </Card>

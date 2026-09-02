@@ -147,10 +147,28 @@ export function ChallengeDrawer({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.structureId) return
+
+    if (!form.structureId) {
+      toast.error('Veuillez sélectionner une structure')
+      return
+    }
+
+    const slug = form.slug.trim().toLowerCase()
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      toast.error('Slug invalide : utilisez uniquement des minuscules, chiffres et tirets')
+      return
+    }
+
+    if (!form.name.trim()) {
+      toast.error('Le nom du challenge est requis')
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      await onSubmit(form)
+      await onSubmit({ ...form, slug, name: form.name.trim() })
+    } catch {
+      // Erreur déjà affichée par la page parente
     } finally {
       setIsSubmitting(false)
     }
@@ -171,7 +189,11 @@ export function ChallengeDrawer({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex-1 overflow-y-auto p-6 space-y-5"
+        >
           <div className="space-y-2">
             <Label>Structure *</Label>
             <Select

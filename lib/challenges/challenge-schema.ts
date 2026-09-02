@@ -4,9 +4,13 @@ import { challengeRegistrationSettingsSchema } from '@/lib/challenges/challenge-
 
 export const challengeStatusSchema = z.nativeEnum(ChallengeStatus)
 
-export const challengeSettingsSchema = z.object({
-  registration: challengeRegistrationSettingsSchema.optional(),
-})
+/** Préserve ranking, votes, coverImageUrl, etc. lors des mises à jour admin */
+export const challengeSettingsSchema = z
+  .object({
+    registration: challengeRegistrationSettingsSchema.optional(),
+    coverImageUrl: z.string().optional().nullable(),
+  })
+  .passthrough()
 
 export const createChallengeSchema = z.object({
   name: z.string().min(2).max(200),

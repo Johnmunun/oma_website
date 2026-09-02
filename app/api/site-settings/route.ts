@@ -7,7 +7,8 @@
 
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { handleDatabaseError, isDatabaseConnectionError } from '@/lib/db-error-handler'
+import { isDatabaseConnectionError } from '@/lib/db-error-handler'
+import { resolveActiveHeroAnnouncement } from '@/lib/site-settings/hero-announcement'
 
 // GET /api/site-settings
 // Récupère les paramètres du site (publique)
@@ -89,11 +90,23 @@ export async function GET() {
         defaultContact.tiktok,
     }
 
+    const heroAnnouncement = resolveActiveHeroAnnouncement(setting)
+
+    const {
+      heroAnnouncementEnabled: _enabled,
+      heroAnnouncementText: _text,
+      heroAnnouncementLink: _link,
+      heroAnnouncementPublishedAt: _publishedAt,
+      heroAnnouncementExpiryHours: _expiryHours,
+      ...publicSettings
+    } = settings as Record<string, unknown>
+
     return NextResponse.json({
       success: true,
       data: {
-        ...settings,
+        ...publicSettings,
         ...contacts,
+        heroAnnouncement,
       },
     })
   } catch (error) {
@@ -117,6 +130,7 @@ export async function GET() {
         twitter: null,
         linkedin: null,
         tiktok: 'https://www.tiktok.com/@oratoiremonarttv',
+        heroAnnouncement: null,
       }
       
       return NextResponse.json({

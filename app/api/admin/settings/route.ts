@@ -82,6 +82,13 @@ const settingSchema = z.object({
   // Paramètres de sécurité
   idleTimeoutMinutes: z.number().int().min(5).max(120).optional().nullable(), // Temps d'inactivité en minutes (5-120)
   wakeUpPingIntervalMinutes: z.number().int().min(1).max(60).optional().nullable(), // Intervalle wake-up ping en minutes (1-60)
+
+  // Annonce défilante hero
+  heroAnnouncementEnabled: z.boolean().optional(),
+  heroAnnouncementText: z.string().max(500).optional().nullable(),
+  heroAnnouncementLink: logoUrlSchema,
+  heroAnnouncementExpiryHours: z.number().int().min(1).max(168).optional().nullable(),
+  heroAnnouncementRepublish: z.boolean().optional(),
 })
 
 // GET /api/admin/settings
@@ -174,6 +181,7 @@ export async function PUT(request: NextRequest) {
     if (isPermissionDenied(session)) return session
 
     const body = await request.json()
+    const shouldRepublish = body.heroAnnouncementRepublish === true
 
     // Nettoyer logoUrl, coverImageUrl et heroImageUrl avant validation (accepter chemins relatifs)
     const cleanedBody = {
@@ -194,6 +202,7 @@ export async function PUT(request: NextRequest) {
       smtpSecure,
       smtpUser,
       smtpPass,
+      heroAnnouncementRepublish: _republish,
       ...generalSettings
     } = validatedData
 
@@ -202,14 +211,33 @@ export async function PUT(request: NextRequest) {
       orderBy: { updatedAt: 'desc' },
     })
 
+    const announcementUpdate: Record<string, unknown> = {}
+    if (generalSettings.heroAnnouncementEnabled === true) {
+      const needsPublish =
+        shouldRepublish ||
+        !setting?.heroAnnouncementPublishedAt ||
+        setting.heroAnnouncementEnabled !== true
+      if (needsPublish) {
+        announcementUpdate.heroAnnouncementPublishedAt = new Date()
+      }
+    }
+
     if (setting) {
       setting = await prisma.setting.update({
         where: { id: setting.id },
-        data: generalSettings,
+        data: {
+          ...generalSettings,
+          ...announcementUpdate,
+        },
       })
     } else {
       setting = await prisma.setting.create({
-        data: generalSettings,
+        data: {
+          ...generalSettings,
+          ...(generalSettings.heroAnnouncementEnabled
+            ? { heroAnnouncementPublishedAt: new Date() }
+            : {}),
+        },
       })
     }
 

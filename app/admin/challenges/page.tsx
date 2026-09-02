@@ -146,7 +146,9 @@ function AdminChallengesPage() {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) {
+        throw new Error(data.error || data.details?.[0]?.message || 'Erreur lors de la mise à jour')
+      }
       toast.success('Challenge mis à jour')
     } else {
       const res = await fetch(`/api/admin/structures/${form.structureId}/challenges`, {
@@ -155,7 +157,9 @@ function AdminChallengesPage() {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) {
+        throw new Error(data.error || data.details?.[0]?.message || 'Erreur lors de la création')
+      }
       toast.success('Challenge créé')
     }
 

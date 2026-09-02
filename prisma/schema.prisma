@@ -115,6 +115,11 @@ model Setting {
   colorSecondaryForeground String?  @default("#1a1a1a")
   idleTimeoutMinutes       Int?     @default(15) // Temps d'inactivité avant verrouillage (en minutes)
   wakeUpPingIntervalMinutes Int?    @default(5) // Intervalle pour le wake-up ping (en minutes) - maintient la DB active
+  heroAnnouncementEnabled     Boolean   @default(false)
+  heroAnnouncementText        String?
+  heroAnnouncementLink        String?
+  heroAnnouncementPublishedAt DateTime?
+  heroAnnouncementExpiryHours Int?      @default(24)
 
   @@map("Setting")
 }
