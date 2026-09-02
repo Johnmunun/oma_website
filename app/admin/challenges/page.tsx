@@ -265,7 +265,7 @@ function AdminChallengesPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {c.structure.name} · <span className="font-mono">{c.slug}</span>
+                  {c.structure?.name ?? 'Structure'} · <span className="font-mono">{c.slug}</span>
                 </p>
                 {c.description && (
                   <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{c.description}</p>
@@ -335,7 +335,7 @@ function AdminChallengesPage() {
                 slug: editing.slug,
                 description: editing.description ?? '',
                 status: editing.status,
-                structureId: editing.structureId || editing.structure.id,
+                structureId: editing.structureId || editing.structure?.id || '',
                 settings: editing.settings,
               }
             : null

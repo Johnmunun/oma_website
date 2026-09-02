@@ -86,6 +86,14 @@ export function ChallengeDrawer({
 
   const isEdit = Boolean(initialData?.id)
 
+  const structureOptions = useMemo(() => {
+    const byId = new Map(structures.map((s) => [s.id, s]))
+    if (initialStructure?.id && !byId.has(initialStructure.id)) {
+      byId.set(initialStructure.id, initialStructure)
+    }
+    return Array.from(byId.values())
+  }, [structures, initialStructure])
+
   useEffect(() => {
     if (!isOpen) return
     if (initialData?.id) {
@@ -110,14 +118,6 @@ export function ChallengeDrawer({
       setSlugTouched(false)
     }
   }, [isOpen, initialData, initialStructure, defaultStructureId, structureOptions])
-
-  const structureOptions = useMemo(() => {
-    const byId = new Map(structures.map((s) => [s.id, s]))
-    if (initialStructure?.id && !byId.has(initialStructure.id)) {
-      byId.set(initialStructure.id, initialStructure)
-    }
-    return Array.from(byId.values())
-  }, [structures, initialStructure])
 
   const selectedStructure = useMemo(() => {
     return (
