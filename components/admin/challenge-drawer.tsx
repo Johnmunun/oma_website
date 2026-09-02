@@ -64,6 +64,7 @@ interface ChallengeDrawerProps {
   onClose: () => void
   onSubmit: (data: ChallengeFormData) => Promise<void>
   structures: StructureOption[]
+  initialStructure?: StructureOption | null
   initialData?: Partial<ChallengeFormData> & { id?: string; settings?: unknown } | null
   defaultStructureId?: string
 }
@@ -73,6 +74,7 @@ export function ChallengeDrawer({
   onClose,
   onSubmit,
   structures,
+  initialStructure,
   initialData,
   defaultStructureId,
 }: ChallengeDrawerProps) {
@@ -87,12 +89,14 @@ export function ChallengeDrawer({
   useEffect(() => {
     if (!isOpen) return
     if (initialData?.id) {
+      const structureId =
+        initialData.structureId ?? initialStructure?.id ?? ''
       setForm({
         name: initialData.name ?? '',
         slug: initialData.slug ?? '',
         description: initialData.description ?? '',
         status: initialData.status ?? 'DRAFT',
-        structureId: initialData.structureId ?? '',
+        structureId,
         registrationSettings: initialData.registrationSettings
           ?? parseChallengeSettings(initialData.settings),
         coverImageUrl: parseChallengeCoverImageUrl(initialData.settings) ?? '',
@@ -101,16 +105,29 @@ export function ChallengeDrawer({
     } else {
       setForm({
         ...EMPTY,
-        structureId: defaultStructureId ?? structures[0]?.id ?? '',
+        structureId: defaultStructureId ?? structureOptions[0]?.id ?? '',
       })
       setSlugTouched(false)
     }
-  }, [isOpen, initialData, defaultStructureId, structures])
+  }, [isOpen, initialData, initialStructure, defaultStructureId, structureOptions])
 
-  const selectedStructure = useMemo(
-    () => structures.find((s) => s.id === form.structureId) ?? null,
-    [structures, form.structureId]
-  )
+  const structureOptions = useMemo(() => {
+    const byId = new Map(structures.map((s) => [s.id, s]))
+    if (initialStructure?.id && !byId.has(initialStructure.id)) {
+      byId.set(initialStructure.id, initialStructure)
+    }
+    return Array.from(byId.values())
+  }, [structures, initialStructure])
+
+  const selectedStructure = useMemo(() => {
+    return (
+      structureOptions.find((s) => s.id === form.structureId) ??
+      initialStructure ??
+      null
+    )
+  }, [structureOptions, form.structureId, initialStructure])
+
+  const lockedStructureName = selectedStructure?.name ?? initialStructure?.name ?? ''
 
   const handleCoverUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -148,8 +165,14 @@ export function ChallengeDrawer({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!form.structureId) {
+    if (!form.structureId && !isEdit) {
       toast.error('Veuillez sélectionner une structure')
+      return
+    }
+
+    const structureId = form.structureId || initialStructure?.id || ''
+    if (!structureId) {
+      toast.error('Structure introuvable pour ce challenge')
       return
     }
 
@@ -166,7 +189,7 @@ export function ChallengeDrawer({
 
     setIsSubmitting(true)
     try {
-      await onSubmit({ ...form, slug, name: form.name.trim() })
+      await onSubmit({ ...form, slug, name: form.name.trim(), structureId })
     } catch {
       // Erreur déjà affichée par la page parente
     } finally {
@@ -196,22 +219,30 @@ export function ChallengeDrawer({
         >
           <div className="space-y-2">
             <Label>Structure *</Label>
-            <Select
-              value={form.structureId}
-              onValueChange={(v) => setForm((f) => ({ ...f, structureId: v }))}
-              disabled={isEdit}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir une structure" />
-              </SelectTrigger>
-              <SelectContent>
-                {structures.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isEdit ? (
+              <>
+                <Input readOnly value={lockedStructureName} className="bg-muted font-medium" />
+                <p className="text-xs text-muted-foreground">
+                  La structure est fixée à la création du challenge.
+                </p>
+              </>
+            ) : (
+              <Select
+                value={form.structureId}
+                onValueChange={(v) => setForm((f) => ({ ...f, structureId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir une structure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {structureOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">

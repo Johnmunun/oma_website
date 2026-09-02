@@ -12,34 +12,17 @@ export type HeroAnnouncementData = {
 }
 
 type HeroAnnouncementTickerProps = {
-  /** site = landing OMA principale, structure = pages partenaires /s/... */
-  variant?: 'site' | 'structure'
+  /** Position sous la navbar fixe du site principal */
+  belowMainNav?: boolean
   className?: string
 }
 
-function AnnouncementItem({
-  announcement,
-  variant,
-}: {
-  announcement: HeroAnnouncementData
-  variant: 'site' | 'structure'
-}) {
-  const inner = (
-    <span
-      className={cn(
-        'inline-flex items-center gap-3 whitespace-nowrap px-10',
-        variant === 'site' ? 'text-primary-foreground/95' : 'text-white/95',
-      )}
-    >
-      <Microphone3dIcon className={variant === 'structure' ? 'scale-90' : undefined} />
-      <span className="text-sm font-semibold tracking-wide md:text-base">{announcement.text}</span>
+function ScrollingText({ announcement }: { announcement: HeroAnnouncementData }) {
+  const text = (
+    <span className="inline-flex items-center gap-6 whitespace-nowrap px-8 text-sm font-medium text-slate-700 md:text-base">
+      <span>{announcement.text}</span>
       {announcement.link && (
-        <span
-          className={cn(
-            'text-xs uppercase tracking-widest',
-            variant === 'site' ? 'text-gold/90' : 'text-white/80',
-          )}
-        >
+        <span className="text-xs font-semibold uppercase tracking-wider text-primary">
           En savoir plus →
         </span>
       )}
@@ -48,17 +31,17 @@ function AnnouncementItem({
 
   if (announcement.link) {
     return (
-      <Link href={announcement.link} className="shrink-0 transition-opacity hover:opacity-90">
-        {inner}
+      <Link href={announcement.link} className="shrink-0 transition-colors hover:text-primary">
+        {text}
       </Link>
     )
   }
 
-  return <div className="shrink-0">{inner}</div>
+  return <div className="shrink-0">{text}</div>
 }
 
 export function HeroAnnouncementTicker({
-  variant = 'site',
+  belowMainNav = false,
   className,
 }: HeroAnnouncementTickerProps) {
   const [announcement, setAnnouncement] = useState<HeroAnnouncementData | null>(null)
@@ -90,39 +73,50 @@ export function HeroAnnouncementTicker({
 
   if (!announcement) return null
 
-  const loopItems = Array.from({ length: 6 }, () => announcement)
+  const loopItems = Array.from({ length: 8 }, () => announcement)
 
   return (
     <div
       className={cn(
-        'relative z-20 w-full overflow-hidden border-b',
-        variant === 'site'
-          ? 'border-gold/25 bg-primary/95 backdrop-blur-sm'
-          : 'border-white/15 bg-black/35 backdrop-blur-md',
+        'w-full border-b border-slate-200/90 bg-white shadow-sm',
+        belowMainNav && 'sticky top-16 z-40 mt-16 md:top-20 md:mt-20',
         className,
       )}
-      role="marquee"
+      role="region"
       aria-live="polite"
-      aria-label="Annonce"
+      aria-label="Annonce du réseau"
     >
-      <div className="relative py-2.5 md:py-3">
+      <div className="mx-auto flex max-w-full items-stretch">
+        {/* Icône + label fixes — repère visuel « annonce » */}
         <div
-          className="flex w-max"
-          style={{ animation: 'scroll-left 40s linear infinite' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.animationPlayState = 'paused'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.animationPlayState = 'running'
-          }}
+          className="flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-3 py-2.5 md:px-4 md:py-3"
+          aria-hidden
         >
-          {loopItems.map((item, index) => (
-            <AnnouncementItem
-              key={`${item.expiresAt}-${index}`}
-              announcement={item}
-              variant={variant}
-            />
-          ))}
+          <Microphone3dIcon className="h-8 w-8 md:h-9 md:w-9" />
+          <span className="hidden min-w-[4.5rem] flex-col leading-tight sm:flex">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold">
+              Live
+            </span>
+            <span className="text-xs font-semibold text-slate-800">Annonce</span>
+          </span>
+        </div>
+
+        {/* Texte défilant */}
+        <div className="relative min-w-0 flex-1 overflow-hidden py-2.5 md:py-3">
+          <div
+            className="flex w-max items-center"
+            style={{ animation: 'scroll-left 45s linear infinite' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.animationPlayState = 'paused'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.animationPlayState = 'running'
+            }}
+          >
+            {loopItems.map((item, index) => (
+              <ScrollingText key={`${item.expiresAt}-${index}`} announcement={item} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

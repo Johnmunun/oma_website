@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Edit2, Trash2, Trophy, LayoutDashboard } from 'lucide-react'
@@ -73,9 +73,11 @@ function AdminChallengesPage() {
   const [editing, setEditing] = useState<ChallengeRow | null>(null)
 
   const loadStructures = useCallback(async () => {
-    const res = await fetch('/api/admin/structures', { cache: 'no-store' })
-    const data = await res.json()
-    if (data.success) {
+    try {
+      const res = await fetch('/api/admin/structures', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok || !data.success) return
+
       setStructures(
         (data.data ?? []).map(
           (s: {
@@ -93,8 +95,28 @@ function AdminChallengesPage() {
           })
         )
       )
+    } catch {
+      // Sans structures.view (ex. gestionnaire JoyStudio) — options dérivées des challenges
     }
   }, [])
+
+  /** Inclut les structures des challenges visibles (sans permission structures.view) */
+  const structureOptions = useMemo(() => {
+    const byId = new Map<string, StructureOption>()
+    for (const s of structures) byId.set(s.id, s)
+    for (const c of challenges) {
+      const s = c.structure
+      if (!s?.id || byId.has(s.id)) continue
+      byId.set(s.id, {
+        id: s.id,
+        name: s.name,
+        slug: s.slug,
+        landingPagePath: s.landingPagePath,
+        subdomain: s.subdomain,
+      })
+    }
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  }, [structures, challenges])
 
   const loadChallenges = useCallback(async () => {
     try {
@@ -215,7 +237,7 @@ function AdminChallengesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les structures</SelectItem>
-            {structures.map((s) => (
+            {structureOptions.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}
               </SelectItem>
@@ -290,9 +312,20 @@ function AdminChallengesPage() {
           setDrawerOpen(false)
           setEditing(null)
         }}
-        structures={structures}
+        structures={structureOptions}
         defaultStructureId={
           structureFilter !== 'all' ? structureFilter : undefined
+        }
+        initialStructure={
+          editing?.structure
+            ? {
+                id: editing.structure.id,
+                name: editing.structure.name,
+                slug: editing.structure.slug,
+                landingPagePath: editing.structure.landingPagePath,
+                subdomain: editing.structure.subdomain,
+              }
+            : null
         }
         initialData={
           editing
@@ -302,7 +335,7 @@ function AdminChallengesPage() {
                 slug: editing.slug,
                 description: editing.description ?? '',
                 status: editing.status,
-                structureId: editing.structureId,
+                structureId: editing.structureId || editing.structure.id,
                 settings: editing.settings,
               }
             : null

@@ -33,14 +33,30 @@ export async function GET(request: NextRequest) {
         where: { structureId },
         orderBy: { createdAt: 'desc' },
         include: {
-          structure: { select: { id: true, name: true, slug: true } },
+          structure: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              landingPagePath: true,
+              subdomain: true,
+            },
+          },
         },
       })
     } else if (effective.isRoot) {
       challenges = await prisma.challenge.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
-          structure: { select: { id: true, name: true, slug: true } },
+          structure: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              landingPagePath: true,
+              subdomain: true,
+            },
+          },
         },
       })
     } else {
@@ -54,7 +70,15 @@ export async function GET(request: NextRequest) {
         where: { structureId: { in: structureIds } },
         orderBy: { createdAt: 'desc' },
         include: {
-          structure: { select: { id: true, name: true, slug: true } },
+          structure: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              landingPagePath: true,
+              subdomain: true,
+            },
+          },
         },
       })
     }

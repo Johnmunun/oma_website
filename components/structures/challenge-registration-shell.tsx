@@ -50,7 +50,7 @@ export function ChallengeRegistrationShell({
         className={cn(
           'relative z-30 border-b',
           hasCover
-            ? 'absolute inset-x-0 top-0 border-white/15 bg-black/25 backdrop-blur-md'
+            ? 'sticky top-0 border-slate-200/80 bg-white/95 backdrop-blur-md'
             : 'border-white/60 bg-white/90 backdrop-blur-md',
         )}
       >
@@ -62,13 +62,13 @@ export function ChallengeRegistrationShell({
               size="md"
               className={cn(
                 'h-11 w-11 shadow-md ring-2',
-                hasCover ? 'ring-white/30' : 'ring-[var(--st-primary-soft)]',
+                'ring-[var(--st-primary-soft)]',
               )}
             />
             <span
               className={cn(
                 'truncate font-serif text-lg font-bold',
-                hasCover ? 'text-white drop-shadow-sm' : 'text-slate-900',
+                hasCover ? 'text-slate-900' : 'text-slate-900',
               )}
             >
               {structure.name}
@@ -76,12 +76,7 @@ export function ChallengeRegistrationShell({
           </Link>
           <Link
             href={resolvedBackHref}
-            className={cn(
-              'inline-flex items-center gap-1.5 text-sm font-medium transition',
-              hasCover
-                ? 'text-white/90 hover:text-white'
-                : 'text-slate-600 hover:text-[var(--st-primary-dark)]',
-            )}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-[var(--st-primary-dark)]"
           >
             <ArrowLeft className="h-4 w-4" />
             {backLabel}
@@ -89,10 +84,7 @@ export function ChallengeRegistrationShell({
         </div>
       </header>
 
-      <HeroAnnouncementTicker
-        variant="structure"
-        className={cn(hasCover ? 'absolute inset-x-0 top-[4.5rem] z-20' : 'relative')}
-      />
+      <HeroAnnouncementTicker />
 
       {hasCover ? (
         <div className="relative w-full overflow-hidden">
@@ -107,7 +99,7 @@ export function ChallengeRegistrationShell({
             <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/80" />
 
             <div className="absolute inset-0 flex items-end">
-              <div className="mx-auto w-full max-w-4xl px-4 pb-10 pt-24 md:px-6 md:pb-14">
+              <div className="mx-auto w-full max-w-4xl px-4 pb-10 pt-8 md:px-6 md:pb-14">
                 {hero ?? (
                   <DefaultRegistrationHero
                     challengeName={challenge.name}

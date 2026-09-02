@@ -54,8 +54,9 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
         registrationPath={registrationPath}
       />
 
+      <HeroAnnouncementTicker />
+
       <section id="accueil" className="relative overflow-hidden pb-16 pt-10 md:pb-24 md:pt-16">
-        <HeroAnnouncementTicker variant="structure" className="mb-6 md:mb-8 rounded-xl mx-4 md:mx-auto max-w-6xl" />
         <div
           className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full blur-3xl"
           style={{ backgroundColor: 'rgba(var(--st-primary-rgb), 0.22)' }}

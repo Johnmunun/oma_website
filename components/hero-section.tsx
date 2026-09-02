@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GraduationCap, Calendar, Play, ArrowRight } from "lucide-react"
 import { EntranceAnimation } from "@/components/animations/entrance-animation"
-import { HeroAnnouncementTicker } from "@/components/hero-announcement-ticker"
 import { HeroVectorLeft, HeroVectorRight } from "@/components/illustrations/landing-vectors"
 
 const HERO_STATS = [
@@ -81,7 +80,6 @@ export function HeroSection() {
 
   return (
     <section id="accueil" className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-primary max-w-full">
-      <HeroAnnouncementTicker variant="site" className="absolute top-0 left-0 right-0 z-20" />
       {/* Background Image */}
       <div className="absolute inset-0 z-0 max-w-full">
         {!isLoading && (

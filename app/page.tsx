@@ -1,4 +1,5 @@
 import { HeroSection } from "@/components/hero-section"
+import { HeroAnnouncementTicker } from "@/components/hero-announcement-ticker"
 import { ScrollingEventsBanner } from "@/components/scrolling-events-banner"
 import { AboutSection } from "@/components/about-section"
 import { DomainsSection } from "@/components/domains-section"
@@ -22,6 +23,7 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-x-hidden max-w-full w-full">
       <Navigation />
+      <HeroAnnouncementTicker belowMainNav />
       <HeroSection />
       <ScrollingEventsBanner attachedToHero />
       <AboutSection />
