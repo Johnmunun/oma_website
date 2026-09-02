@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { GraduationCap, Calendar, Play, ArrowRight } from "lucide-react"
 import { EntranceAnimation } from "@/components/animations/entrance-animation"
+import { HeroAnnouncementTicker } from "@/components/hero-announcement-ticker"
 import { HeroVectorLeft, HeroVectorRight } from "@/components/illustrations/landing-vectors"
 
 const HERO_STATS = [
@@ -94,6 +95,8 @@ export function HeroSection() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/85 via-primary/75 to-primary/90 md:from-primary/90 md:via-primary/80 md:to-primary/95" />
+        {/* Fond sombre sous la navbar fixe (transparente) — isolé au hero, pas la nav */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-primary via-primary/70 to-transparent md:h-32" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.25)_100%)]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
@@ -105,6 +108,9 @@ export function HeroSection() {
 
       {/* Content */}
       <div className="container mx-auto px-4 z-10 text-center max-w-full overflow-x-hidden pt-24 pb-36 md:pt-28 md:pb-40 flex-1 flex flex-col justify-center">
+        <EntranceAnimation animation="fade-down" delay={50}>
+          <HeroAnnouncementTicker tone="hero" className="mx-auto mb-8 max-w-3xl md:mb-10" />
+        </EntranceAnimation>
         <EntranceAnimation animation="fade-down" delay={100}>
           <p className="font-serif text-gold tracking-[0.35em] uppercase text-sm md:text-base mb-6 md:mb-8">
             Réseau OMA

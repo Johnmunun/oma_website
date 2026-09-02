@@ -25,7 +25,23 @@ import { toast } from 'sonner'
 import {
   buildChallengeSettingsPayload,
   mergeChallengeSettings,
+  mergeRegistrationSettings,
 } from '@/lib/challenges/challenge-registration-settings'
+
+function formatApiValidationError(data: {
+  error?: string
+  details?: Array<{ path?: (string | number)[]; message?: string }>
+}): string {
+  if (Array.isArray(data.details) && data.details.length > 0) {
+    return data.details
+      .map((d) => {
+        const path = d.path?.length ? d.path.join('.') : 'champ'
+        return `${path}: ${d.message ?? 'invalide'}`
+      })
+      .join(' · ')
+  }
+  return data.error || 'Erreur lors de la sauvegarde'
+}
 
 interface ChallengeRow {
   id: string
@@ -146,12 +162,14 @@ function AdminChallengesPage() {
   }, [loaded, loadStructures, loadChallenges])
 
   const saveChallenge = async (form: ChallengeFormData) => {
+    const registration = mergeRegistrationSettings(form.registrationSettings)
+
     const settings = editing
       ? mergeChallengeSettings(editing.settings, {
-          registration: form.registrationSettings,
+          registration,
           coverImageUrl: form.coverImageUrl || null,
         })
-      : buildChallengeSettingsPayload(form.registrationSettings, form.coverImageUrl || null)
+      : buildChallengeSettingsPayload(registration, form.coverImageUrl || null)
 
     const payload = {
       name: form.name,
@@ -169,7 +187,7 @@ function AdminChallengesPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error || data.details?.[0]?.message || 'Erreur lors de la mise à jour')
+        throw new Error(formatApiValidationError(data))
       }
       toast.success('Challenge mis à jour')
     } else {
@@ -180,7 +198,7 @@ function AdminChallengesPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.error || data.details?.[0]?.message || 'Erreur lors de la création')
+        throw new Error(formatApiValidationError(data))
       }
       toast.success('Challenge créé')
     }

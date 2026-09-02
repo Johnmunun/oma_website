@@ -99,14 +99,16 @@ export function ChallengeRegistrationSettingsEditor({
               max={120}
               placeholder="Aucun"
               value={value.age.min ?? ''}
-              onChange={(e) =>
+              onChange={(e) => {
+                const raw = e.target.value
+                const parsed = raw ? Number.parseInt(raw, 10) : null
                 patch({
                   age: {
                     ...value.age,
-                    min: e.target.value ? Number.parseInt(e.target.value, 10) : null,
+                    min: parsed != null && Number.isFinite(parsed) ? parsed : null,
                   },
                 })
-              }
+              }}
             />
           </div>
           <div className="space-y-1">
@@ -117,14 +119,16 @@ export function ChallengeRegistrationSettingsEditor({
               max={120}
               placeholder="Aucun"
               value={value.age.max ?? ''}
-              onChange={(e) =>
+              onChange={(e) => {
+                const raw = e.target.value
+                const parsed = raw ? Number.parseInt(raw, 10) : null
                 patch({
                   age: {
                     ...value.age,
-                    max: e.target.value ? Number.parseInt(e.target.value, 10) : null,
+                    max: parsed != null && Number.isFinite(parsed) ? parsed : null,
                   },
                 })
-              }
+              }}
             />
           </div>
         </div>

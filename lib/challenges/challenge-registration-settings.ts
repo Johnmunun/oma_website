@@ -1,5 +1,21 @@
 import { z } from 'zod'
 
+/** Normalise min/max âge (string JSON, NaN, vide → null) */
+function normalizeOptionalAgeBound(value: unknown): number | null | undefined {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null
+    return Math.trunc(value)
+  }
+  const parsed = Number.parseInt(String(value), 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const optionalAgeBoundSchema = z.preprocess(
+  normalizeOptionalAgeBound,
+  z.number().int().min(0).max(120).nullable().optional()
+)
+
 /** Configuration d'un champ optionnel du formulaire d'inscription */
 export const registrationFieldConfigSchema = z.object({
   enabled: z.boolean().default(true),
@@ -7,8 +23,8 @@ export const registrationFieldConfigSchema = z.object({
 })
 
 export const ageFieldConfigSchema = registrationFieldConfigSchema.extend({
-  min: z.number().int().min(0).max(120).nullable().optional(),
-  max: z.number().int().min(0).max(120).nullable().optional(),
+  min: optionalAgeBoundSchema,
+  max: optionalAgeBoundSchema,
 })
 
 export const cityFieldConfigSchema = registrationFieldConfigSchema.extend({

@@ -89,7 +89,9 @@ export function ChallengeRegistrationShell({
         </div>
       </header>
 
-      {!hasCover && <HeroAnnouncementTicker />}
+      {!hasCover && (
+        <HeroAnnouncementTicker tone="light" className="border-b border-slate-100" />
+      )}
 
       {hasCover ? (
         <div className="relative w-full overflow-hidden">

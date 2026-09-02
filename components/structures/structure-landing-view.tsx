@@ -54,7 +54,7 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
         registrationPath={registrationPath}
       />
 
-      <HeroAnnouncementTicker />
+      <HeroAnnouncementTicker tone="light" className="mx-auto mb-6 max-w-6xl px-4 md:mb-8 md:px-6" />
 
       <section id="accueil" className="relative overflow-hidden pb-16 pt-10 md:pb-24 md:pt-16">
         <div

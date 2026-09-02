@@ -8,7 +8,10 @@ export const challengeStatusSchema = z.nativeEnum(ChallengeStatus)
 export const challengeSettingsSchema = z
   .object({
     registration: challengeRegistrationSettingsSchema.optional(),
-    coverImageUrl: z.string().optional().nullable(),
+    coverImageUrl: z.preprocess(
+      (val) => (typeof val === 'string' && !val.trim() ? null : val),
+      z.string().optional().nullable()
+    ),
   })
   .passthrough()
 
