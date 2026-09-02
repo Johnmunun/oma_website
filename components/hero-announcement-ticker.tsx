@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Microphone3dIcon } from '@/components/illustrations/microphone-3d-icon'
+import { Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type HeroAnnouncementData = {
@@ -12,7 +12,7 @@ export type HeroAnnouncementData = {
 }
 
 type HeroAnnouncementTickerProps = {
-  /** Position sous la navbar fixe du site principal */
+  /** Fixe la bande juste sous la navbar du site principal */
   belowMainNav?: boolean
   className?: string
 }
@@ -75,11 +75,11 @@ export function HeroAnnouncementTicker({
 
   const loopItems = Array.from({ length: 8 }, () => announcement)
 
-  return (
+  const bar = (
     <div
       className={cn(
-        'w-full border-b border-slate-200/90 bg-white shadow-sm',
-        belowMainNav && 'sticky top-16 z-40 mt-16 md:top-20 md:mt-20',
+        'w-full border-y border-slate-200 bg-white shadow-sm',
+        belowMainNav && 'fixed left-0 right-0 top-16 z-40 md:top-20',
         className,
       )}
       role="region"
@@ -87,22 +87,16 @@ export function HeroAnnouncementTicker({
       aria-label="Annonce du réseau"
     >
       <div className="mx-auto flex max-w-full items-stretch">
-        {/* Icône + label fixes — repère visuel « annonce » */}
-        <div
-          className="flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-3 py-2.5 md:px-4 md:py-3"
-          aria-hidden
-        >
-          <Microphone3dIcon className="h-8 w-8 md:h-9 md:w-9" />
-          <span className="hidden min-w-[4.5rem] flex-col leading-tight sm:flex">
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gold">
-              Live
-            </span>
-            <span className="text-xs font-semibold text-slate-800">Annonce</span>
+        <div className="flex shrink-0 items-center gap-2.5 border-r border-slate-200 bg-slate-50 px-3 py-2 md:px-4 md:py-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+            <Mic className="h-4 w-4" aria-hidden />
+          </span>
+          <span className="hidden text-xs font-semibold uppercase tracking-wide text-slate-600 sm:inline">
+            Annonce
           </span>
         </div>
 
-        {/* Texte défilant */}
-        <div className="relative min-w-0 flex-1 overflow-hidden py-2.5 md:py-3">
+        <div className="relative min-w-0 flex-1 overflow-hidden py-2 md:py-2.5">
           <div
             className="flex w-max items-center"
             style={{ animation: 'scroll-left 45s linear infinite' }}
@@ -120,5 +114,15 @@ export function HeroAnnouncementTicker({
         </div>
       </div>
     </div>
+  )
+
+  if (!belowMainNav) return bar
+
+  /* Réserve l'espace sous navbar + bande — la navbar reste transparente/sombre */
+  return (
+    <>
+      {bar}
+      <div className="mt-16 h-10 shrink-0 md:mt-20 md:h-11" aria-hidden />
+    </>
   )
 }
