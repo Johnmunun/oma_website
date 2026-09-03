@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/admin/page-skeleton'
 import { ChallengePublicLink } from '@/components/admin/challenge-rankings-public-links'
+import { ChallengeLiveSetupHelp } from '@/components/admin/challenge-live-setup-help'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -219,12 +220,14 @@ export default function ChallengeLiveAdminPage() {
       </header>
 
       <div className="space-y-6">
+        <ChallengeLiveSetupHelp />
+
         <Card className="space-y-5 p-5">
           <div>
             <h2 className="text-sm font-semibold">Diffusion</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Créez un Live Input dans Cloudflare Stream, puis collez l&apos;URL iframe
-              ou le customer code + Live Input ID.
+              Une fois OBS branché sur Cloudflare, activez la page puis le badge
+              « En direct » pour le public.
             </p>
           </div>
 
@@ -378,13 +381,14 @@ export default function ChallengeLiveAdminPage() {
           <div>
             <h2 className="text-sm font-semibold">Cloudflare Stream</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Dashboard Cloudflare → Stream → Live inputs → Embed. Collez l&apos;URL
-              iframe, ou renseignez customer + Live Input ID.
+              Dans Cloudflare, cherchez <strong>Embed</strong> (pas forcément le mot
+              « iframe »). Collez l&apos;URL du lecteur, ou Customer code + Live Input
+              ID.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="live-embed">URL iframe (recommandé)</Label>
+            <Label htmlFor="live-embed">URL Embed / iframe (recommandé)</Label>
             <Input
               id="live-embed"
               className="font-mono text-xs"
@@ -395,6 +399,10 @@ export default function ChallengeLiveAdminPage() {
                 setLive((s) => ({ ...s, embedUrl: e.target.value || null }))
               }
             />
+            <p className="text-xs text-muted-foreground">
+              Exemple : copiez le <code className="text-[10px]">src=&quot;…&quot;</code>{' '}
+              du code Embed Cloudflare (uniquement l&apos;URL).
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
