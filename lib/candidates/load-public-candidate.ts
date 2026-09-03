@@ -75,6 +75,8 @@ export async function loadPublicCandidatePage(
           title: true,
           thumbnailUrl: true,
           videoUrl: true,
+          source: true,
+          fileId: true,
         },
       },
       _count: { select: { votes: true } },

@@ -48,7 +48,22 @@ export async function PUT(
     if (data.description !== undefined) updateData.description = data.description?.trim() || null
     if (data.reviewNotes !== undefined) updateData.reviewNotes = data.reviewNotes?.trim() || null
 
-    if (data.videoUrl !== undefined) {
+    if (data.fileId !== undefined && data.fileId?.trim()) {
+      const { buildCloudflareStreamPlayback, isCloudflareStreamConfigured } = await import(
+        '@/lib/videos/cloudflare-stream'
+      )
+      if (!isCloudflareStreamConfigured()) {
+        return NextResponse.json(
+          { success: false, error: 'Cloudflare Stream non configuré' },
+          { status: 503 }
+        )
+      }
+      const playback = buildCloudflareStreamPlayback({ videoUid: data.fileId.trim() })
+      updateData.fileId = data.fileId.trim()
+      updateData.videoUrl = playback.videoUrl
+      updateData.thumbnailUrl = data.thumbnailUrl ?? playback.thumbnailUrl
+      updateData.source = 'UPLOAD'
+    } else if (data.videoUrl !== undefined && data.videoUrl?.trim()) {
       const parsed = parseVideoUrl(data.videoUrl)
       if (!parsed && !data.source) {
         return NextResponse.json(
@@ -59,6 +74,13 @@ export async function PUT(
       updateData.videoUrl = parsed?.videoUrl ?? data.videoUrl
       updateData.thumbnailUrl = data.thumbnailUrl ?? parsed?.thumbnailUrl ?? null
       updateData.source = data.source ?? parsed?.source
+      updateData.fileId = null
+    } else if (data.videoUrl !== undefined && data.fileId === undefined) {
+      // no-op if empty without fileId
+    }
+
+    if (data.thumbnailUrl !== undefined && updateData.thumbnailUrl === undefined) {
+      updateData.thumbnailUrl = data.thumbnailUrl
     }
 
     if (data.status !== undefined) {

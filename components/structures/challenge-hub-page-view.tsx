@@ -22,7 +22,7 @@ import {
   getChallengeVotesPath,
 } from '@/lib/structures/public-url'
 import { cn } from '@/lib/utils'
-import { parseVideoUrl } from '@/lib/videos/parse-video-url'
+import { resolveChallengeVideoPlayback } from '@/lib/videos/resolve-challenge-video-playback'
 
 function formatDate(iso: string | null) {
   if (!iso) return null
@@ -208,7 +208,9 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {spotlight.map((c) => {
-              const parsed = c.video?.videoUrl ? parseVideoUrl(c.video.videoUrl) : null
+              const parsed = c.video
+                ? resolveChallengeVideoPlayback(c.video)
+                : null
               const thumb = c.video?.thumbnailUrl || parsed?.thumbnailUrl
               const profilePath = getChallengeCandidatePath(
                 structure,

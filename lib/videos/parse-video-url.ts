@@ -50,6 +50,24 @@ export function parseVideoUrl(raw: string): ParsedVideoUrl | null {
     }
 
     if (url.protocol === 'https:' || url.protocol === 'http:') {
+      // Cloudflare Stream (iframe / watch)
+      if (/cloudflarestream\.com$/i.test(url.hostname)) {
+        const uid = url.pathname.split('/').filter(Boolean)[0] || null
+        const customer = url.hostname.replace(/\.cloudflarestream\.com$/i, '')
+        const embedUrl = uid
+          ? `https://${customer}.cloudflarestream.com/${uid}/iframe`
+          : href
+        return {
+          source: ChallengeVideoSource.UPLOAD,
+          videoUrl: href,
+          embedUrl,
+          thumbnailUrl: uid
+            ? `https://${customer}.cloudflarestream.com/${uid}/thumbnails/thumbnail.jpg`
+            : null,
+          externalId: uid,
+        }
+      }
+
       return {
         source: ChallengeVideoSource.EXTERNAL,
         videoUrl: href,

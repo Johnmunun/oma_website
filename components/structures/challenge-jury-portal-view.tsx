@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { getStructureThemeVars } from '@/lib/structures/landing-theme'
-import { parseVideoUrl } from '@/lib/videos/parse-video-url'
+import { resolveChallengeVideoPlayback } from '@/lib/videos/resolve-challenge-video-playback'
 import { toast } from 'sonner'
 
 export type PublicJuryPortalData = {
@@ -141,7 +141,7 @@ function CandidateEvaluationCard({
   const [saved, setSaved] = useState(Boolean(existing))
 
   const video = candidate.video
-  const parsed = video ? parseVideoUrl(video.videoUrl) : null
+  const parsed = video ? resolveChallengeVideoPlayback(video) : null
 
   const submit = async () => {
     const parsedScore = Number.parseFloat(score)
@@ -179,7 +179,10 @@ function CandidateEvaluationCard({
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6">
       <div className="flex flex-col gap-5 lg:flex-row">
-        {parsed && (parsed.source === 'YOUTUBE' || parsed.source === 'VIMEO') ? (
+        {parsed &&
+        (parsed.source === 'YOUTUBE' ||
+          parsed.source === 'VIMEO' ||
+          parsed.source === 'UPLOAD') ? (
           <div className="aspect-video w-full max-w-sm shrink-0 overflow-hidden rounded-xl border bg-black">
             <iframe
               src={parsed.embedUrl}

@@ -6,17 +6,48 @@ export const challengeVideoSourceSchema = z.nativeEnum(ChallengeVideoSource)
 
 const optionalText = z.string().max(2000).optional().nullable()
 
-export const createChallengeVideoSchema = z.object({
+export const publicVideoSubmitSchema = z
+  .object({
+    token: z.string().min(8),
+    title: z.string().max(200).optional().nullable(),
+    description: optionalText,
+    videoUrl: z.string().min(8).optional().nullable(),
+    fileId: z.string().min(8).max(80).optional().nullable(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.fileId?.trim() && !val.videoUrl?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Uploadez une vidéo Cloudflare ou collez un lien',
+        path: ['videoUrl'],
+      })
+    }
+  })
+
+const createChallengeVideoBaseSchema = z.object({
   candidateId: z.string().uuid(),
   title: z.string().max(200).optional().nullable(),
   description: optionalText,
-  videoUrl: z.string().url('URL vidéo invalide').or(z.string().min(8)),
+  videoUrl: z.string().min(8).optional().nullable(),
+  fileId: z.string().min(8).max(80).optional().nullable(),
   thumbnailUrl: z.string().url().optional().nullable(),
   source: challengeVideoSourceSchema.optional(),
   status: challengeVideoStatusSchema.optional(),
 })
 
-export const updateChallengeVideoSchema = createChallengeVideoSchema
+export const createChallengeVideoSchema = createChallengeVideoBaseSchema.superRefine(
+  (val, ctx) => {
+    if (!val.fileId?.trim() && !val.videoUrl?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Uploadez une vidéo ou fournissez une URL',
+        path: ['videoUrl'],
+      })
+    }
+  }
+)
+
+export const updateChallengeVideoSchema = createChallengeVideoBaseSchema
   .omit({ candidateId: true })
   .partial()
   .extend({
@@ -26,13 +57,6 @@ export const updateChallengeVideoSchema = createChallengeVideoSchema
 export const challengeVideoStatusActionSchema = z.object({
   action: z.enum(['publish', 'reject', 'unpublish']),
   reviewNotes: optionalText,
-})
-
-export const publicVideoSubmitSchema = z.object({
-  token: z.string().min(8),
-  title: z.string().max(200).optional().nullable(),
-  description: optionalText,
-  videoUrl: z.string().min(8, 'URL vidéo requise'),
 })
 
 export type CreateChallengeVideoInput = z.infer<typeof createChallengeVideoSchema>

@@ -12,7 +12,7 @@ import {
   getChallengeVotesPath,
 } from '@/lib/structures/public-url'
 import { cn } from '@/lib/utils'
-import { parseVideoUrl } from '@/lib/videos/parse-video-url'
+import { resolveChallengeVideoPlayback } from '@/lib/videos/resolve-challenge-video-playback'
 import { toast } from 'sonner'
 
 export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePageData }) {
@@ -32,7 +32,9 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
     [structure, challenge.slug, candidate.candidateCode]
   )
 
-  const parsed = candidate.video?.videoUrl ? parseVideoUrl(candidate.video.videoUrl) : null
+  const parsed = candidate.video
+    ? resolveChallengeVideoPlayback(candidate.video)
+    : null
   const embedUrl = parsed?.embedUrl
   const thumb = candidate.video?.thumbnailUrl || parsed?.thumbnailUrl
   const firstName = candidate.fullName.split(' ')[0]

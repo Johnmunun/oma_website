@@ -96,12 +96,36 @@ export async function POST(
       )
     }
 
-    const parsed = parseVideoUrl(data.videoUrl)
-    if (!parsed && !data.source) {
-      return NextResponse.json(
-        { success: false, error: 'URL vidéo invalide' },
-        { status: 400 }
+    const fileId = data.fileId?.trim() || null
+    let videoUrl: string
+    let thumbnailUrl: string | null = data.thumbnailUrl ?? null
+    let source = data.source
+
+    if (fileId) {
+      const { buildCloudflareStreamPlayback, isCloudflareStreamConfigured } = await import(
+        '@/lib/videos/cloudflare-stream'
       )
+      if (!isCloudflareStreamConfigured()) {
+        return NextResponse.json(
+          { success: false, error: 'Cloudflare Stream non configuré' },
+          { status: 503 }
+        )
+      }
+      const playback = buildCloudflareStreamPlayback({ videoUid: fileId })
+      videoUrl = playback.videoUrl
+      thumbnailUrl = thumbnailUrl || playback.thumbnailUrl
+      source = 'UPLOAD'
+    } else {
+      const parsed = parseVideoUrl(data.videoUrl || '')
+      if (!parsed) {
+        return NextResponse.json(
+          { success: false, error: 'URL vidéo invalide' },
+          { status: 400 }
+        )
+      }
+      videoUrl = parsed.videoUrl
+      thumbnailUrl = thumbnailUrl || parsed.thumbnailUrl
+      source = data.source ?? parsed.source
     }
 
     const video = await prisma.challengeVideo.upsert({
@@ -111,17 +135,19 @@ export async function POST(
         candidateId: candidate.id,
         title: data.title?.trim() || `Prestation — ${candidate.fullName}`,
         description: data.description?.trim() || null,
-        videoUrl: parsed?.videoUrl ?? data.videoUrl,
-        thumbnailUrl: data.thumbnailUrl ?? parsed?.thumbnailUrl ?? null,
-        source: data.source ?? parsed?.source ?? 'EXTERNAL',
+        videoUrl,
+        thumbnailUrl,
+        source: source ?? 'EXTERNAL',
+        fileId,
         status: data.status ?? ChallengeVideoStatus.PENDING,
       },
       update: {
         title: data.title?.trim() || `Prestation — ${candidate.fullName}`,
         description: data.description?.trim() || null,
-        videoUrl: parsed?.videoUrl ?? data.videoUrl,
-        thumbnailUrl: data.thumbnailUrl ?? parsed?.thumbnailUrl ?? null,
-        source: data.source ?? parsed?.source ?? 'EXTERNAL',
+        videoUrl,
+        thumbnailUrl,
+        source: source ?? 'EXTERNAL',
+        fileId,
         status: data.status ?? ChallengeVideoStatus.PENDING,
       },
       include: {

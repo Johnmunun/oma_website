@@ -20,10 +20,11 @@ export type PublicVideoSubmitPageData = {
   }
   contactSlug: string
   token: string
+  cloudflareUploadEnabled?: boolean
 }
 
 export function ChallengeVideoSubmitPageView({ data }: { data: PublicVideoSubmitPageData }) {
-  const { structure, challenge, candidate, contactSlug, token } = data
+  const { structure, challenge, candidate, contactSlug, token, cloudflareUploadEnabled } = data
   const themeStyle = getStructureThemeVars(structure.landingThemeColor)
   const landingPath = `/s/${contactSlug}`
 
@@ -78,6 +79,7 @@ export function ChallengeVideoSubmitPageView({ data }: { data: PublicVideoSubmit
             token={token}
             candidateName={candidate.fullName}
             existingVideo={candidate.video}
+            cloudflareUploadEnabled={Boolean(cloudflareUploadEnabled)}
           />
         </div>
       </main>

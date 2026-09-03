@@ -2,7 +2,7 @@
 
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { Link2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,12 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { uploadFileToCloudflareDirectUrl } from '@/lib/videos/upload-to-cloudflare-direct'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export type ChallengeVideoFormData = {
   candidateId: string
   title: string
   description: string
   videoUrl: string
+  fileId?: string | null
 }
 
 interface ApprovedCandidate {
@@ -33,6 +37,7 @@ interface ChallengeVideoDrawerProps {
   onClose: () => void
   onSubmit: (data: ChallengeVideoFormData) => Promise<void>
   candidates: ApprovedCandidate[]
+  challengeId: string
   initialData?: Partial<ChallengeVideoFormData> & { id?: string; candidateId?: string } | null
 }
 
@@ -41,16 +46,23 @@ const EMPTY: ChallengeVideoFormData = {
   title: '',
   description: '',
   videoUrl: '',
+  fileId: null,
 }
+
+const MAX_BYTES = 200 * 1024 * 1024
 
 export function ChallengeVideoDrawer({
   isOpen,
   onClose,
   onSubmit,
   candidates,
+  challengeId,
   initialData,
 }: ChallengeVideoDrawerProps) {
   const [form, setForm] = useState<ChallengeVideoFormData>(EMPTY)
+  const [mode, setMode] = useState<'upload' | 'link'>('upload')
+  const [file, setFile] = useState<File | null>(null)
+  const [progress, setProgress] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isEdit = Boolean(initialData?.id)
 
@@ -62,21 +74,68 @@ export function ChallengeVideoDrawer({
         title: initialData.title ?? '',
         description: initialData.description ?? '',
         videoUrl: initialData.videoUrl ?? '',
+        fileId: initialData.fileId ?? null,
       })
+      setMode(initialData.fileId ? 'upload' : 'link')
     } else {
       setForm({
         ...EMPTY,
         candidateId: candidates[0]?.id ?? '',
       })
+      setMode('upload')
     }
+    setFile(null)
+    setProgress(null)
   }, [isOpen, initialData, candidates])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.candidateId || !form.videoUrl.trim()) return
+    if (!form.candidateId) return
+
     setIsSubmitting(true)
+    setProgress(null)
     try {
-      await onSubmit(form)
+      let videoUrl = form.videoUrl.trim()
+      let fileId = form.fileId ?? null
+
+      if (mode === 'upload' && file) {
+        if (file.size > MAX_BYTES) {
+          toast.error('Fichier trop volumineux (max 200 Mo)')
+          return
+        }
+        const prep = await fetch(`/api/admin/challenges/${challengeId}/videos/direct-upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            candidateId: form.candidateId,
+          }),
+        }).then((r) => r.json())
+
+        if (!prep.success) {
+          toast.error(prep.error || 'Upload Cloudflare indisponible')
+          return
+        }
+
+        setProgress(0)
+        await uploadFileToCloudflareDirectUrl(prep.data.uploadURL, file, setProgress)
+        fileId = prep.data.uid
+        videoUrl = ''
+      } else if (mode === 'link' && !videoUrl) {
+        toast.error('URL vidéo requise')
+        return
+      } else if (mode === 'upload' && !file && !fileId) {
+        toast.error('Choisissez un fichier vidéo')
+        return
+      }
+
+      await onSubmit({
+        ...form,
+        videoUrl,
+        fileId,
+      })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
     } finally {
       setIsSubmitting(false)
     }
@@ -126,16 +185,57 @@ export function ChallengeVideoDrawer({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>URL vidéo *</Label>
-            <Input
-              value={form.videoUrl}
-              onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-              placeholder="https://youtube.com/watch?v=… ou Vimeo"
-              required
-            />
-            <p className="text-xs text-muted-foreground">YouTube, Vimeo ou lien HTTPS direct</p>
+          <div className="flex gap-2 rounded-lg bg-muted/40 p-1">
+            <button
+              type="button"
+              onClick={() => setMode('upload')}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
+                mode === 'upload' ? 'bg-background shadow-sm' : 'text-muted-foreground',
+              )}
+            >
+              <Upload className="h-4 w-4" />
+              Cloudflare
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('link')}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
+                mode === 'link' ? 'bg-background shadow-sm' : 'text-muted-foreground',
+              )}
+            >
+              <Link2 className="h-4 w-4" />
+              Lien
+            </button>
           </div>
+
+          {mode === 'upload' ? (
+            <div className="space-y-2">
+              <Label>Fichier vidéo *</Label>
+              <Input
+                type="file"
+                accept="video/*"
+                disabled={isSubmitting}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Stockage Cloudflare Stream — max 200 Mo
+              </p>
+              {progress !== null && (
+                <p className="text-xs text-muted-foreground">Upload {progress}%</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>URL vidéo *</Label>
+              <Input
+                value={form.videoUrl}
+                onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                placeholder="YouTube, Vimeo ou Cloudflare"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Description</Label>

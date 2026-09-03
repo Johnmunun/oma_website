@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAdminPermissions } from '@/hooks/use-admin-permissions'
-import { parseVideoUrl } from '@/lib/videos/parse-video-url'
+import { resolveChallengeVideoPlayback } from '@/lib/videos/resolve-challenge-video-playback'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +47,7 @@ interface VideoRow {
   videoUrl: string
   thumbnailUrl: string | null
   source: string
+  fileId?: string | null
   status: VideoStatus
   reviewNotes: string | null
   createdAt: string
@@ -89,16 +90,35 @@ const STATUS_VARIANT: Record<VideoStatus, 'default' | 'secondary' | 'destructive
   REJECTED: 'destructive',
 }
 
-function VideoPreview({ url, title }: { url: string; title?: string | null }) {
-  const parsed = parseVideoUrl(url)
-  if (parsed && (parsed.source === 'YOUTUBE' || parsed.source === 'VIMEO')) {
+function VideoPreview({
+  url,
+  title,
+  source,
+  fileId,
+}: {
+  url: string
+  title?: string | null
+  source?: string | null
+  fileId?: string | null
+}) {
+  const parsed = resolveChallengeVideoPlayback({
+    videoUrl: url,
+    source,
+    fileId,
+  })
+  if (
+    parsed &&
+    (parsed.source === 'YOUTUBE' ||
+      parsed.source === 'VIMEO' ||
+      parsed.source === 'UPLOAD')
+  ) {
     return (
-      <div className="aspect-video w-full max-w-xs overflow-hidden rounded-lg border bg-black">
+      <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
         <iframe
           src={parsed.embedUrl}
           title={title || 'Vidéo'}
-          className="h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          className="absolute inset-0 h-full w-full border-0"
+          allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
         />
       </div>
@@ -108,10 +128,9 @@ function VideoPreview({ url, title }: { url: string; title?: string | null }) {
     <a
       href={url}
       target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 text-sm text-gold-text hover:underline"
+      rel="noreferrer"
+      className="text-sm text-primary underline"
     >
-      <Eye className="h-4 w-4" />
       Ouvrir la vidéo
     </a>
   )
@@ -203,7 +222,8 @@ export default function ChallengeVideosPage() {
         candidateId: form.candidateId,
         title: form.title || null,
         description: form.description || null,
-        videoUrl: form.videoUrl,
+        videoUrl: form.videoUrl || null,
+        fileId: form.fileId || null,
       }),
     })
     const data = await res.json()
@@ -221,7 +241,8 @@ export default function ChallengeVideosPage() {
       body: JSON.stringify({
         title: form.title || null,
         description: form.description || null,
-        videoUrl: form.videoUrl,
+        videoUrl: form.videoUrl || null,
+        fileId: form.fileId || null,
       }),
     })
     const data = await res.json()
@@ -389,7 +410,12 @@ export default function ChallengeVideosPage() {
           {videos.map((video) => (
             <Card key={video.id} className="p-5">
               <div className="flex flex-col gap-5 lg:flex-row">
-                <VideoPreview url={video.videoUrl} title={video.title} />
+                <VideoPreview
+                  url={video.videoUrl}
+                  title={video.title}
+                  source={video.source}
+                  fileId={video.fileId}
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{video.title || 'Sans titre'}</h3>
@@ -462,6 +488,7 @@ export default function ChallengeVideosPage() {
 
       <ChallengeVideoDrawer
         isOpen={drawerOpen}
+        challengeId={challengeId}
         onClose={() => {
           setDrawerOpen(false)
           setEditing(null)
@@ -475,6 +502,7 @@ export default function ChallengeVideosPage() {
                 title: editing.title ?? '',
                 description: editing.description ?? '',
                 videoUrl: editing.videoUrl,
+                fileId: editing.fileId,
               }
             : null
         }

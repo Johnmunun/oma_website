@@ -1,7 +1,11 @@
 import { CandidateStatus, ChallengeStatus, ChallengeVideoStatus, StructureStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { parseVideoUrl } from '@/lib/videos/parse-video-url'
 import type { PublicVideoSubmitInput } from '@/lib/videos/challenge-video-schema'
+import {
+  buildCloudflareStreamPlayback,
+  isCloudflareStreamConfigured,
+} from '@/lib/videos/cloudflare-stream'
+import { buildUploadVideoRecord, parseVideoUrl } from '@/lib/videos/parse-video-url'
 
 export class PublicVideoSubmitError extends Error {
   constructor(
@@ -59,12 +63,33 @@ export async function submitPublicChallengeVideo(
     throw new PublicVideoSubmitError('Lien invalide ou candidature non validée', 403)
   }
 
-  const parsed = parseVideoUrl(data.videoUrl)
-  if (!parsed) {
-    throw new PublicVideoSubmitError(
-      'URL vidéo non reconnue. Utilisez YouTube, Vimeo ou un lien direct HTTPS.',
-      400
-    )
+  const fileId = data.fileId?.trim() || null
+  let videoUrl: string
+  let thumbnailUrl: string | null = null
+  let source = parseVideoUrl(data.videoUrl || '')?.source
+
+  if (fileId) {
+    if (!isCloudflareStreamConfigured()) {
+      throw new PublicVideoSubmitError(
+        'Upload Cloudflare Stream non configuré sur le serveur',
+        503
+      )
+    }
+    const playback = buildCloudflareStreamPlayback({ videoUid: fileId })
+    videoUrl = playback.videoUrl
+    thumbnailUrl = playback.thumbnailUrl
+    source = buildUploadVideoRecord(playback.embedUrl, fileId).source
+  } else {
+    const parsed = parseVideoUrl(data.videoUrl || '')
+    if (!parsed) {
+      throw new PublicVideoSubmitError(
+        'URL vidéo non reconnue. Uploadez via Cloudflare ou utilisez YouTube / Vimeo.',
+        400
+      )
+    }
+    videoUrl = parsed.videoUrl
+    thumbnailUrl = parsed.thumbnailUrl
+    source = parsed.source
   }
 
   const video = await prisma.challengeVideo.upsert({
@@ -74,9 +99,10 @@ export async function submitPublicChallengeVideo(
       candidateId: candidate.id,
       title: data.title?.trim() || `Prestation — ${candidate.fullName}`,
       description: data.description?.trim() || null,
-      videoUrl: parsed.videoUrl,
-      thumbnailUrl: parsed.thumbnailUrl,
-      source: parsed.source,
+      videoUrl,
+      thumbnailUrl,
+      source: source!,
+      fileId,
       status: ChallengeVideoStatus.PENDING,
       rejectedAt: null,
       publishedAt: null,
@@ -85,9 +111,10 @@ export async function submitPublicChallengeVideo(
     update: {
       title: data.title?.trim() || `Prestation — ${candidate.fullName}`,
       description: data.description?.trim() || null,
-      videoUrl: parsed.videoUrl,
-      thumbnailUrl: parsed.thumbnailUrl,
-      source: parsed.source,
+      videoUrl,
+      thumbnailUrl,
+      source: source!,
+      fileId,
       status: ChallengeVideoStatus.PENDING,
       rejectedAt: null,
       publishedAt: null,
@@ -157,5 +184,12 @@ export async function loadPublicVideoSubmitPage(
     structure.subdomain?.trim() ||
     structure.slug
 
-  return { structure, challenge, candidate, contactSlug, token }
+  return {
+    structure,
+    challenge,
+    candidate,
+    contactSlug,
+    token,
+    cloudflareUploadEnabled: isCloudflareStreamConfigured(),
+  }
 }

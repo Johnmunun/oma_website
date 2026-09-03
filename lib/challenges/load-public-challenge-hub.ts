@@ -95,7 +95,7 @@ export async function loadPublicChallengeHub(
       city: true,
       candidateCode: true,
       video: {
-        select: { thumbnailUrl: true, videoUrl: true, title: true },
+        select: { thumbnailUrl: true, videoUrl: true, title: true, source: true, fileId: true },
       },
       _count: { select: { votes: true } },
     },
