@@ -635,9 +635,11 @@ export default function AdminContentPage() {
 
                 <div className="rounded-lg border border-border p-4 space-y-4 bg-muted/30">
                   <div>
-                    <h4 className="text-sm font-semibold">Annonce défilante (hero)</h4>
+                    <h4 className="text-sm font-semibold">Annonce Live (accueil OMA)</h4>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Bandeau horizontal en haut du hero. Expire automatiquement après la durée choisie.
+                      Affichée uniquement sur le hero de la page d&apos;accueil principale, et seulement
+                      si cette option est activée. Invisible sur les pages partenaires / challenges.
+                      Expire automatiquement après la durée choisie.
                     </p>
                   </div>
 

@@ -8,7 +8,6 @@ import {
   Users,
 } from 'lucide-react'
 import { StructureLandingNav } from '@/components/structures/structure-landing-nav'
-import { HeroAnnouncementTicker } from '@/components/hero-announcement-ticker'
 import { StructureContactForm } from '@/components/structures/structure-contact-form'
 import { StructureFloatingWhatsApp } from '@/components/structures/structure-floating-whatsapp'
 import { StructureServicesSection } from '@/components/structures/structure-services-section'
@@ -53,8 +52,6 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
         logoUrl={structure.logoUrl}
         registrationPath={registrationPath}
       />
-
-      <HeroAnnouncementTicker tone="light" className="mx-auto mb-6 max-w-6xl px-4 md:mb-8 md:px-6" />
 
       <section id="accueil" className="relative overflow-hidden pb-16 pt-10 md:pb-24 md:pt-16">
         <div
