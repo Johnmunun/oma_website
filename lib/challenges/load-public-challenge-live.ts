@@ -8,6 +8,7 @@ import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registra
 import {
   parseLiveSettingsFromChallenge,
   resolveLiveEmbedUrl,
+  resolveReplayEmbedUrl,
   type ChallengeLiveSettings,
 } from '@/lib/challenges/challenge-live-settings'
 
@@ -63,6 +64,7 @@ export async function loadPublicChallengeLive(
 
     const coverImageUrl = parseChallengeCoverImageUrl(challenge.settings)
     const embedUrl = resolveLiveEmbedUrl(live)
+    const replayUrl = resolveReplayEmbedUrl(live)
     const contactSlug =
       structure.landingPagePath?.trim() ||
       structure.subdomain?.trim() ||
@@ -80,6 +82,7 @@ export async function loadPublicChallengeLive(
       coverImageUrl,
       live,
       embedUrl,
+      replayUrl,
     }
   } catch (error) {
     console.error('[loadPublicChallengeLive]', error)
@@ -92,4 +95,5 @@ export type PublicChallengeLiveData = NonNullable<
 > & {
   live: ChallengeLiveSettings
   embedUrl: string | null
+  replayUrl: string | null
 }

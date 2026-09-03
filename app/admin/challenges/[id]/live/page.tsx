@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAdminPermissions } from '@/hooks/use-admin-permissions'
 import {
   resolveLiveEmbedUrl,
+  resolveReplayEmbedUrl,
   type ChallengeLiveSettings,
 } from '@/lib/challenges/challenge-live-settings'
 import { toast } from 'sonner'
@@ -49,6 +50,9 @@ const EMPTY_LIVE: ChallengeLiveSettings = {
   embedUrl: null,
   dvrEnabled: false,
   scheduledAt: null,
+  replayEnabled: false,
+  vodVideoId: null,
+  replayEmbedUrl: null,
 }
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
@@ -111,6 +115,7 @@ export default function ChallengeLiveAdminPage() {
   }, [loaded, canView, load])
 
   const previewEmbed = useMemo(() => resolveLiveEmbedUrl(live), [live])
+  const previewReplay = useMemo(() => resolveReplayEmbedUrl(live), [live])
 
   const save = async () => {
     if (!canEdit) return
@@ -361,7 +366,7 @@ export default function ChallengeLiveAdminPage() {
           {previewEmbed && (
             <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
               <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Aperçu lecteur
+                Aperçu lecteur live
               </p>
               <div className="relative aspect-video overflow-hidden rounded-md bg-black">
                 <iframe
@@ -375,6 +380,81 @@ export default function ChallengeLiveAdminPage() {
               <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground">
                 {previewEmbed}
               </p>
+            </div>
+          )}
+        </Card>
+
+        <Card className="space-y-4 p-5">
+          <div>
+            <h2 className="text-sm font-semibold">Replay VOD</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Après le live, Cloudflare génère une vidéo. Collez le Video ID ou
+              l&apos;URL iframe pour proposer le replay sur la même page publique.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="live-replay">Activer le replay</Label>
+              <p className="text-xs text-muted-foreground">
+                Affiché quand « En direct » est désactivé
+              </p>
+            </div>
+            <Switch
+              id="live-replay"
+              checked={live.replayEnabled}
+              disabled={!canEdit}
+              onCheckedChange={(replayEnabled) =>
+                setLive((s) => ({ ...s, replayEnabled }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="live-replay-embed">URL iframe replay</Label>
+            <Input
+              id="live-replay-embed"
+              className="font-mono text-xs"
+              value={live.replayEmbedUrl ?? ''}
+              disabled={!canEdit}
+              placeholder="https://customer-xxxx.cloudflarestream.com/VIDEO_ID/iframe"
+              onChange={(e) =>
+                setLive((s) => ({
+                  ...s,
+                  replayEmbedUrl: e.target.value || null,
+                }))
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="live-vod">Video ID VOD</Label>
+            <Input
+              id="live-vod"
+              className="font-mono text-xs"
+              value={live.vodVideoId ?? ''}
+              disabled={!canEdit}
+              placeholder="Utilise le customer code ci-dessus"
+              onChange={(e) =>
+                setLive((s) => ({ ...s, vodVideoId: e.target.value || null }))
+              }
+            />
+          </div>
+
+          {previewReplay && (
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Aperçu replay
+              </p>
+              <div className="relative aspect-video overflow-hidden rounded-md bg-black">
+                <iframe
+                  src={previewReplay}
+                  title="Aperçu Replay Cloudflare"
+                  className="absolute inset-0 h-full w-full border-0"
+                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+              </div>
             </div>
           )}
         </Card>

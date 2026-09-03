@@ -82,7 +82,7 @@ const MODULES: Array<{
   { key: 'jury.view', label: 'Jury', icon: Gavel, href: 'jury' },
   { key: 'challenges.view', label: 'Classement & Votes', icon: BarChart3, href: 'rankings' },
   { key: 'challenges.view', label: 'Live', icon: Radio, href: 'live' },
-  { key: 'challenges.settings', label: 'Paramètres', icon: Settings, soon: true },
+  { key: 'challenges.settings', label: 'Paramètres', icon: Settings, href: 'settings' },
 ]
 
 export default function ChallengeDashboardPage() {

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Radio, Trophy } from 'lucide-react'
+import { Calendar, Play, Radio, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
 import type { PublicChallengeLiveData } from '@/lib/challenges/load-public-challenge-live'
 import {
@@ -25,20 +25,33 @@ function formatSchedule(iso: string | null | undefined) {
 }
 
 export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData }) {
-  const { structure, challenge, live, embedUrl, coverImageUrl } = data
+  const { structure, challenge, live, embedUrl, replayUrl, coverImageUrl } = data
   const hasCover = Boolean(coverImageUrl)
   const hubPath = getChallengeHubPath(structure, challenge.slug)
   const votesPath = getChallengeVotesPath(structure, challenge.slug)
   const rankingsPath = getChallengeRankingsPath(structure, challenge.slug)
   const scheduleLabel = formatSchedule(live.scheduledAt)
+
+  const showLivePlayer = live.isLive && Boolean(embedUrl)
+  const showReplayPlayer =
+    !live.isLive && live.replayEnabled && Boolean(replayUrl)
+  const playerUrl = showLivePlayer ? embedUrl : showReplayPlayer ? replayUrl : null
+
   const title =
     live.title?.trim() ||
-    (live.isLive ? `${challenge.name} — en direct` : `${challenge.name} — Live`)
+    (live.isLive
+      ? `${challenge.name} — en direct`
+      : showReplayPlayer
+        ? `${challenge.name} — Replay`
+        : `${challenge.name} — Live`)
+
   const description =
     live.description?.trim() ||
     (live.isLive
       ? 'La diffusion est en cours. Bon visionnage !'
-      : 'La diffusion n’a pas encore commencé. Revenez à l’horaire annoncé.')
+      : showReplayPlayer
+        ? 'Le live est terminé — revoyez l’enregistrement.'
+        : 'La diffusion n’a pas encore commencé. Revenez à l’horaire annoncé.')
 
   const hero = (
     <div className={cn(hasCover && 'drop-shadow-lg')}>
@@ -60,6 +73,12 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
             En direct
           </span>
         )}
+        {showReplayPlayer && (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+            <Play className="h-3 w-3" />
+            Replay
+          </span>
+        )}
       </div>
       <h1
         className={cn(
@@ -77,7 +96,7 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
       >
         {description}
       </p>
-      {scheduleLabel && !live.isLive && (
+      {scheduleLabel && !live.isLive && !showReplayPlayer && (
         <p
           className={cn(
             'mt-4 inline-flex items-center gap-2 text-sm',
@@ -100,10 +119,10 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
       wide
     >
       <div className="overflow-hidden rounded-2xl bg-black shadow-lg ring-1 ring-slate-900/10">
-        {live.isLive && embedUrl ? (
+        {playerUrl ? (
           <div className="relative aspect-video w-full">
             <iframe
-              src={embedUrl}
+              src={playerUrl}
               title={title}
               className="absolute inset-0 h-full w-full border-0"
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
@@ -119,14 +138,18 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
               <p className="font-serif text-xl font-bold text-white">
                 {live.isLive
                   ? 'Lecteur indisponible'
-                  : 'En attente de diffusion'}
+                  : live.replayEnabled
+                    ? 'Replay en préparation'
+                    : 'En attente de diffusion'}
               </p>
               <p className="mt-2 max-w-md text-sm text-white/60">
                 {live.isLive
                   ? 'La configuration Cloudflare est incomplète. Réessayez dans un instant.'
-                  : scheduleLabel
-                    ? `Prévu le ${scheduleLabel}.`
-                    : 'Le live démarrera bientôt. Gardez cette page ouverte.'}
+                  : live.replayEnabled
+                    ? 'Ajoutez le Video ID VOD dans l’admin Live pour activer le replay.'
+                    : scheduleLabel
+                      ? `Prévu le ${scheduleLabel}.`
+                      : 'Le live démarrera bientôt. Gardez cette page ouverte.'}
               </p>
             </div>
           </div>

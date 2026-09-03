@@ -11,6 +11,7 @@ import {
   mergeChallengeLiveSettings,
   parseLiveSettingsFromChallenge,
   resolveLiveEmbedUrl,
+  resolveReplayEmbedUrl,
   updateLiveSettingsSchema,
 } from '@/lib/challenges/challenge-live-settings'
 import {
@@ -58,6 +59,7 @@ export async function GET(
 
     const live = parseLiveSettingsFromChallenge(challenge.settings)
     const embedUrl = resolveLiveEmbedUrl(live)
+    const replayUrl = resolveReplayEmbedUrl(live)
     const publicUrl = getChallengeLiveUrl(challenge.structure, challenge.slug)
     const publicPath = `/s/${getStructurePathSegment(challenge.structure)}/challenges/${challenge.slug}/live`
 
@@ -73,6 +75,7 @@ export async function GET(
         },
         live,
         embedUrl,
+        replayUrl,
         publicUrl,
         publicPath,
       },
@@ -129,6 +132,7 @@ export async function PATCH(
 
     const live = parseLiveSettingsFromChallenge(updated.settings)
     const embedUrl = resolveLiveEmbedUrl(live)
+    const replayUrl = resolveReplayEmbedUrl(live)
 
     await prisma.auditLog.create({
       data: {
@@ -140,6 +144,7 @@ export async function PATCH(
           enabled: live.enabled,
           isLive: live.isLive,
           showOnHub: live.showOnHub,
+          replayEnabled: live.replayEnabled,
         },
       },
     })
@@ -149,6 +154,7 @@ export async function PATCH(
       data: {
         live,
         embedUrl,
+        replayUrl,
         publicUrl: getChallengeLiveUrl(updated.structure, updated.slug),
       },
     })

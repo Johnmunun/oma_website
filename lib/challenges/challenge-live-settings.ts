@@ -32,6 +32,12 @@ export const challengeLiveSettingsSchema = z.object({
   dvrEnabled: z.boolean().default(false),
   /** ISO ou datetime local — validé côté affichage */
   scheduledAt: z.preprocess(emptyToNullString, z.string().max(40).nullable()).default(null),
+  /** Afficher le replay VOD quand le live est terminé */
+  replayEnabled: z.boolean().default(false),
+  /** Video ID Cloudflare Stream (enregistrement / VOD) */
+  vodVideoId: z.preprocess(emptyToNullString, z.string().max(80).nullable()).default(null),
+  /** URL iframe replay (prioritaire sur vodVideoId) */
+  replayEmbedUrl: nullableString.default(null),
 })
 
 export type ChallengeLiveSettings = z.infer<typeof challengeLiveSettingsSchema>
@@ -47,6 +53,9 @@ export const DEFAULT_LIVE_SETTINGS: ChallengeLiveSettings = {
   embedUrl: null,
   dvrEnabled: false,
   scheduledAt: null,
+  replayEnabled: false,
+  vodVideoId: null,
+  replayEmbedUrl: null,
 }
 
 export const updateLiveSettingsSchema = challengeLiveSettingsSchema.partial()
@@ -117,6 +126,40 @@ export function resolveLiveEmbedUrl(live: ChallengeLiveSettings): string | null 
   return null
 }
 
+/** Lecteur VOD / replay Cloudflare (sans dvrEnabled) */
+export function resolveReplayEmbedUrl(live: ChallengeLiveSettings): string | null {
+  const pasted = live.replayEmbedUrl?.trim()
+  if (pasted) {
+    const parsed = parseCloudflareEmbedUrl(pasted)
+    if (parsed) {
+      return buildCloudflareLiveEmbedUrl({
+        customerCode: parsed.customerCode,
+        liveInputId: parsed.liveInputId,
+        dvrEnabled: false,
+      })
+    }
+    if (/cloudflarestream\.com/i.test(pasted) && pasted.includes('/iframe')) {
+      try {
+        const u = new URL(pasted)
+        u.searchParams.delete('dvrEnabled')
+        return u.toString()
+      } catch {
+        return pasted
+      }
+    }
+  }
+
+  if (live.customerCode?.trim() && live.vodVideoId?.trim()) {
+    return buildCloudflareLiveEmbedUrl({
+      customerCode: live.customerCode,
+      liveInputId: live.vodVideoId,
+      dvrEnabled: false,
+    })
+  }
+
+  return null
+}
+
 export function parseLiveSettings(raw: unknown): ChallengeLiveSettings {
   if (!raw || typeof raw !== 'object') return { ...DEFAULT_LIVE_SETTINGS }
   try {
@@ -152,6 +195,14 @@ export function mergeChallengeLiveSettings(
     if (parsed) {
       mergedLive.customerCode = parsed.customerCode
       mergedLive.liveInputId = parsed.liveInputId
+    }
+  }
+
+  if (typeof patch.replayEmbedUrl === 'string' && patch.replayEmbedUrl.trim()) {
+    const parsed = parseCloudflareEmbedUrl(patch.replayEmbedUrl.trim())
+    if (parsed) {
+      if (!mergedLive.customerCode) mergedLive.customerCode = parsed.customerCode
+      mergedLive.vodVideoId = parsed.liveInputId
     }
   }
 

@@ -102,7 +102,7 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
             )}
           >
             <Radio className="h-4 w-4" />
-            {live.isLive ? 'En direct' : 'Live'}
+            {live.isLive ? 'En direct' : live.replayEnabled ? 'Replay' : 'Live'}
           </Link>
         )}
         <Link
