@@ -103,7 +103,9 @@ export function ChallengeDrawer({
         name: initialData.name ?? '',
         slug: initialData.slug ?? '',
         description: initialData.description ?? '',
-        status: initialData.status ?? 'DRAFT',
+        status: initialData.status === 'ACTIVE' || initialData.status === 'ARCHIVED' || initialData.status === 'DRAFT'
+          ? initialData.status
+          : 'DRAFT',
         structureId,
         registrationSettings: initialData.registrationSettings
           ?? parseChallengeSettings(initialData.settings),
@@ -346,8 +348,13 @@ export function ChallengeDrawer({
           <div className="space-y-2">
             <Label>Statut</Label>
             <Select
-              value={form.status}
-              onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
+              value={form.status || 'DRAFT'}
+              onValueChange={(v) =>
+                setForm((f) => ({
+                  ...f,
+                  status: v === 'ACTIVE' || v === 'ARCHIVED' || v === 'DRAFT' ? v : 'DRAFT',
+                }))
+              }
             >
               <SelectTrigger>
                 <SelectValue />

@@ -175,7 +175,10 @@ function AdminChallengesPage() {
       name: form.name,
       slug: form.slug,
       description: form.description || null,
-      status: form.status,
+      status:
+        form.status === 'ACTIVE' || form.status === 'ARCHIVED' || form.status === 'DRAFT'
+          ? form.status
+          : 'DRAFT',
       settings,
     }
 
