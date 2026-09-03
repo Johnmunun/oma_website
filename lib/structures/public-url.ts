@@ -225,3 +225,56 @@ export function getChallengeVotesUrl(
 ): string {
   return `${getMainSiteOrigin()}${getChallengeVotesPath(structure, challengeSlug)}`
 }
+
+/** Hub public du challenge */
+export function getChallengeHubPath(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string
+): string {
+  const segment = getStructurePathSegment(structure)
+  const slug = challengeSlug.trim().toLowerCase()
+  return `/s/${segment}/challenges/${slug}`
+}
+
+export function getChallengeHubUrl(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string
+): string {
+  return `${getMainSiteOrigin()}${getChallengeHubPath(structure, challengeSlug)}`
+}
+
+/** Fiche publique d'un candidat (par code KID-0001) */
+export function getChallengeCandidatePath(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string,
+  candidateCode: string
+): string {
+  const segment = getStructurePathSegment(structure)
+  const slug = challengeSlug.trim().toLowerCase()
+  const code = encodeURIComponent(candidateCode.trim())
+  return `/s/${segment}/challenges/${slug}/candidats/${code}`
+}
+
+export function getChallengeCandidateUrl(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string,
+  candidateCode: string
+): string {
+  return `${getMainSiteOrigin()}${getChallengeCandidatePath(structure, challengeSlug, candidateCode)}`
+}

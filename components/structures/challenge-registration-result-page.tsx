@@ -178,7 +178,8 @@ export function ChallengeRegistrationResultPage({
                   {result.candidateCode}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">
-                  Conservez ce code — il vous sera demandé pour le vote public et le suivi de votre candidature.
+                  Conservez ce code — il identifie votre candidature (suivi et fiche publique
+                  après validation). Le vote public se fait par email, sans ce code.
                 </p>
               </div>
             </div>

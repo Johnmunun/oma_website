@@ -17,7 +17,7 @@ export async function showRegistrationSuccessSwal(input: RegistrationSuccessSwal
   const codeBlock = input.candidateCode
     ? `<p style="margin:16px 0 0;font-size:14px;color:#475569">Votre numéro candidat</p>
        <p style="margin:6px 0 0;font-family:ui-monospace,monospace;font-size:22px;font-weight:700;color:#0f172a">${input.candidateCode}</p>
-       <p style="margin:8px 0 0;font-size:12px;color:#64748b">Conservez ce code pour le vote public et le suivi de votre candidature.</p>`
+       <p style="margin:8px 0 0;font-size:12px;color:#64748b">Conservez ce code pour le suivi de votre candidature. Le vote public se fait par email, sans ce code.</p>`
     : ''
 
   await Swal.fire({

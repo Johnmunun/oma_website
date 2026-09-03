@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
+  getChallengeHubUrl,
   getChallengeRankingsUrl,
+  getChallengeVotePortalUrl,
   getChallengeVotesUrl,
 } from '@/lib/structures/public-url'
 
@@ -94,6 +96,7 @@ export function ChallengeRankingsPublicLinks({
   challengeStatus,
   rankingPublished,
   votesPublished,
+  votePublicToken,
 }: {
   structure?: {
     slug: string
@@ -104,21 +107,33 @@ export function ChallengeRankingsPublicLinks({
   challengeStatus: string
   rankingPublished: boolean
   votesPublished: boolean
+  votePublicToken?: string | null
 }) {
   const isActive = challengeStatus === 'ACTIVE'
 
-  const { rankingsUrl, votesUrl } = useMemo(() => {
+  const { rankingsUrl, votesUrl, shortVotesUrl, hubUrl } = useMemo(() => {
     if (!structure?.slug || !challengeSlug.trim()) {
-      return { rankingsUrl: null, votesUrl: null }
+      return { rankingsUrl: null, votesUrl: null, shortVotesUrl: null, hubUrl: null }
     }
     return {
       rankingsUrl: getChallengeRankingsUrl(structure, challengeSlug),
       votesUrl: getChallengeVotesUrl(structure, challengeSlug),
+      shortVotesUrl: votePublicToken
+        ? getChallengeVotePortalUrl(structure, votePublicToken)
+        : null,
+      hubUrl: getChallengeHubUrl(structure, challengeSlug),
     }
-  }, [structure, challengeSlug])
+  }, [structure, challengeSlug, votePublicToken])
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
+      <ChallengePublicLink
+        title="Hub du challenge"
+        description="Page d'accueil publique : inscription, talents, vote, classement."
+        url={hubUrl}
+        disabled={!isActive}
+        disabledHint="Challenge non actif"
+      />
       <ChallengePublicLink
         title="Page classement"
         description="Classement public combinant notes du jury et votes."
@@ -131,8 +146,21 @@ export function ChallengeRankingsPublicLinks({
         }
       />
       <ChallengePublicLink
-        title="Page vote public"
-        description="Les visiteurs votent une fois par email."
+        title="Lien court de vote"
+        description="À partager sur WhatsApp / réseaux (recommandé)."
+        url={shortVotesUrl}
+        disabled={!isActive || !votesPublished || !shortVotesUrl}
+        disabledHint={
+          !isActive
+            ? 'Challenge non actif'
+            : !votesPublished
+              ? 'Activez et publiez les votes ci-dessous'
+              : 'Enregistrez les réglages pour générer le token'
+        }
+      />
+      <ChallengePublicLink
+        title="Page vote (URL longue)"
+        description="Alternative avec le slug du challenge."
         url={votesUrl}
         disabled={!isActive || !votesPublished}
         disabledHint={

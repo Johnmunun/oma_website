@@ -162,6 +162,7 @@ export default function ChallengeRankingsAdminPage() {
           challengeStatus={challenge.status}
           rankingPublished={ranking.published}
           votesPublished={votes.enabled && votes.published}
+          votePublicToken={votes.publicToken}
         />
       </section>
 

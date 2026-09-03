@@ -17,7 +17,7 @@ import {
   getStructureThemeVars,
   resolveStructureHero,
 } from '@/lib/structures/landing-theme'
-import { getChallengeRegistrationPath, getMainSiteOrigin } from '@/lib/structures/public-url'
+import { getChallengeHubPath, getChallengeRegistrationPath, getMainSiteOrigin } from '@/lib/structures/public-url'
 
 interface StructureLandingViewProps {
   structure: PublicStructureLanding
@@ -34,6 +34,9 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
   const themeStyle = getStructureThemeVars(structure.landingThemeColor)
   const registrationPath = mainChallenge
     ? getChallengeRegistrationPath(structure, mainChallenge.slug)
+    : null
+  const hubPath = mainChallenge
+    ? getChallengeHubPath(structure, mainChallenge.slug)
     : null
 
   const highlights = [
@@ -292,16 +295,26 @@ export function StructureLandingView({ structure }: StructureLandingViewProps) {
                     Challenge actif
                   </p>
                   <Link
-                    href={registrationPath ?? '#projets'}
+                    href={hubPath ?? registrationPath ?? '#projets'}
                     className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:scale-[1.02]"
                     style={{
                       backgroundImage:
                         'linear-gradient(to right, var(--st-primary-dark), var(--st-primary))',
                     }}
                   >
-                    S&apos;inscrire au challenge
+                    Découvrir le challenge
                     <ArrowRight className="h-4 w-4" />
                   </Link>
+                  {registrationPath && (
+                    <Link
+                      href={registrationPath}
+                      className="inline-flex items-center gap-2 text-sm font-semibold"
+                      style={{ color: 'var(--st-primary-dark)' }}
+                    >
+                      S&apos;inscrire
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  )}
                 </div>
               </article>
             ) : (

@@ -86,6 +86,7 @@ async function loadEligibleCandidates(challengeId: string) {
       fullName: true,
       age: true,
       city: true,
+      candidateCode: true,
       video: {
         select: {
           title: true,
@@ -103,6 +104,7 @@ async function loadEligibleCandidates(challengeId: string) {
     fullName: c.fullName,
     age: c.age,
     city: c.city,
+    candidateCode: c.candidateCode,
     video: c.video,
     voteCount: c._count.votes,
   }))
