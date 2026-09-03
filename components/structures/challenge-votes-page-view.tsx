@@ -37,11 +37,16 @@ export type PublicVotesPageData = PublicChallengePageData & {
   candidates: VoteCandidate[]
   totalVotes: number
   voteSubmitPath?: string
+  phases?: {
+    enabled: boolean
+    activePhase: { id: string; name: string } | null
+  }
 }
 
 export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) {
   const { structure, challenge, contactSlug, candidates, totalVotes, coverImageUrl } = data
   const hasCover = Boolean(coverImageUrl)
+  const phaseLabel = data.phases?.enabled ? data.phases.activePhase?.name : null
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -84,8 +89,9 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
         Soutenez un talent
       </h1>
       <p className={cn('mt-3 text-base', hasCover ? 'text-white/75' : 'text-slate-600')}>
-        1 vote par email · {totalVotes} vote{totalVotes !== 1 ? 's' : ''} enregistré
-        {totalVotes !== 1 ? 's' : ''}
+        {phaseLabel ? `${phaseLabel} · ` : ''}
+        1 vote par email{phaseLabel ? ' et par tour' : ''} · {totalVotes} vote
+        {totalVotes !== 1 ? 's' : ''} enregistré{totalVotes !== 1 ? 's' : ''}
       </p>
     </div>
   )

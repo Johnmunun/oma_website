@@ -10,6 +10,11 @@ import {
   isLiveVisibleOnHub,
   parseLiveSettingsFromChallenge,
 } from '@/lib/challenges/challenge-live-settings'
+import {
+  getActivePhase,
+  getVotePhaseKey,
+  parsePhasesSettingsFromChallenge,
+} from '@/lib/challenges/challenge-phase-settings'
 import { getVotePublicTokenFromSettings } from '@/lib/votes/vote-public-token'
 
 const STRUCTURE_WHERE = (segment: string) => ({
@@ -62,6 +67,13 @@ export async function loadPublicChallengeHub(
 
   const features = parseFeatureSettingsFromChallenge(challenge.settings)
   const live = parseLiveSettingsFromChallenge(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const activePhase = getActivePhase(phases)
+  const phaseKey = getVotePhaseKey(phases)
+  const phaseFilter =
+    phases.enabled && phases.activePhaseId
+      ? { phaseId: phases.activePhaseId }
+      : {}
   const coverImageUrl = parseChallengeCoverImageUrl(challenge.settings)
   const voteToken = getVotePublicTokenFromSettings(challenge.settings)
   const contactSlug =
@@ -71,12 +83,27 @@ export async function loadPublicChallengeHub(
 
   const [approvedCount, publishedVideos, totalVotes] = await Promise.all([
     prisma.candidate.count({
-      where: { challengeId: challenge.id, status: CandidateStatus.APPROVED },
+      where: {
+        challengeId: challenge.id,
+        status: CandidateStatus.APPROVED,
+        ...phaseFilter,
+      },
     }),
     prisma.challengeVideo.count({
-      where: { challengeId: challenge.id, status: ChallengeVideoStatus.PUBLISHED },
+      where: {
+        challengeId: challenge.id,
+        status: ChallengeVideoStatus.PUBLISHED,
+        ...(phases.enabled && phases.activePhaseId
+          ? { candidate: { phaseId: phases.activePhaseId } }
+          : {}),
+      },
     }),
-    prisma.challengeVote.count({ where: { challengeId: challenge.id } }),
+    prisma.challengeVote.count({
+      where: {
+        challengeId: challenge.id,
+        ...(phaseKey ? { phaseId: phaseKey } : {}),
+      },
+    }),
   ])
 
   const spotlight = await prisma.candidate.findMany({
@@ -85,6 +112,7 @@ export async function loadPublicChallengeHub(
       status: CandidateStatus.APPROVED,
       video: { status: ChallengeVideoStatus.PUBLISHED },
       candidateCode: { not: null },
+      ...phaseFilter,
     },
     orderBy: { createdAt: 'asc' },
     take: 6,
@@ -97,7 +125,9 @@ export async function loadPublicChallengeHub(
       video: {
         select: { thumbnailUrl: true, videoUrl: true, title: true, source: true, fileId: true },
       },
-      _count: { select: { votes: true } },
+      votes: phaseKey
+        ? { where: { phaseId: phaseKey }, select: { id: true } }
+        : { select: { id: true } },
     },
   })
 
@@ -116,6 +146,10 @@ export async function loadPublicChallengeHub(
       ...live,
       visibleOnHub: isLiveVisibleOnHub(live),
     },
+    phases: {
+      enabled: phases.enabled,
+      activePhase,
+    },
     coverImageUrl,
     contactSlug,
     voteToken,
@@ -132,7 +166,7 @@ export async function loadPublicChallengeHub(
       city: c.city,
       candidateCode: c.candidateCode!,
       video: c.video,
-      voteCount: c._count.votes,
+      voteCount: c.votes.length,
     })),
   }
 }

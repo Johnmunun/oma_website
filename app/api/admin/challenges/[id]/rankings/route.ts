@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireChallengePermission } from '@/lib/challenges/challenge-scope'
 import {
@@ -12,6 +13,7 @@ import {
   updateRankingSettingsSchema,
   updateVotesSettingsSchema,
 } from '@/lib/challenges/challenge-feature-settings'
+import { parsePhasesSettingsFromChallenge } from '@/lib/challenges/challenge-phase-settings'
 import { buildChallengeRankings } from '@/lib/rankings/build-challenge-rankings'
 
 const patchRankingsSchema = z.object({
@@ -37,21 +39,32 @@ export async function GET(
     }
 
     const features = parseFeatureSettingsFromChallenge(challenge.settings)
+    const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+    const phaseId = phases.enabled ? phases.activePhaseId : null
+    const voteWhere = {
+      challengeId: id,
+      ...(phaseId ? { phaseId } : {}),
+    }
 
     const [rankings, totalVotes, uniqueVoters] = await Promise.all([
       buildChallengeRankings(id, {
         rankingSettings: features.ranking,
         votesEnabled: features.votes.enabled,
         onlyPublishedVideos: true,
+        phaseId,
       }),
-      prisma.challengeVote.count({ where: { challengeId: id } }),
-      prisma.challengeVote.count({ where: { challengeId: id } }),
+      prisma.challengeVote.count({ where: voteWhere }),
+      prisma.challengeVote.groupBy({
+        by: ['voterKey'],
+        where: voteWhere,
+      }).then((rows) => rows.length),
     ])
 
     return NextResponse.json({
       success: true,
       data: {
         features,
+        phases,
         rankings,
         stats: {
           rankedCandidates: rankings.length,
@@ -95,7 +108,7 @@ export async function PATCH(
 
     const updated = await prisma.challenge.update({
       where: { id },
-      data: { settings: mergedSettings },
+      data: { settings: mergedSettings as Prisma.InputJsonValue },
       select: { id: true, settings: true },
     })
 

@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registration-settings'
 import { normalizeCandidateEmail } from '@/lib/candidates/candidate-schema'
 import { parseFeatureSettingsFromChallenge } from '@/lib/challenges/challenge-feature-settings'
+import {
+  getActivePhase,
+  getVotePhaseKey,
+  parsePhasesSettingsFromChallenge,
+} from '@/lib/challenges/challenge-phase-settings'
 import { getVotePublicTokenFromSettings } from '@/lib/votes/vote-public-token'
 
 export class PublicVoteError extends Error {
@@ -73,12 +78,16 @@ function assertVotesOpen(settings: unknown) {
   return features
 }
 
-async function loadEligibleCandidates(challengeId: string) {
+async function loadEligibleCandidates(
+  challengeId: string,
+  phaseId: string | null
+) {
   const rows = await prisma.candidate.findMany({
     where: {
       challengeId,
       status: CandidateStatus.APPROVED,
       video: { status: ChallengeVideoStatus.PUBLISHED },
+      ...(phaseId ? { phaseId } : {}),
     },
     orderBy: [{ createdAt: 'asc' }, { fullName: 'asc' }],
     select: {
@@ -87,6 +96,7 @@ async function loadEligibleCandidates(challengeId: string) {
       age: true,
       city: true,
       candidateCode: true,
+      phaseId: true,
       video: {
         select: {
           title: true,
@@ -94,7 +104,9 @@ async function loadEligibleCandidates(challengeId: string) {
           videoUrl: true,
         },
       },
-      _count: { select: { votes: true } },
+      votes: phaseId
+        ? { where: { phaseId }, select: { id: true } }
+        : { select: { id: true } },
     },
   })
 
@@ -105,12 +117,19 @@ async function loadEligibleCandidates(challengeId: string) {
     age: c.age,
     city: c.city,
     candidateCode: c.candidateCode,
+    phaseId: c.phaseId,
     video: c.video,
-    voteCount: c._count.votes,
+    voteCount: c.votes.length,
   }))
 }
 
-async function recordVote(challengeId: string, candidateId: string, email: string) {
+async function recordVote(
+  challengeId: string,
+  candidateId: string,
+  email: string,
+  phaseKey: string,
+  requiredPhaseId: string | null
+) {
   const voterKey = normalizeCandidateEmail(email)
 
   const candidate = await prisma.candidate.findFirst({
@@ -119,6 +138,7 @@ async function recordVote(challengeId: string, candidateId: string, email: strin
       challengeId,
       status: CandidateStatus.APPROVED,
       video: { status: ChallengeVideoStatus.PUBLISHED },
+      ...(requiredPhaseId ? { phaseId: requiredPhaseId } : {}),
     },
   })
 
@@ -128,15 +148,21 @@ async function recordVote(challengeId: string, candidateId: string, email: strin
 
   const existing = await prisma.challengeVote.findUnique({
     where: {
-      challengeId_voterKey: {
+      challengeId_voterKey_phaseId: {
         challengeId,
         voterKey,
+        phaseId: phaseKey,
       },
     },
   })
 
   if (existing) {
-    throw new PublicVoteError('Vous avez déjà voté pour ce concours (1 vote par email)', 409)
+    throw new PublicVoteError(
+      phaseKey
+        ? 'Vous avez déjà voté pour cette phase (1 vote par email et par tour)'
+        : 'Vous avez déjà voté pour ce concours (1 vote par email)',
+      409
+    )
   }
 
   const vote = await prisma.challengeVote.create({
@@ -145,6 +171,7 @@ async function recordVote(challengeId: string, candidateId: string, email: strin
       candidateId,
       voterKey,
       voterEmail: voterKey,
+      phaseId: phaseKey,
     },
   })
 
@@ -165,6 +192,8 @@ function buildVotePagePayload(
   candidates: Awaited<ReturnType<typeof loadEligibleCandidates>>
 ) {
   const features = parseFeatureSettingsFromChallenge(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const activePhase = getActivePhase(phases)
   const contactSlug =
     structure.landingPagePath?.trim() ||
     structure.subdomain?.trim() ||
@@ -182,6 +211,10 @@ function buildVotePagePayload(
       description: challenge.description,
     },
     features,
+    phases: {
+      enabled: phases.enabled,
+      activePhase,
+    },
     candidates,
     contactSlug,
     coverImageUrl,
@@ -214,8 +247,20 @@ export async function submitPublicChallengeVoteByToken(
   }
 
   assertVotesOpen(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const phaseKey = getVotePhaseKey(phases)
+  const requiredPhaseId = phases.enabled ? phases.activePhaseId : null
+  if (phases.enabled && !requiredPhaseId) {
+    throw new PublicVoteError('Aucune phase active pour le vote', 403)
+  }
 
-  const { vote, candidate } = await recordVote(challenge.id, candidateId, email)
+  const { vote, candidate } = await recordVote(
+    challenge.id,
+    candidateId,
+    email,
+    phaseKey,
+    requiredPhaseId
+  )
 
   return { vote, challenge, structure, candidate }
 }
@@ -252,8 +297,20 @@ export async function submitPublicChallengeVote(
   }
 
   assertVotesOpen(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const phaseKey = getVotePhaseKey(phases)
+  const requiredPhaseId = phases.enabled ? phases.activePhaseId : null
+  if (phases.enabled && !requiredPhaseId) {
+    throw new PublicVoteError('Aucune phase active pour le vote', 403)
+  }
 
-  const { vote, candidate } = await recordVote(challenge.id, candidateId, email)
+  const { vote, candidate } = await recordVote(
+    challenge.id,
+    candidateId,
+    email,
+    phaseKey,
+    requiredPhaseId
+  )
 
   return { vote, challenge, structure, candidate }
 }
@@ -280,7 +337,11 @@ export async function loadPublicVotePageByToken(
     return null
   }
 
-  const candidates = await loadEligibleCandidates(challenge.id)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const requiredPhaseId = phases.enabled ? phases.activePhaseId : null
+  if (phases.enabled && !requiredPhaseId) return null
+
+  const candidates = await loadEligibleCandidates(challenge.id, requiredPhaseId)
   return buildVotePagePayload(structure, challenge, candidates)
 }
 
@@ -321,6 +382,10 @@ export async function loadPublicVotePage(
     return null
   }
 
-  const candidates = await loadEligibleCandidates(challenge.id)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const requiredPhaseId = phases.enabled ? phases.activePhaseId : null
+  if (phases.enabled && !requiredPhaseId) return null
+
+  const candidates = await loadEligibleCandidates(challenge.id, requiredPhaseId)
   return buildVotePagePayload(structure, challenge, candidates)
 }

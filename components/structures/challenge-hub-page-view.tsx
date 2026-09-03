@@ -46,6 +46,7 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
   const votesOpen = features.votes.enabled && features.votes.published
   const rankingOpen = features.ranking.published
   const liveOpen = live.visibleOnHub
+  const activePhaseName = data.phases?.activePhase?.name
 
   const hero = (
     <div className={cn(hasCover && 'drop-shadow-lg')}>
@@ -65,6 +66,16 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
       >
         {challenge.name}
       </h1>
+      {activePhaseName && (
+        <p
+          className={cn(
+            'mt-3 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide',
+            hasCover ? 'bg-white/15 text-white' : 'bg-slate-900 text-white',
+          )}
+        >
+          {activePhaseName}
+        </p>
+      )}
       <p
         className={cn(
           'mt-4 max-w-2xl text-base leading-relaxed md:text-lg',

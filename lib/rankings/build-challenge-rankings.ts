@@ -2,6 +2,7 @@ import { ChallengeStatus, ChallengeVideoStatus, StructureStatus } from '@prisma/
 import { prisma } from '@/lib/prisma'
 import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registration-settings'
 import type { ChallengeRankingSettings } from '@/lib/challenges/challenge-feature-settings'
+import { parsePhasesSettingsFromChallenge } from '@/lib/challenges/challenge-phase-settings'
 
 export type RankingEntry = {
   rank: number
@@ -51,8 +52,16 @@ export async function buildChallengeRankings(
     rankingSettings?: ChallengeRankingSettings
     votesEnabled?: boolean
     onlyPublishedVideos?: boolean
+    /** Filtrer candidats + votes sur une phase */
+    phaseId?: string | null
   }
 ) {
+  const phaseId = options?.phaseId?.trim() || null
+  const voteWhere = {
+    challengeId,
+    ...(phaseId ? { phaseId } : {}),
+  }
+
   const juryEvaluations = await prisma.challengeJuryEvaluation.findMany({
     where: { challengeId },
     select: { candidateId: true, score: true },
@@ -60,7 +69,7 @@ export async function buildChallengeRankings(
 
   const voteCounts = await prisma.challengeVote.groupBy({
     by: ['candidateId'],
-    where: { challengeId },
+    where: voteWhere,
     _count: { candidateId: true },
   })
 
@@ -78,6 +87,7 @@ export async function buildChallengeRankings(
     where: {
       challengeId,
       status: 'APPROVED',
+      ...(phaseId ? { phaseId } : {}),
       ...(options?.onlyPublishedVideos
         ? { video: { status: ChallengeVideoStatus.PUBLISHED } }
         : {}),
@@ -201,10 +211,15 @@ export async function loadPublicChallengeRankings(
 
   if (!features.ranking.published) return null
 
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const phaseId = phases.enabled ? phases.activePhaseId : null
+  if (phases.enabled && !phaseId) return null
+
   const rankings = await buildChallengeRankings(challenge.id, {
     rankingSettings: features.ranking,
     votesEnabled: features.votes.enabled,
     onlyPublishedVideos: true,
+    phaseId,
   })
 
   const contactSlug =
@@ -213,11 +228,18 @@ export async function loadPublicChallengeRankings(
     structure.slug
 
   const coverImageUrl = parseChallengeCoverImageUrl(challenge.settings)
+  const activePhase = phases.enabled
+    ? phases.items.find((p) => p.id === phaseId) ?? null
+    : null
 
   return {
     structure,
     challenge,
     features,
+    phases: {
+      enabled: phases.enabled,
+      activePhase,
+    },
     rankings,
     contactSlug,
     coverImageUrl,

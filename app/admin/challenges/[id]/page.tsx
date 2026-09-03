@@ -19,6 +19,7 @@ import {
   UserCheck,
   XCircle,
   Sparkles,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -81,6 +82,7 @@ const MODULES: Array<{
   { key: 'videos.view', label: 'Vidéos', icon: Video, href: 'videos' },
   { key: 'jury.view', label: 'Jury', icon: Gavel, href: 'jury' },
   { key: 'challenges.view', label: 'Classement & Votes', icon: BarChart3, href: 'rankings' },
+  { key: 'challenges.settings', label: 'Phases / Tours', icon: Layers, href: 'phases' },
   { key: 'challenges.view', label: 'Live', icon: Radio, href: 'live' },
   { key: 'challenges.settings', label: 'Paramètres', icon: Settings, href: 'settings' },
 ]

@@ -18,6 +18,10 @@ export type PublicRankingsPageData = PublicChallengePageData & {
     ranking: ChallengeRankingSettings
     votes: ChallengeVotesSettings
   }
+  phases?: {
+    enabled: boolean
+    activePhase: { id: string; name: string } | null
+  }
   rankings: RankingEntry[]
   totalVotes: number
 }
@@ -86,6 +90,7 @@ export function ChallengeRankingsPageView({ data }: { data: PublicRankingsPageDa
   const votesActive = features.votes.enabled && features.votes.published
   const votesPath = getChallengeVotesPath(structure, challenge.slug)
   const registrationPath = getChallengeRegistrationPath(structure, challenge.slug)
+  const phaseLabel = data.phases?.enabled ? data.phases.activePhase?.name : null
 
   const hero = (
     <div className={cn(hasCover && 'drop-shadow-lg')}>
@@ -96,6 +101,7 @@ export function ChallengeRankingsPageView({ data }: { data: PublicRankingsPageDa
         )}
       >
         Classement officiel · {structure.name}
+        {phaseLabel ? ` · ${phaseLabel}` : ''}
       </p>
       <h1
         className={cn(

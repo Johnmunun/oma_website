@@ -637,6 +637,8 @@ model Candidate {
   approvedAt  DateTime?
   rejectedAt       DateTime?
   videoSubmitToken String?          @unique
+  /** ID de phase (stocké aussi dans Challenge.settings.phases.items[].id) */
+  phaseId          String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   challenge        Challenge        @relation(fields: [challengeId], references: [id], onDelete: Cascade)
@@ -648,6 +650,7 @@ model Candidate {
   @@unique([challengeId, candidateCode])
   @@index([challengeId, status])
   @@index([challengeId, createdAt])
+  @@index([challengeId, phaseId])
   @@map("Candidate")
 }
 
@@ -733,12 +736,15 @@ model ChallengeVote {
   candidateId String    @db.Uuid
   voterKey    String
   voterEmail  String?
+  /** '' = hors phases ; sinon id de la phase au moment du vote */
+  phaseId     String    @default("")
   createdAt   DateTime  @default(now())
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
-  @@unique([challengeId, voterKey])
+  @@unique([challengeId, voterKey, phaseId])
   @@index([challengeId, candidateId])
+  @@index([challengeId, phaseId])
   @@map("ChallengeVote")
 }
 
