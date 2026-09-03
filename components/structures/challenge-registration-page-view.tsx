@@ -1,6 +1,5 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
 import { ChallengeRegistrationForm } from '@/components/structures/challenge-registration-form'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
 import type { PublicChallengeRegistrationPage } from '@/lib/challenges/load-public-challenge-registration'
@@ -13,69 +12,39 @@ export function ChallengeRegistrationPageView({ data }: ChallengeRegistrationPag
   const { structure, challenge, contactSlug, coverImageUrl } = data
   const hasCover = Boolean(coverImageUrl)
 
-  const heroBadge = (
-    <span
-      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-      style={
-        hasCover
-          ? {
-              backgroundColor: 'rgba(255,255,255,0.18)',
-              color: 'white',
-              backdropFilter: 'blur(8px)',
-            }
-          : {
-              backgroundColor: 'var(--st-primary-soft)',
-              color: 'var(--st-primary-dark)',
-            }
-      }
-    >
-      <Sparkles className="h-3.5 w-3.5" />
-      Inscription ouverte
-    </span>
-  )
-
   const hero = hasCover ? (
-    <div className="text-center md:text-left">
-      {heroBadge}
-      <h1 className="mt-5 font-serif text-3xl font-bold leading-tight text-white drop-shadow-lg md:text-4xl lg:text-5xl">
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
+        Inscription · {structure.name}
+      </p>
+      <h1 className="mt-3 font-serif text-4xl font-bold leading-tight tracking-tight text-white md:text-5xl">
         {challenge.name}
       </h1>
       {challenge.description && (
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/90 drop-shadow-md md:text-lg">
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/80 md:text-lg">
           {challenge.description}
         </p>
       )}
-      <p className="mt-3 text-sm text-white/75">
-        Organisé par <strong className="text-white">{structure.name}</strong>
-      </p>
     </div>
   ) : (
-    <div className="text-center">
-      {heroBadge}
-      <h1 className="mt-6 font-serif text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        Inscription · {structure.name}
+      </p>
+      <h1 className="mt-3 font-serif text-4xl font-bold leading-tight tracking-tight text-slate-900 md:text-5xl">
         {challenge.name}
       </h1>
       {challenge.description && (
-        <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
           {challenge.description}
         </p>
       )}
-      <p className="mt-3 text-sm text-slate-500">
-        Organisé par <strong className="text-slate-700">{structure.name}</strong>
-      </p>
     </div>
   )
 
   return (
     <ChallengeRegistrationShell data={data} hero={hero}>
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-200/60">
-        <div
-          className="h-1.5 w-full"
-          style={{
-            backgroundImage:
-              'linear-gradient(to right, var(--st-primary-dark), var(--st-primary), var(--st-primary-light))',
-          }}
-        />
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="p-6 md:p-8">
           <ChallengeRegistrationForm
             variant="page"

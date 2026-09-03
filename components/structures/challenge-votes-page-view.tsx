@@ -36,7 +36,6 @@ export type PublicVotesPageData = PublicChallengePageData & {
   features: { votes: ChallengeVotesSettings }
   candidates: VoteCandidate[]
   totalVotes: number
-  /** API de vote (lien court) — défaut = route longue */
   voteSubmitPath?: string
 }
 
@@ -64,29 +63,29 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
     }
   }, [candidates])
 
+  const selected = candidates.find((c) => c.id === selectedId) ?? null
+
   const hero = (
-    <div className={cn('text-center md:text-left', hasCover && 'drop-shadow-lg')}>
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-        style={
-          hasCover
-            ? { backgroundColor: 'rgba(255,255,255,0.18)', color: 'white' }
-            : { backgroundColor: 'var(--st-primary-soft)', color: 'var(--st-primary-dark)' }
-        }
+    <div className={cn(hasCover && 'drop-shadow-lg')}>
+      <p
+        className={cn(
+          'text-[11px] font-semibold uppercase tracking-[0.22em]',
+          hasCover ? 'text-white/70' : 'text-slate-500',
+        )}
       >
-        <Heart className="h-3.5 w-3.5" />
-        Vote du public
-      </span>
+        Vote du public · {challenge.name}
+      </p>
       <h1
         className={cn(
-          'mt-5 font-serif text-3xl font-bold leading-tight md:text-4xl',
+          'mt-3 font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl',
           hasCover ? 'text-white' : 'text-slate-900',
         )}
       >
         Soutenez un talent
       </h1>
-      <p className={cn('mt-2 text-base', hasCover ? 'text-white/85' : 'text-slate-600')}>
-        {challenge.name} · {structure.name}
+      <p className={cn('mt-3 text-base', hasCover ? 'text-white/75' : 'text-slate-600')}>
+        1 vote par email · {totalVotes} vote{totalVotes !== 1 ? 's' : ''} enregistré
+        {totalVotes !== 1 ? 's' : ''}
       </p>
     </div>
   )
@@ -122,20 +121,24 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
 
   if (voted) {
     return (
-      <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge">
-        <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-xl">
-          <CheckCircle2 className="mx-auto h-16 w-16" style={{ color: 'var(--st-primary)' }} />
-          <h2 className="mt-6 font-serif text-2xl font-bold text-slate-900">Merci pour votre vote !</h2>
-          <p className="mt-3 text-slate-600">
-            Votre voix compte. Consultez le classement pour suivre l&apos;évolution du concours.
+      <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge" wide>
+        <div className="mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-white px-8 py-12 text-center shadow-sm">
+          <CheckCircle2 className="mx-auto h-14 w-14" style={{ color: 'var(--st-primary)' }} />
+          <h2 className="mt-5 font-serif text-2xl font-bold text-slate-900">Merci pour votre vote</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Votre voix est enregistrée. Suivez le classement pour voir l&apos;évolution.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild style={{ backgroundColor: 'var(--st-primary)' }}>
-              <Link href={rankingsPath}>Voir le classement</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href={hubPath}>Retour au challenge</Link>
-            </Button>
+          <div className="mt-8 flex flex-col gap-3">
+            <Link
+              href={rankingsPath}
+              className="inline-flex h-11 items-center justify-center rounded-full text-sm font-semibold text-white"
+              style={{ backgroundColor: 'var(--st-primary)' }}
+            >
+              Voir le classement
+            </Link>
+            <Link href={hubPath} className="text-sm font-medium text-slate-500 hover:text-slate-800">
+              Retour au challenge
+            </Link>
           </div>
         </div>
       </ChallengeRegistrationShell>
@@ -143,24 +146,24 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
   }
 
   return (
-    <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge">
-      <div className="mb-4 text-center text-sm text-slate-500">
-        {totalVotes} vote{totalVotes !== 1 ? 's' : ''} enregistré{totalVotes !== 1 ? 's' : ''} · 1
-        vote par email
-      </div>
-
+    <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge" wide>
       {candidates.length === 0 ? (
-        <div className="rounded-2xl border bg-white p-10 text-center shadow-xl">
-          <Trophy className="mx-auto h-12 w-12 text-slate-300" />
-          <p className="mt-4 font-semibold text-slate-800">Aucun candidat éligible pour le moment</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+          <Trophy className="mx-auto h-10 w-10 text-slate-300" />
+          <p className="mt-4 font-serif text-xl font-bold text-slate-800">
+            Aucun candidat éligible
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Les votes ouvriront dès que des vidéos seront publiées.
+          </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-start">
           <div className="grid gap-3 sm:grid-cols-2">
             {candidates.map((c) => {
               const parsed = c.video?.videoUrl ? parseVideoUrl(c.video.videoUrl) : null
               const thumb = c.video?.thumbnailUrl || parsed?.thumbnailUrl
-              const selected = selectedId === c.id
+              const isSelected = selectedId === c.id
               const profilePath = c.candidateCode
                 ? getChallengeCandidatePath(structure, challenge.slug, c.candidateCode)
                 : null
@@ -168,63 +171,84 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
                 <div
                   key={c.id}
                   className={cn(
-                    'rounded-2xl border bg-white p-4 shadow-sm transition',
-                    selected
-                      ? 'border-[var(--st-primary)] ring-2 ring-[var(--st-primary-soft)]'
-                      : 'border-slate-100',
+                    'overflow-hidden rounded-2xl bg-white transition',
+                    isSelected
+                      ? 'shadow-md ring-2'
+                      : 'ring-1 ring-slate-200/80 hover:ring-slate-300',
                   )}
+                  style={isSelected ? { ['--tw-ring-color' as string]: 'var(--st-primary)' } : undefined}
                 >
                   <button
                     type="button"
                     onClick={() => setSelectedId(c.id)}
-                    className="flex w-full items-center gap-4 text-left"
+                    className="w-full text-left"
                   >
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
-                    ) : (
-                      <div
-                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-white"
-                        style={{
-                          backgroundImage:
-                            'linear-gradient(to bottom right, var(--st-primary), var(--st-primary-dark))',
-                        }}
-                      >
-                        <Trophy className="h-6 w-6" />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900">
-                        {c.number != null ? `#${c.number} · ` : ''}
-                        {c.fullName}
+                    <div className="relative aspect-[16/10] bg-slate-100">
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div
+                          className="flex h-full items-center justify-center"
+                          style={{
+                            background:
+                              'linear-gradient(145deg, var(--st-primary), var(--st-primary-dark))',
+                          }}
+                        >
+                          <Trophy className="h-8 w-8 text-white/70" />
+                        </div>
+                      )}
+                      <span className="absolute left-2.5 top-2.5 rounded-md bg-black/75 px-2 py-0.5 font-mono text-[11px] font-bold text-white">
+                        #{c.number ?? '—'}
+                      </span>
+                      {isSelected && (
+                        <span
+                          className="absolute right-2.5 top-2.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                          style={{ backgroundColor: 'var(--st-primary)' }}
+                        >
+                          Sélectionné
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-3.5 py-3">
+                      <p className="font-semibold text-slate-900">{c.fullName}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {[c.candidateCode, c.city].filter(Boolean).join(' · ')}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {[c.candidateCode, c.age != null ? `${c.age} ans` : null, c.city]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
-                      <p className="mt-1 text-xs font-medium" style={{ color: 'var(--st-primary)' }}>
+                      <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--st-primary-dark)' }}>
                         {c.voteCount} vote{c.voteCount !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </button>
                   {profilePath && (
-                    <Link
-                      href={profilePath}
-                      className="mt-3 inline-block text-xs font-medium underline-offset-2 hover:underline"
-                      style={{ color: 'var(--st-primary)' }}
-                    >
-                      Voir la fiche
-                    </Link>
+                    <div className="border-t border-slate-100 px-3.5 py-2">
+                      <Link
+                        href={profilePath}
+                        className="text-xs font-medium hover:underline"
+                        style={{ color: 'var(--st-primary-dark)' }}
+                      >
+                        Voir la fiche
+                      </Link>
+                    </div>
                   )}
                 </div>
               )
             })}
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-xl md:p-8">
-            <label htmlFor="voter-email" className="text-sm font-medium text-slate-700">
-              Votre email (pour éviter les votes multiples)
+          <aside className="sticky top-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Confirmer le vote
+            </p>
+            <p className="mt-3 font-serif text-xl font-bold text-slate-900">
+              {selected ? selected.fullName : 'Choisissez un candidat'}
+            </p>
+            {selected?.candidateCode && (
+              <p className="mt-1 font-mono text-xs text-slate-500">{selected.candidateCode}</p>
+            )}
+
+            <label htmlFor="voter-email" className="mt-6 block text-sm font-medium text-slate-700">
+              Votre email
             </label>
             <Input
               id="voter-email"
@@ -235,10 +259,12 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
               onChange={(e) => setEmail(e.target.value)}
               className="mt-2"
             />
+            <p className="mt-2 text-xs text-slate-400">Un seul vote par adresse email.</p>
+
             <Button
               type="submit"
               disabled={isSubmitting || !selectedId}
-              className="mt-6 w-full font-semibold text-white sm:w-auto"
+              className="mt-6 h-12 w-full rounded-full font-semibold text-white"
               style={{
                 backgroundImage:
                   'linear-gradient(to right, var(--st-primary-dark), var(--st-primary))',
@@ -256,7 +282,7 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
                 </>
               )}
             </Button>
-          </div>
+          </aside>
         </form>
       )}
     </ChallengeRegistrationShell>

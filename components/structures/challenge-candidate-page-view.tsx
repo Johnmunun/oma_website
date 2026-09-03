@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Check, Heart, Share2, Trophy } from 'lucide-react'
+import { Check, Copy, Heart, Share2, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
-import { Button } from '@/components/ui/button'
 import type { PublicCandidatePageData } from '@/lib/candidates/load-public-candidate'
 import {
   getChallengeCandidateUrl,
@@ -36,6 +35,7 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
   const parsed = candidate.video?.videoUrl ? parseVideoUrl(candidate.video.videoUrl) : null
   const embedUrl = parsed?.embedUrl
   const thumb = candidate.video?.thumbnailUrl || parsed?.thumbnailUrl
+  const firstName = candidate.fullName.split(' ')[0]
 
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
     `Soutenez ${candidate.fullName} (#${candidate.number} · ${candidate.candidateCode}) dans ${challenge.name} ! ${profileUrl}`
@@ -53,96 +53,114 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
   }
 
   const hero = (
-    <div className={cn('text-center md:text-left', hasCover && 'drop-shadow-lg')}>
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-        style={
-          hasCover
-            ? { backgroundColor: 'rgba(255,255,255,0.18)', color: 'white' }
-            : { backgroundColor: 'var(--st-primary-soft)', color: 'var(--st-primary-dark)' }
-        }
+    <div className={cn(hasCover && 'drop-shadow-lg')}>
+      <p
+        className={cn(
+          'text-[11px] font-semibold uppercase tracking-[0.22em]',
+          hasCover ? 'text-white/70' : 'text-slate-500',
+        )}
       >
-        <Trophy className="h-3.5 w-3.5" />
-        Candidat #{candidate.number}
-      </span>
+        Candidat #{candidate.number} · {challenge.name}
+      </p>
       <h1
         className={cn(
-          'mt-5 font-serif text-3xl font-bold leading-tight md:text-4xl',
+          'mt-3 font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl',
           hasCover ? 'text-white' : 'text-slate-900',
         )}
       >
         {candidate.fullName}
       </h1>
-      <p className={cn('mt-2 font-mono text-sm', hasCover ? 'text-white/80' : 'text-slate-500')}>
-        {candidate.candidateCode}
+      <p className={cn('mt-3 text-sm', hasCover ? 'text-white/75' : 'text-slate-500')}>
+        <span className="font-mono">{candidate.candidateCode}</span>
         {[candidate.age != null ? `${candidate.age} ans` : null, candidate.city]
           .filter(Boolean)
-          .map((v) => ` · ${v}`)
-          .join('')}
+          .map((v) => (
+            <span key={String(v)}>
+              <span className="mx-2 opacity-40">·</span>
+              {v}
+            </span>
+          ))}
       </p>
     </div>
   )
 
   return (
-    <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge">
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
-        {embedUrl ? (
-          <div className="aspect-video w-full bg-black">
-            <iframe
-              src={embedUrl}
-              title={candidate.video?.title || candidate.fullName}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        ) : thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt="" className="aspect-video w-full object-cover" />
-        ) : (
-          <div
-            className="flex aspect-video items-center justify-center text-white"
-            style={{
-              backgroundImage:
-                'linear-gradient(to bottom right, var(--st-primary), var(--st-primary-dark))',
-            }}
-          >
-            <Trophy className="h-16 w-16 opacity-80" />
-          </div>
-        )}
-
-        <div className="space-y-5 p-6 md:p-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-              #{candidate.number}
-            </span>
-            <span className="font-mono text-sm text-slate-500">{candidate.candidateCode}</span>
-            <span className="text-sm font-medium" style={{ color: 'var(--st-primary)' }}>
-              {candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            {votesOpen && (
-              <Button asChild className="font-semibold text-white" style={{ backgroundColor: 'var(--st-primary)' }}>
-                <Link href={voteHref}>
-                  <Heart className="mr-2 h-4 w-4" />
-                  Voter pour {candidate.fullName.split(' ')[0]}
-                </Link>
-              </Button>
-            )}
-            <Button asChild variant="outline">
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
-                <Share2 className="mr-2 h-4 w-4" />
-                Partager WhatsApp
-              </a>
-            </Button>
-            <Button type="button" variant="outline" onClick={handleCopy}>
-              {copied ? <Check className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
-              {copied ? 'Copié' : 'Copier le lien'}
-            </Button>
-          </div>
+    <ChallengeRegistrationShell data={data} hero={hero} backHref={hubPath} backLabel="Challenge" wide>
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
+        <div className="overflow-hidden rounded-2xl bg-black shadow-lg ring-1 ring-slate-200/60">
+          {embedUrl ? (
+            <div className="aspect-video w-full">
+              <iframe
+                src={embedUrl}
+                title={candidate.video?.title || candidate.fullName}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : thumb ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={thumb} alt="" className="aspect-video w-full object-cover" />
+          ) : (
+            <div
+              className="flex aspect-video items-center justify-center"
+              style={{
+                background:
+                  'linear-gradient(145deg, var(--st-primary), var(--st-primary-dark))',
+              }}
+            >
+              <Trophy className="h-14 w-14 text-white/70" />
+            </div>
+          )}
         </div>
+
+        <aside className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm md:p-7">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Soutenir
+            </p>
+            <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--st-primary-dark)' }}>
+              {candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <p className="mt-4 font-serif text-2xl font-bold text-slate-900">{candidate.fullName}</p>
+          <p className="mt-1 font-mono text-sm text-slate-500">{candidate.candidateCode}</p>
+
+          <div className="mt-6 space-y-3">
+            {votesOpen && (
+              <Link
+                href={voteHref}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+                style={{ backgroundColor: 'var(--st-primary)' }}
+              >
+                <Heart className="h-4 w-4" />
+                Voter pour {firstName}
+              </Link>
+            )}
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <Share2 className="h-4 w-4" />
+              Partager sur WhatsApp
+            </a>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? 'Lien copié' : 'Copier le lien'}
+            </button>
+          </div>
+
+          <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
+            Partagez cette fiche pour maximiser les chances de {firstName}.
+          </p>
+        </aside>
       </div>
     </ChallengeRegistrationShell>
   )

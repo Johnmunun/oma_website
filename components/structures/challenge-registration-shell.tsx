@@ -2,12 +2,12 @@
 
 import type React from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Trophy } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StructureLogo } from '@/components/structure-logo'
 import type { PublicChallengePageData } from '@/lib/challenges/public-challenge-page'
 import { getStructureThemeVars } from '@/lib/structures/landing-theme'
-import { getChallengeRegistrationPath } from '@/lib/structures/public-url'
+import { getChallengeHubPath } from '@/lib/structures/public-url'
 
 interface ChallengeRegistrationShellProps {
   data: PublicChallengePageData
@@ -15,6 +15,8 @@ interface ChallengeRegistrationShellProps {
   hero?: React.ReactNode
   backHref?: string
   backLabel?: string
+  /** Contenu plus large (hub, votes) */
+  wide?: boolean
 }
 
 export function ChallengeRegistrationShell({
@@ -23,175 +25,154 @@ export function ChallengeRegistrationShell({
   hero,
   backHref,
   backLabel = 'Retour',
+  wide = false,
 }: ChallengeRegistrationShellProps) {
   const { structure, challenge, contactSlug, coverImageUrl } = data
   const themeStyle = getStructureThemeVars(structure.landingThemeColor)
   const landingPath = `/s/${contactSlug}`
+  const hubPath = getChallengeHubPath(structure, challenge.slug)
   const resolvedBackHref = backHref ?? landingPath
   const hasCover = Boolean(coverImageUrl)
+  const maxW = wide ? 'max-w-5xl' : 'max-w-3xl'
 
   return (
     <div
-      className="structure-site relative min-h-screen bg-[#fafafa] text-slate-900 antialiased"
+      className="structure-site relative min-h-screen bg-[#f7f7f5] text-slate-900 antialiased"
       style={themeStyle}
     >
       {!hasCover && (
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 opacity-40"
+          className="pointer-events-none absolute inset-x-0 top-0 h-80"
           style={{
-            backgroundImage:
-              'linear-gradient(to bottom, rgba(var(--st-primary-rgb), 0.18), transparent)',
+            background:
+              'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(var(--st-primary-rgb), 0.14), transparent)',
           }}
         />
       )}
 
       <header
         className={cn(
-          'relative z-30 border-b',
+          'relative z-30',
           hasCover
-            ? 'absolute inset-x-0 top-0 border-white/15 bg-black/25 backdrop-blur-md'
-            : 'border-white/60 bg-white/90 backdrop-blur-md',
+            ? 'absolute inset-x-0 top-0 bg-gradient-to-b from-black/50 to-transparent'
+            : 'border-b border-slate-200/80 bg-white/80 backdrop-blur-md',
         )}
       >
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 md:px-6">
+        <div className={cn('mx-auto flex items-center justify-between gap-4 px-4 py-3.5 md:px-6', maxW === 'max-w-5xl' ? 'max-w-5xl' : 'max-w-3xl')}>
           <Link href={landingPath} className="flex min-w-0 items-center gap-3">
             <StructureLogo
               src={structure.logoUrl}
               alt={structure.name}
               size="md"
               className={cn(
-                'h-11 w-11 shadow-md ring-2',
-                hasCover ? 'ring-white/30' : 'ring-[var(--st-primary-soft)]',
+                'h-10 w-10 shadow-sm ring-1',
+                hasCover ? 'ring-white/25' : 'ring-slate-200',
               )}
             />
-            <span
+            <div className="min-w-0">
+              <p
+                className={cn(
+                  'truncate font-serif text-base font-bold leading-tight md:text-lg',
+                  hasCover ? 'text-white' : 'text-slate-900',
+                )}
+              >
+                {structure.name}
+              </p>
+              <p
+                className={cn(
+                  'truncate text-[11px] md:text-xs',
+                  hasCover ? 'text-white/65' : 'text-slate-500',
+                )}
+              >
+                {challenge.name}
+              </p>
+            </div>
+          </Link>
+          <nav className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <Link
+              href={hubPath}
               className={cn(
-                'truncate font-serif text-lg font-bold',
-                hasCover ? 'text-white drop-shadow-sm' : 'text-slate-900',
+                'hidden rounded-lg px-3 py-1.5 text-sm font-medium transition sm:inline-flex',
+                hasCover
+                  ? 'text-white/85 hover:bg-white/10 hover:text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
               )}
             >
-              {structure.name}
-            </span>
-          </Link>
-          <Link
-            href={resolvedBackHref}
-            className={cn(
-              'inline-flex items-center gap-1.5 text-sm font-medium transition',
-              hasCover
-                ? 'text-white/90 hover:text-white'
-                : 'text-slate-600 hover:text-[var(--st-primary-dark)]',
-            )}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </Link>
+              Challenge
+            </Link>
+            <Link
+              href={resolvedBackHref}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                hasCover
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-slate-600 hover:bg-slate-100',
+              )}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">{backLabel}</span>
+            </Link>
+          </nav>
         </div>
       </header>
 
       {hasCover ? (
         <div className="relative w-full overflow-hidden">
-          <div className="relative h-[42vh] min-h-[280px] md:h-[52vh] lg:h-[58vh]">
+          <div className="relative h-[38vh] min-h-[240px] md:h-[46vh]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverImageUrl!}
-              alt={challenge.name}
+              alt=""
               className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectPosition: 'center' }}
               loading="eager"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/80" />
-
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0c] via-black/50 to-black/30" />
             <div className="absolute inset-0 flex items-end">
-              <div className="mx-auto w-full max-w-4xl px-4 pb-10 pt-24 md:px-6 md:pb-14">
-                {hero ?? (
-                  <DefaultRegistrationHero
-                    challengeName={challenge.name}
-                    challengeDescription={challenge.description}
-                    structureName={structure.name}
-                    onCover
-                  />
-                )}
+              <div className={cn('mx-auto w-full px-4 pb-12 pt-24 md:px-6 md:pb-16', maxW)}>
+                {hero}
               </div>
             </div>
           </div>
         </div>
       ) : (
         hero && (
-          <div className="relative mx-auto max-w-4xl px-4 pt-10 md:px-6 md:pt-14">{hero}</div>
+          <div className={cn('relative mx-auto px-4 pt-12 md:px-6 md:pt-16', maxW)}>
+            {hero}
+          </div>
         )
       )}
 
       <main
         className={cn(
-          'relative z-10 mx-auto max-w-4xl px-4 md:px-6',
-          hasCover ? '-mt-10 pb-12 md:-mt-14 md:pb-16' : 'py-10 md:py-16',
+          'relative z-10 mx-auto px-4 md:px-6',
+          maxW,
+          hasCover ? '-mt-6 pb-16 md:-mt-8 md:pb-20' : 'pb-16 pt-8 md:pb-20 md:pt-10',
         )}
       >
         {children}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6">
-        <div className="mx-auto max-w-4xl px-4 text-center text-xs text-slate-500 md:px-6">
-          <Link href={landingPath} className="hover:underline" style={{ color: 'var(--st-primary)' }}>
-            Découvrir {structure.name}
+      <footer className="border-t border-slate-200/80 bg-white">
+        <div
+          className={cn(
+            'mx-auto flex flex-col items-center justify-between gap-3 px-4 py-8 text-center sm:flex-row sm:text-left md:px-6',
+            maxW,
+          )}
+        >
+          <p className="text-sm text-slate-500">
+            <span className="font-medium text-slate-700">{challenge.name}</span>
+            <span className="mx-2 text-slate-300">·</span>
+            {structure.name}
+          </p>
+          <Link
+            href={landingPath}
+            className="text-sm font-medium transition hover:opacity-80"
+            style={{ color: 'var(--st-primary-dark)' }}
+          >
+            Accueil {structure.name}
           </Link>
-          <span className="mx-2">·</span>
-          <span>{getChallengeRegistrationPath(structure, challenge.slug)}</span>
         </div>
       </footer>
-    </div>
-  )
-}
-
-function DefaultRegistrationHero({
-  challengeName,
-  challengeDescription,
-  structureName,
-  onCover,
-}: {
-  challengeName: string
-  challengeDescription: string | null
-  structureName: string
-  onCover?: boolean
-}) {
-  const textClass = onCover ? 'text-white' : 'text-slate-900'
-  const mutedClass = onCover ? 'text-white/85' : 'text-slate-600'
-  const subtleClass = onCover ? 'text-white/70' : 'text-slate-500'
-
-  return (
-    <div className={cn('text-center md:text-left', onCover && 'drop-shadow-lg')}>
-      <div
-        className={cn(
-          'mx-auto flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg md:mx-0',
-          onCover ? 'bg-white/15 backdrop-blur-sm ring-1 ring-white/25' : '',
-        )}
-        style={
-          onCover
-            ? undefined
-            : {
-                backgroundImage:
-                  'linear-gradient(to bottom right, var(--st-primary), var(--st-primary-dark))',
-              }
-        }
-      >
-        <Trophy className={cn('h-7 w-7', onCover ? 'text-white' : 'text-white')} />
-      </div>
-
-      <h1
-        className={cn(
-          'mt-6 font-serif text-3xl font-bold leading-tight md:text-4xl lg:text-5xl',
-          textClass,
-        )}
-      >
-        {challengeName}
-      </h1>
-      {challengeDescription && (
-        <p className={cn('mt-4 max-w-2xl text-base leading-relaxed md:text-lg', mutedClass)}>
-          {challengeDescription}
-        </p>
-      )}
-      <p className={cn('mt-3 text-sm', subtleClass)}>
-        Organisé par <strong className={onCover ? 'text-white' : 'text-slate-700'}>{structureName}</strong>
-      </p>
     </div>
   )
 }

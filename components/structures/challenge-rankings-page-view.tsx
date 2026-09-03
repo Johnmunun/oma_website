@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BarChart3, Heart, Medal, Star, Trophy } from 'lucide-react'
+import { Heart, Medal, Star, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
 import type { PublicChallengePageData } from '@/lib/challenges/public-challenge-page'
 import type { ChallengeRankingSettings, ChallengeVotesSettings } from '@/lib/challenges/challenge-feature-settings'
@@ -88,49 +88,57 @@ export function ChallengeRankingsPageView({ data }: { data: PublicRankingsPageDa
   const registrationPath = getChallengeRegistrationPath(structure, challenge.slug)
 
   const hero = (
-    <div className={cn('text-center md:text-left', hasCover && 'drop-shadow-lg')}>
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-        style={
-          hasCover
-            ? { backgroundColor: 'rgba(255,255,255,0.18)', color: 'white' }
-            : { backgroundColor: 'var(--st-primary-soft)', color: 'var(--st-primary-dark)' }
-        }
+    <div className={cn(hasCover && 'drop-shadow-lg')}>
+      <p
+        className={cn(
+          'text-[11px] font-semibold uppercase tracking-[0.22em]',
+          hasCover ? 'text-white/70' : 'text-slate-500',
+        )}
       >
-        <BarChart3 className="h-3.5 w-3.5" />
-        Classement officiel
-      </span>
+        Classement officiel · {structure.name}
+      </p>
       <h1
         className={cn(
-          'mt-5 font-serif text-3xl font-bold leading-tight md:text-4xl lg:text-5xl',
+          'mt-3 font-serif text-4xl font-bold leading-tight tracking-tight md:text-5xl',
           hasCover ? 'text-white' : 'text-slate-900',
         )}
       >
         {challenge.name}
       </h1>
-      <p className={cn('mt-3 text-sm', hasCover ? 'text-white/75' : 'text-slate-500')}>
-        Organisé par <strong className={hasCover ? 'text-white' : 'text-slate-700'}>{structure.name}</strong>
-      </p>
+      {totalVotes > 0 && votesActive && (
+        <p className={cn('mt-3 text-sm', hasCover ? 'text-white/70' : 'text-slate-500')}>
+          {totalVotes} vote{totalVotes !== 1 ? 's' : ''} du public
+        </p>
+      )}
     </div>
   )
 
   return (
-    <ChallengeRegistrationShell data={data} hero={hero} backHref={`/s/${contactSlug}`} backLabel="Accueil">
-      {votesActive && (
-        <div className="mb-6 flex justify-center">
+    <ChallengeRegistrationShell
+      data={data}
+      hero={hero}
+      backHref={`/s/${contactSlug}`}
+      backLabel="Accueil"
+      wide
+    >
+      <div className="mb-8 flex flex-wrap gap-3">
+        {votesActive && (
           <Link
             href={votesPath}
-            className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02]"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, var(--st-primary-dark), var(--st-primary))',
-            }}
+            className="inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white shadow-md transition hover:brightness-110"
+            style={{ backgroundColor: 'var(--st-primary)' }}
           >
             <Heart className="h-4 w-4" />
-            Voter pour un candidat
+            Voter
           </Link>
-        </div>
-      )}
+        )}
+        <Link
+          href={registrationPath}
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          S&apos;inscrire
+        </Link>
+      </div>
 
       {rankings.length === 0 ? (
         <div className="rounded-2xl border border-slate-100 bg-white p-10 text-center shadow-xl">
