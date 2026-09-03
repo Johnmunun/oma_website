@@ -56,6 +56,7 @@ const EMPTY_LIVE: ChallengeLiveSettings = {
   vodVideoId: null,
   replayEmbedUrl: null,
   chatEnabled: false,
+  reactionsEnabled: true,
   chatBannedNames: [],
 }
 
@@ -273,6 +274,23 @@ export default function ChallengeLiveAdminPage() {
               checked={live.showOnHub}
               disabled={!canEdit}
               onCheckedChange={(showOnHub) => setLive((s) => ({ ...s, showOnHub }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="live-reactions">Réactions emoji</Label>
+              <p className="text-xs text-muted-foreground">
+                Emojis flottants style TikTok pendant le direct
+              </p>
+            </div>
+            <Switch
+              id="live-reactions"
+              checked={live.reactionsEnabled}
+              disabled={!canEdit}
+              onCheckedChange={(reactionsEnabled) =>
+                setLive((s) => ({ ...s, reactionsEnabled }))
+              }
             />
           </div>
 

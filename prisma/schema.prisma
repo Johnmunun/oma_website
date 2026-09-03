@@ -613,6 +613,7 @@ model Challenge {
   juryEvaluations ChallengeJuryEvaluation[]
   votes       ChallengeVote[]
   liveChatMessages ChallengeLiveChatMessage[]
+  liveReactions    ChallengeLiveReaction[]
 
   @@unique([structureId, slug])
   @@index([structureId, status])
@@ -763,6 +764,19 @@ model ChallengeLiveChatMessage {
   @@index([challengeId, createdAt])
   @@index([challengeId, isHidden, createdAt])
   @@map("ChallengeLiveChatMessage")
+}
+
+/** Réactions emoji flottantes pendant le Live (style TikTok) */
+model ChallengeLiveReaction {
+  id          String    @id @default(uuid()) @db.Uuid
+  challengeId String    @db.Uuid
+  emoji       String
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, createdAt])
+  @@map("ChallengeLiveReaction")
 }
 
 model StructureMembership {

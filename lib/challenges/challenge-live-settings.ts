@@ -40,6 +40,8 @@ export const challengeLiveSettingsSchema = z.object({
   replayEmbedUrl: nullableString.default(null),
   /** Chat public sur la page Live */
   chatEnabled: z.boolean().default(false),
+  /** Réactions emoji flottantes (style TikTok) pendant le direct */
+  reactionsEnabled: z.boolean().default(true),
   /** Pseudos bannis (insensible à la casse) */
   chatBannedNames: z.array(z.string().trim().min(1).max(32)).max(100).default([]),
 })
@@ -61,6 +63,7 @@ export const DEFAULT_LIVE_SETTINGS: ChallengeLiveSettings = {
   vodVideoId: null,
   replayEmbedUrl: null,
   chatEnabled: false,
+  reactionsEnabled: true,
   chatBannedNames: [],
 }
 

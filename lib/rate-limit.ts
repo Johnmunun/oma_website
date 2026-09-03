@@ -165,6 +165,12 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 60 * 1000, // 20 msg / minute
     keyPrefix: 'live-chat',
   },
+  // Réactions emoji live (par IP)
+  liveReaction: {
+    maxRequests: 30,
+    windowMs: 60 * 1000,
+    keyPrefix: 'live-reaction',
+  },
   // Formulaire de contact
   contact: {
     maxRequests: 3,

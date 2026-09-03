@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Calendar, Play, Radio, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
 import { ChallengeLiveChat } from '@/components/structures/challenge-live-chat'
+import { ChallengeLiveReactions } from '@/components/structures/challenge-live-reactions'
 import type { PublicChallengeLiveData } from '@/lib/challenges/load-public-challenge-live'
 import {
   getChallengeHubPath,
@@ -129,6 +130,13 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
               allowFullScreen
             />
+            {showLivePlayer && live.reactionsEnabled && (
+              <ChallengeLiveReactions
+                contactSlug={contactSlug}
+                challengeSlug={challenge.slug}
+                enabled
+              />
+            )}
           </div>
         ) : (
           <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-slate-900 to-slate-950 px-6 text-center">
