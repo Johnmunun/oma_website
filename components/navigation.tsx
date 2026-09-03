@@ -109,7 +109,7 @@ export function Navigation({ forceSolid = false }: NavigationProps) {
     const loadSiteSettings = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch("/api/site-settings", { cache: "no-store" })
+        const res = await fetch("/api/site-settings")
         if (!res.ok) {
           setIsLoading(false)
           return

@@ -25,9 +25,7 @@ export function DynamicColors() {
         }
 
         // 2. Charger les couleurs depuis l'API pour mettre à jour si nécessaire
-        const res = await fetch('/api/theming/colors', {
-          cache: 'no-store', // Pas de cache HTTP, on utilise notre cache local
-        })
+        const res = await fetch('/api/theming/colors')
         if (!res.ok) {
           console.warn('[DynamicColors] ⚠️ Erreur API, utilisation du cache')
           return

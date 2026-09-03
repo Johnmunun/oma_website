@@ -52,13 +52,8 @@ export function ScrollingEventsBanner({ attachedToHero = false }: ScrollingEvent
         }
 
         if (data.success && data.data) {
-          console.log("[ScrollingEventsBanner] Événements reçus:", data.data.length, data.data)
-          // Filtrer les événements avec showOnBanner = true (au cas où certains seraient retournés)
           const bannerEvents = data.data.filter((event: Event) => event.showOnBanner === true)
-          console.log("[ScrollingEventsBanner] Événements avec showOnBanner=true:", bannerEvents.length, bannerEvents)
           setEvents(bannerEvents)
-        } else {
-          console.warn("[ScrollingEventsBanner] Pas de données ou erreur:", data)
         }
       } catch (error) {
         console.error("[ScrollingEventsBanner] Erreur:", error)

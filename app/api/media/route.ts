@@ -10,10 +10,7 @@ import { prisma } from '@/lib/prisma'
 
 // GET /api/media
 // Récupère tous les médias publiés (publique)
-export const revalidate = 60 // Cache 60 secondes
-
-// Marquer la route comme dynamique pour éviter l'erreur de rendu statique
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function GET(request: NextRequest) {
   try {

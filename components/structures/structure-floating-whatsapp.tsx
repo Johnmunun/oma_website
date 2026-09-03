@@ -18,7 +18,7 @@ export function StructureFloatingWhatsApp({ structureName }: StructureFloatingWh
   )
 
   useEffect(() => {
-    fetch("/api/site-settings", { cache: "no-store" })
+    fetch("/api/site-settings")
       .then((r) => r.json())
       .then((res) => {
         if (!res.success || !res.data) return

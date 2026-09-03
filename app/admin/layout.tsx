@@ -246,13 +246,11 @@ function AdminSidebar({
     const loadUpcomingEventsCount = async () => {
       try {
         // Utiliser directement l'API admin qui est déjà authentifiée
-        const res = await fetch('/api/admin/events?status=PUBLISHED&limit=1000', {
-          credentials: 'include', // Inclure les cookies de session
+        const res = await fetch('/api/admin/events/upcoming-count', {
+          credentials: 'include',
         })
         
         if (!res.ok) {
-          // Si l'API retourne une erreur, ne pas afficher d'erreur dans la console
-          // car cela peut être normal si l'utilisateur n'est pas encore authentifié
           if (res.status !== 401 && res.status !== 403) {
             console.warn('[Admin] Erreur chargement compteur événements:', res.status, res.statusText)
           }
@@ -260,14 +258,8 @@ function AdminSidebar({
         }
         
         const data = await res.json()
-        if (data.success && data.data && Array.isArray(data.data)) {
-          const now = new Date()
-          const upcoming = data.data.filter((event: any) => {
-            if (!event.startsAt) return false
-            const eventDate = new Date(event.startsAt)
-            return eventDate >= now
-          })
-          setUpcomingEventsCount(upcoming.length)
+        if (data.success && typeof data.data?.count === 'number') {
+          setUpcomingEventsCount(data.data.count)
         }
       } catch (err) {
         // Ne pas afficher d'erreur si c'est juste une erreur réseau temporaire

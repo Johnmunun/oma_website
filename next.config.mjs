@@ -4,7 +4,14 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      { protocol: 'https', hostname: 'ik.imagekit.io' },
+      { protocol: 'https', hostname: 'img.youtube.com' },
+      { protocol: 'https', hostname: 'i.ytimg.com' },
+    ],
+  },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'date-fns'],
   },
 }
 

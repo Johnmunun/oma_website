@@ -29,17 +29,13 @@ export function DynamicLogo() {
     // 2. Charger depuis l'API pour mettre à jour si nécessaire
     const loadLogo = async () => {
       try {
-        const res = await fetch('/api/site-settings', {
-          cache: 'no-store', // Pas de cache HTTP, on utilise notre cache local
-        })
+        const res = await fetch('/api/site-settings')
         if (!res.ok) {
-          console.warn('[DynamicLogo] ⚠️ Erreur API, utilisation du cache')
           return
         }
 
         const data = await res.json()
         if (!data.success || !data.data) {
-          console.warn('[DynamicLogo] ⚠️ Données invalides, utilisation du cache')
           return
         }
 
@@ -49,16 +45,12 @@ export function DynamicLogo() {
         if (newLogoUrl !== cachedLogo) {
           setLogoUrl(newLogoUrl)
           setCachedLogo(newLogoUrl)
-          console.log('[DynamicLogo] ✅ Logo chargé depuis l\'API et mis à jour')
-        } else {
-          console.log('[DynamicLogo] ✅ Logo identique, pas de mise à jour nécessaire')
         }
       } catch (error) {
         console.error('[DynamicLogo] ❌ Erreur chargement logo:', error)
         // En cas d'erreur, utiliser le cache si disponible
         if (cachedLogo) {
           setLogoUrl(cachedLogo)
-          console.log('[DynamicLogo] ✅ Utilisation du cache en cas d\'erreur')
         }
       }
     }
@@ -101,17 +93,13 @@ export function useDynamicLogo() {
     const loadLogo = async () => {
       try {
         // Charger depuis l'API
-        const res = await fetch('/api/site-settings', {
-          cache: 'no-store',
-        })
+        const res = await fetch('/api/site-settings')
         if (!res.ok) {
-          console.warn('[useDynamicLogo] ⚠️ Erreur API, utilisation du cache')
           return
         }
 
         const data = await res.json()
         if (!data.success || !data.data) {
-          console.warn('[useDynamicLogo] ⚠️ Données invalides, utilisation du cache')
           return
         }
 
@@ -121,16 +109,12 @@ export function useDynamicLogo() {
         if (newLogoUrl !== logoUrl) {
           setLogoUrl(newLogoUrl)
           setCachedLogo(newLogoUrl)
-          console.log('[useDynamicLogo] ✅ Logo chargé depuis l\'API et mis à jour')
-        } else {
-          console.log('[useDynamicLogo] ✅ Logo identique, pas de mise à jour nécessaire')
         }
       } catch (error) {
-        console.error('[useDynamicLogo] ❌ Erreur chargement logo:', error)
+        console.error('[useDynamicLogo] Erreur chargement logo:', error)
         const fallbackLogo = getCachedLogo()
         if (fallbackLogo) {
           setLogoUrl((current) => current ?? fallbackLogo)
-          console.log('[useDynamicLogo] ✅ Utilisation du cache en cas d\'erreur')
         }
       }
     }

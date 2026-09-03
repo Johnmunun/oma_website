@@ -7,8 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Configuration de cache pour Next.js 15
-export const dynamic = 'force-dynamic' // Force le rendu dynamique pour avoir les données à jour
+export const revalidate = 3600
 
 // GET /api/partners
 // Récupère tous les partenaires (public)

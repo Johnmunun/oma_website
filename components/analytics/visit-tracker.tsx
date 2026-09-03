@@ -66,6 +66,7 @@ export function VisitTracker() {
             language,
             sessionId: sessionIdRef.current,
           }),
+          keepalive: true,
         })
       } catch (error) {
         // Ignorer les erreurs silencieusement pour ne pas perturber l'expérience utilisateur

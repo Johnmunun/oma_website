@@ -24,10 +24,37 @@ export async function GET() {
       [setting, contact] = await Promise.all([
         prisma.setting.findFirst({
           orderBy: { updatedAt: 'desc' },
+          select: {
+            siteTitle: true,
+            siteDescription: true,
+            logoUrl: true,
+            coverImageUrl: true,
+            heroImageUrl: true,
+            aboutHeroImageUrl: true,
+            primaryColor: true,
+            secondaryColor: true,
+            fontFamily: true,
+            heroAnnouncementEnabled: true,
+            heroAnnouncementText: true,
+            heroAnnouncementLink: true,
+            heroAnnouncementPublishedAt: true,
+            heroAnnouncementExpiryHours: true,
+            updatedAt: true,
+          },
         }),
         prisma.contact.findFirst({
           orderBy: { updatedAt: 'desc' },
-        })
+          select: {
+            email: true,
+            telephones: true,
+            facebook: true,
+            instagram: true,
+            youtube: true,
+            twitter: true,
+            linkedin: true,
+            tiktok: true,
+          },
+        }),
       ])
     } catch (dbError: any) {
       // Si erreur de connexion, utiliser les valeurs par défaut
@@ -107,6 +134,10 @@ export async function GET() {
         ...publicSettings,
         ...contacts,
         heroAnnouncement,
+      },
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       },
     })
   } catch (error) {

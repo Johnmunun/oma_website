@@ -23,9 +23,7 @@ export function TestimonialsSection() {
     const loadTestimonials = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch("/api/testimonials", {
-          cache: "no-store", // Ne pas utiliser le cache pour avoir les données à jour
-        })
+        const res = await fetch("/api/testimonials")
 
         if (res.ok) {
           const data = await res.json()

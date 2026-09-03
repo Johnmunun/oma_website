@@ -24,7 +24,6 @@ interface UpcomingEvent {
 
 export function HeroSection() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [nextEvent, setNextEvent] = useState<UpcomingEvent | null>(null)
 
   const defaultImage = "/professional-speaker-on-stage-with-dramatic-lighti.jpg"
@@ -32,17 +31,13 @@ export function HeroSection() {
   useEffect(() => {
     const loadHeroImage = async () => {
       try {
-        const res = await fetch("/api/site-settings", { cache: "no-store" })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.success && data.data?.heroImageUrl) {
-            setHeroImageUrl(data.data.heroImageUrl)
-          }
+        const { getPublicSiteSettings } = await import('@/lib/cache/site-settings-client')
+        const data = await getPublicSiteSettings()
+        if (data?.heroImageUrl) {
+          setHeroImageUrl(data.heroImageUrl)
         }
       } catch (err) {
         console.error("[HeroSection] Erreur chargement image hero:", err)
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -63,7 +58,14 @@ export function HeroSection() {
     loadHeroImage()
     loadNextEvent()
 
-    const handleSettingsUpdate = () => loadHeroImage()
+    const handleSettingsUpdate = () => {
+      void import('@/lib/cache/site-settings-client').then(({ invalidatePublicSiteSettingsCache, getPublicSiteSettings }) => {
+        invalidatePublicSiteSettingsCache()
+        void getPublicSiteSettings(true).then((data) => {
+          if (data?.heroImageUrl) setHeroImageUrl(data.heroImageUrl)
+        })
+      })
+    }
     window.addEventListener("settings-updated", handleSettingsUpdate)
     return () => window.removeEventListener("settings-updated", handleSettingsUpdate)
   }, [])
@@ -83,20 +85,18 @@ export function HeroSection() {
     <section id="accueil" className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-primary max-w-full">
       {/* Background Image */}
       <div className="absolute inset-0 z-0 max-w-full">
-        {!isLoading && (
-          <Image
-            src={imageSrc}
-            alt="Orateur professionnel"
-            fill
-            priority
-            className="object-cover opacity-45 md:opacity-35 hero-ken-burns"
-            sizes="100vw"
-            quality={90}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/85 via-primary/75 to-primary/90 md:from-primary/90 md:via-primary/80 md:to-primary/95" />
+        <Image
+          src={imageSrc}
+          alt="Orateur professionnel"
+          fill
+          priority
+          className="object-cover opacity-45 md:opacity-35 hero-ken-burns"
+          sizes="100vw"
+          quality={85}
+        />
         {/* Fond sombre sous la navbar fixe (transparente) — isolé au hero, pas la nav */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-primary via-primary/70 to-transparent md:h-32" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/85 via-primary/75 to-primary/90 md:from-primary/90 md:via-primary/80 md:to-primary/95" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.25)_100%)]" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />

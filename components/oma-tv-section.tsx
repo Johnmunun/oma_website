@@ -93,9 +93,7 @@ export function OmaTvSection() {
     const loadMedia = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch("/api/media?type=VIDEO&limit=10", {
-          cache: "no-store",
-        })
+        const res = await fetch("/api/media?type=VIDEO&limit=10")
 
         if (res.ok) {
           const data = await res.json()

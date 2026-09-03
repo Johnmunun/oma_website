@@ -18,6 +18,26 @@ export async function GET() {
     // Récupérer les settings
     const setting = await prisma.setting.findFirst({
       orderBy: { updatedAt: 'desc' },
+      select: {
+        colorBackground: true,
+        colorForeground: true,
+        colorCard: true,
+        colorCardForeground: true,
+        colorPrimary: true,
+        colorPrimaryForeground: true,
+        colorSecondary: true,
+        colorSecondaryForeground: true,
+        colorMuted: true,
+        colorMutedForeground: true,
+        colorAccent: true,
+        colorAccentForeground: true,
+        colorBorder: true,
+        colorInput: true,
+        colorRing: true,
+        colorGold: true,
+        colorGoldDark: true,
+        colorGoldLight: true,
+      },
     })
 
     // Valeurs par défaut (couleurs orange/or actuelles)
@@ -70,6 +90,10 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       colors,
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
     })
   } catch (error) {
     console.error('[API] Erreur GET theming/colors:', error)

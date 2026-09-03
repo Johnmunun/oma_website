@@ -15,7 +15,7 @@ export function AboutPageHero() {
   useEffect(() => {
     const loadImage = async () => {
       try {
-        const res = await fetch("/api/site-settings", { cache: "no-store" })
+        const res = await fetch("/api/site-settings")
         if (res.ok) {
           const data = await res.json()
           if (data.success && data.data?.aboutHeroImageUrl) {

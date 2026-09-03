@@ -47,9 +47,7 @@ export function useSeoMeta() {
           return
         }
 
-        const res = await fetch(`/api/seo/${slug}`, {
-          cache: "no-store",
-        })
+        const res = await fetch(`/api/seo/${slug}`)
 
         if (res.ok) {
           const data = await res.json()

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Mic } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getPublicSiteSettings } from '@/lib/cache/site-settings-client'
 
 export type HeroAnnouncementData = {
   text: string
@@ -79,12 +80,9 @@ export function HeroAnnouncementTicker({
   useEffect(() => {
     const loadAnnouncement = async () => {
       try {
-        const res = await fetch('/api/site-settings', { cache: 'no-store' })
-        if (!res.ok) return
-
-        const data = await res.json()
-        if (data.success && data.data?.heroAnnouncement) {
-          setAnnouncement(data.data.heroAnnouncement)
+        const data = await getPublicSiteSettings()
+        if (data?.heroAnnouncement) {
+          setAnnouncement(data.heroAnnouncement)
         } else {
           setAnnouncement(null)
         }

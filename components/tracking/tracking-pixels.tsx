@@ -30,9 +30,7 @@ export function TrackingPixels() {
   useEffect(() => {
     const loadPixels = async () => {
       try {
-        const res = await fetch("/api/pixels", {
-          cache: "no-store",
-        })
+        const res = await fetch("/api/pixels")
         if (res.ok) {
           const data = await res.json()
           if (data.success) {

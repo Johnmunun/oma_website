@@ -10,7 +10,7 @@ import { OMA_STRUCTURE_ID } from '@/lib/authz/constants'
 import { isPrismaClientOutdatedError } from '@/lib/authz/schema'
 import { getStructurePublicUrls } from '@/lib/structures/public-url'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function GET() {
   try {
@@ -65,7 +65,7 @@ export async function GET() {
       { success: true, data },
       {
         headers: {
-          'Cache-Control': 'no-store, must-revalidate',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
         },
       }
     )

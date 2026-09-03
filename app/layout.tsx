@@ -9,7 +9,6 @@ import { Toaster } from "@/components/ui/sonner"
 import { NextAuthSessionProvider } from "@/components/providers/session-provider"
 import { DynamicColors } from "@/components/theming/dynamic-colors"
 import { VisitTracker } from "@/components/analytics/visit-tracker"
-import { PageTransition } from "@/components/animations/page-transition"
 import { SmoothNavigation } from "@/components/animations/smooth-navigation"
 import { CacheInitScript } from "@/lib/cache"
 
@@ -23,14 +22,16 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "700"],
+  preload: true,
 })
 
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-poppins",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600"],
+  preload: true,
 })
 
 export const metadata: Metadata = {
@@ -69,9 +70,7 @@ export default function RootLayout({
         <NextAuthSessionProvider>
           <Suspense fallback={null}>
             <VisitTracker />
-            <PageTransition transitionType="fade">
-              {children}
-            </PageTransition>
+            {children}
             <Analytics />
             <Toaster position="bottom-center" richColors={true} />
           </Suspense>

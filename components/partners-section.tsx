@@ -26,12 +26,7 @@ export function PartnersSection() {
     const loadPartners = async () => {
       try {
         setIsLoading(true)
-        const res = await fetch('/api/partners', {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        })
+        const res = await fetch('/api/partners')
         
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}))
@@ -41,10 +36,8 @@ export function PartnersSection() {
         const data = await res.json()
         
         if (data.success && data.data && Array.isArray(data.data)) {
-          console.log('[Partners] Partenaires chargés:', data.data.length)
           setPartners(data.data)
         } else {
-          console.warn('[Partners] Format de données inattendu:', data)
           setPartners([])
         }
       } catch (err: any) {

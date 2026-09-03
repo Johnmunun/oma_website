@@ -211,7 +211,7 @@ export function DomainsSection() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/expertise", { cache: "no-store" })
+    fetch("/api/expertise")
       .then((r) => r.json())
       .then((res) => {
         if (res.success && Array.isArray(res.data)) setDomains(res.data)

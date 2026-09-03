@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
         include: {
-          registrations: {
-            select: { id: true },
+          _count: {
+            select: { registrations: true },
           },
         },
       }),
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       metaTitle: event.metaTitle,
         metaDesc: event.metaDesc,
         showOnBanner: event.showOnBanner,
-        registrations: event.registrations.length,
+        registrations: event._count.registrations,
         createdAt: event.createdAt.toISOString(),
         updatedAt: event.updatedAt.toISOString(),
     }))
