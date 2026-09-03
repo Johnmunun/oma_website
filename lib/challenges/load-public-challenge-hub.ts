@@ -6,6 +6,10 @@ import { CandidateStatus, ChallengeStatus, ChallengeVideoStatus, StructureStatus
 import { prisma } from '@/lib/prisma'
 import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registration-settings'
 import { parseFeatureSettingsFromChallenge } from '@/lib/challenges/challenge-feature-settings'
+import {
+  isLiveVisibleOnHub,
+  parseLiveSettingsFromChallenge,
+} from '@/lib/challenges/challenge-live-settings'
 import { getVotePublicTokenFromSettings } from '@/lib/votes/vote-public-token'
 
 const STRUCTURE_WHERE = (segment: string) => ({
@@ -57,6 +61,7 @@ export async function loadPublicChallengeHub(
   if (!challenge) return null
 
   const features = parseFeatureSettingsFromChallenge(challenge.settings)
+  const live = parseLiveSettingsFromChallenge(challenge.settings)
   const coverImageUrl = parseChallengeCoverImageUrl(challenge.settings)
   const voteToken = getVotePublicTokenFromSettings(challenge.settings)
   const contactSlug =
@@ -107,6 +112,10 @@ export async function loadPublicChallengeHub(
       endsAt: challenge.endsAt?.toISOString() ?? null,
     },
     features,
+    live: {
+      ...live,
+      visibleOnHub: isLiveVisibleOnHub(live),
+    },
     coverImageUrl,
     contactSlug,
     voteToken,

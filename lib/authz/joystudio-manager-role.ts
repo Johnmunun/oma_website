@@ -24,6 +24,11 @@ export const JOYSTUDIO_MANAGER_PERMISSION_KEYS = [
   'jury.delete',
   'jury.assign',
   'votes.view',
+  'live.view',
+  'live.update',
+  'live.start',
+  'live.stop',
+  'live.publish',
   'messages.view',
   'messages.update',
 ] as const

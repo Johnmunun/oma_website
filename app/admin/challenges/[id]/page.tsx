@@ -81,7 +81,7 @@ const MODULES: Array<{
   { key: 'videos.view', label: 'Vidéos', icon: Video, href: 'videos' },
   { key: 'jury.view', label: 'Jury', icon: Gavel, href: 'jury' },
   { key: 'challenges.view', label: 'Classement & Votes', icon: BarChart3, href: 'rankings' },
-  { key: 'live.view', label: 'Live', icon: Radio, soon: true },
+  { key: 'challenges.view', label: 'Live', icon: Radio, href: 'live' },
   { key: 'challenges.settings', label: 'Paramètres', icon: Settings, soon: true },
 ]
 

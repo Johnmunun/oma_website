@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Calendar,
   Heart,
+  Radio,
   Trophy,
   UserPlus,
   Users,
@@ -14,6 +15,7 @@ import { ChallengeRegistrationShell } from '@/components/structures/challenge-re
 import type { PublicChallengeHubData } from '@/lib/challenges/load-public-challenge-hub'
 import {
   getChallengeCandidatePath,
+  getChallengeLivePath,
   getChallengeRankingsPath,
   getChallengeRegistrationPath,
   getChallengeVotePortalPath,
@@ -32,9 +34,10 @@ function formatDate(iso: string | null) {
 }
 
 export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData }) {
-  const { structure, challenge, features, coverImageUrl, stats, spotlight } = data
+  const { structure, challenge, features, coverImageUrl, stats, spotlight, live } = data
   const hasCover = Boolean(coverImageUrl)
   const registerPath = getChallengeRegistrationPath(structure, challenge.slug)
+  const livePath = getChallengeLivePath(structure, challenge.slug)
   const votesPath =
     features.votes.enabled && features.votes.published && data.voteToken
       ? getChallengeVotePortalPath(structure, data.voteToken)
@@ -42,6 +45,7 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
   const rankingsPath = getChallengeRankingsPath(structure, challenge.slug)
   const votesOpen = features.votes.enabled && features.votes.published
   const rankingOpen = features.ranking.published
+  const liveOpen = live.visibleOnHub
 
   const hero = (
     <div className={cn(hasCover && 'drop-shadow-lg')}>
@@ -85,6 +89,22 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
       )}
 
       <div className="mt-8 flex flex-wrap gap-3">
+        {liveOpen && (
+          <Link
+            href={livePath}
+            className={cn(
+              'inline-flex h-11 items-center gap-2 rounded-full px-6 text-sm font-semibold shadow-lg transition',
+              live.isLive
+                ? 'bg-red-600 text-white hover:bg-red-500'
+                : hasCover
+                  ? 'border border-white/35 bg-white/10 text-white hover:bg-white/20'
+                  : 'border border-slate-300 bg-white text-slate-800 hover:border-slate-400',
+            )}
+          >
+            <Radio className="h-4 w-4" />
+            {live.isLive ? 'En direct' : 'Live'}
+          </Link>
+        )}
         <Link
           href={registerPath}
           className="inline-flex h-11 items-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-lg transition hover:brightness-110"

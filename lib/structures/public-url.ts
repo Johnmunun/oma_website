@@ -278,3 +278,28 @@ export function getChallengeCandidateUrl(
 ): string {
   return `${getMainSiteOrigin()}${getChallengeCandidatePath(structure, challengeSlug, candidateCode)}`
 }
+
+/** Page Live Cloudflare Stream du challenge */
+export function getChallengeLivePath(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string
+): string {
+  const segment = getStructurePathSegment(structure)
+  const slug = challengeSlug.trim().toLowerCase()
+  return `/s/${segment}/challenges/${slug}/live`
+}
+
+export function getChallengeLiveUrl(
+  structure: {
+    slug: string
+    landingPagePath?: string | null
+    subdomain?: string | null
+  },
+  challengeSlug: string
+): string {
+  return `${getMainSiteOrigin()}${getChallengeLivePath(structure, challengeSlug)}`
+}
