@@ -38,6 +38,8 @@ export const challengeLiveSettingsSchema = z.object({
   vodVideoId: z.preprocess(emptyToNullString, z.string().max(80).nullable()).default(null),
   /** URL iframe replay (prioritaire sur vodVideoId) */
   replayEmbedUrl: nullableString.default(null),
+  /** Chat public sur la page Live */
+  chatEnabled: z.boolean().default(false),
 })
 
 export type ChallengeLiveSettings = z.infer<typeof challengeLiveSettingsSchema>
@@ -56,6 +58,7 @@ export const DEFAULT_LIVE_SETTINGS: ChallengeLiveSettings = {
   replayEnabled: false,
   vodVideoId: null,
   replayEmbedUrl: null,
+  chatEnabled: false,
 }
 
 export const updateLiveSettingsSchema = challengeLiveSettingsSchema.partial()

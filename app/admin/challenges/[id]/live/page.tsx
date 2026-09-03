@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import {
   ArrowLeft,
   ExternalLink,
+  EyeOff,
   Loader2,
   Radio,
   Save,
@@ -53,6 +54,7 @@ const EMPTY_LIVE: ChallengeLiveSettings = {
   replayEnabled: false,
   vodVideoId: null,
   replayEmbedUrl: null,
+  chatEnabled: false,
 }
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
@@ -78,6 +80,15 @@ export default function ChallengeLiveAdminPage() {
   const [challenge, setChallenge] = useState<ChallengeInfo | null>(null)
   const [live, setLive] = useState<ChallengeLiveSettings>(EMPTY_LIVE)
   const [publicUrl, setPublicUrl] = useState<string | null>(null)
+  const [chatMessages, setChatMessages] = useState<
+    Array<{
+      id: string
+      authorName: string
+      body: string
+      isHidden: boolean
+      createdAt: string
+    }>
+  >([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -99,6 +110,16 @@ export default function ChallengeLiveAdminPage() {
       setChallenge(res.data.challenge)
       setLive({ ...EMPTY_LIVE, ...res.data.live })
       setPublicUrl(res.data.publicUrl ?? null)
+
+      if (res.data.live?.chatEnabled) {
+        const chatRes = await fetch(
+          `/api/admin/challenges/${challengeId}/live/chat?all=1`,
+          { cache: 'no-store' }
+        ).then((r) => r.json())
+        if (chatRes.success) setChatMessages(chatRes.data)
+      } else {
+        setChatMessages([])
+      }
     } catch {
       toast.error('Erreur de chargement')
     } finally {
@@ -248,6 +269,21 @@ export default function ChallengeLiveAdminPage() {
               checked={live.showOnHub}
               disabled={!canEdit}
               onCheckedChange={(showOnHub) => setLive((s) => ({ ...s, showOnHub }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="live-chat">Chat public</Label>
+              <p className="text-xs text-muted-foreground">
+                Affiche un chat en direct à côté du lecteur
+              </p>
+            </div>
+            <Switch
+              id="live-chat"
+              checked={live.chatEnabled}
+              disabled={!canEdit}
+              onCheckedChange={(chatEnabled) => setLive((s) => ({ ...s, chatEnabled }))}
             />
           </div>
 
@@ -466,6 +502,72 @@ export default function ChallengeLiveAdminPage() {
           disabled={!live.enabled}
           disabledHint="Activez d’abord la page Live"
         />
+
+        {live.chatEnabled && (
+          <Card className="space-y-3 p-5">
+            <div>
+              <h2 className="text-sm font-semibold">Modération chat</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Masquez un message inapproprié (il disparaît du public)
+              </p>
+            </div>
+            {chatMessages.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun message pour l’instant</p>
+            ) : (
+              <div className="max-h-72 space-y-2 overflow-y-auto">
+                {chatMessages.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border/50 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{m.authorName}</span>
+                        {' · '}
+                        {new Date(m.createdAt).toLocaleString('fr-FR')}
+                        {m.isHidden ? ' · masqué' : ''}
+                      </p>
+                      <p className="mt-0.5 text-sm">{m.body}</p>
+                    </div>
+                    {canEdit && !m.isHidden && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0 text-destructive"
+                        onClick={async () => {
+                          const res = await fetch(
+                            `/api/admin/challenges/${challengeId}/live/chat`,
+                            {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                messageId: m.id,
+                                isHidden: true,
+                              }),
+                            }
+                          ).then((r) => r.json())
+                          if (!res.success) {
+                            toast.error(res.error || 'Erreur')
+                            return
+                          }
+                          setChatMessages((list) =>
+                            list.map((row) =>
+                              row.id === m.id ? { ...row, isHidden: true } : row
+                            )
+                          )
+                          toast.success('Message masqué')
+                        }}
+                      >
+                        <EyeOff className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" size="sm" asChild>

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Calendar, Play, Radio, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
+import { ChallengeLiveChat } from '@/components/structures/challenge-live-chat'
 import type { PublicChallengeLiveData } from '@/lib/challenges/load-public-challenge-live'
 import {
   getChallengeHubPath,
@@ -25,7 +26,7 @@ function formatSchedule(iso: string | null | undefined) {
 }
 
 export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData }) {
-  const { structure, challenge, live, embedUrl, replayUrl, coverImageUrl } = data
+  const { structure, challenge, live, embedUrl, replayUrl, coverImageUrl, contactSlug } = data
   const hasCover = Boolean(coverImageUrl)
   const hubPath = getChallengeHubPath(structure, challenge.slug)
   const votesPath = getChallengeVotesPath(structure, challenge.slug)
@@ -156,28 +157,56 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
         )}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link
-          href={hubPath}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
-        >
-          Hub du challenge
-        </Link>
-        <Link
-          href={votesPath}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
-        >
-          Voter
-        </Link>
-        <Link
-          href={rankingsPath}
-          className="inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-110"
-          style={{ backgroundColor: 'var(--st-primary)' }}
-        >
-          <Trophy className="h-4 w-4" />
-          Classement
-        </Link>
-      </div>
+      {live.chatEnabled ? (
+        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={hubPath}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
+            >
+              Hub du challenge
+            </Link>
+            <Link
+              href={votesPath}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
+            >
+              Voter
+            </Link>
+            <Link
+              href={rankingsPath}
+              className="inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-110"
+              style={{ backgroundColor: 'var(--st-primary)' }}
+            >
+              <Trophy className="h-4 w-4" />
+              Classement
+            </Link>
+          </div>
+          <ChallengeLiveChat contactSlug={contactSlug} challengeSlug={challenge.slug} />
+        </div>
+      ) : (
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href={hubPath}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
+          >
+            Hub du challenge
+          </Link>
+          <Link
+            href={votesPath}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
+          >
+            Voter
+          </Link>
+          <Link
+            href={rankingsPath}
+            className="inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-110"
+            style={{ backgroundColor: 'var(--st-primary)' }}
+          >
+            <Trophy className="h-4 w-4" />
+            Classement
+          </Link>
+        </div>
+      )}
     </ChallengeRegistrationShell>
   )
 }

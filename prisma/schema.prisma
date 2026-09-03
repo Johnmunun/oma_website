@@ -612,6 +612,7 @@ model Challenge {
   juryMembers ChallengeJuryMember[]
   juryEvaluations ChallengeJuryEvaluation[]
   votes       ChallengeVote[]
+  liveChatMessages ChallengeLiveChatMessage[]
 
   @@unique([structureId, slug])
   @@index([structureId, status])
@@ -746,6 +747,22 @@ model ChallengeVote {
   @@index([challengeId, candidateId])
   @@index([challengeId, phaseId])
   @@map("ChallengeVote")
+}
+
+/** Chat public pendant le Live d'un challenge */
+model ChallengeLiveChatMessage {
+  id          String    @id @default(uuid()) @db.Uuid
+  challengeId String    @db.Uuid
+  authorName  String
+  body        String
+  isHidden    Boolean   @default(false)
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, createdAt])
+  @@index([challengeId, isHidden, createdAt])
+  @@map("ChallengeLiveChatMessage")
 }
 
 model StructureMembership {
