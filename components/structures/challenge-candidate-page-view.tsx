@@ -4,12 +4,20 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Check, Copy, Heart, Share2, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
+import { ShareButtons } from '@/components/admin/share-buttons'
 import type { PublicCandidatePageData } from '@/lib/candidates/load-public-candidate'
+import {
+  buildCandidateVoteShareText,
+  buildCandidateVoteShareUrl,
+  buildWhatsAppShareHref,
+} from '@/lib/votes/build-candidate-vote-share'
 import {
   getChallengeCandidateUrl,
   getChallengeHubPath,
   getChallengeVotePortalPath,
+  getChallengeVotePortalUrl,
   getChallengeVotesPath,
+  getChallengeVotesUrl,
 } from '@/lib/structures/public-url'
 import { cn } from '@/lib/utils'
 import { resolveChallengeVideoPlayback } from '@/lib/videos/resolve-challenge-video-playback'
@@ -21,15 +29,52 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
   const [copied, setCopied] = useState(false)
   const votesOpen = features.votes.enabled && features.votes.published
   const hubPath = getChallengeHubPath(structure, challenge.slug)
-  const votesBase =
+  const voteBasePath =
     votesOpen && data.voteToken
       ? getChallengeVotePortalPath(structure, data.voteToken)
       : getChallengeVotesPath(structure, challenge.slug)
-  const voteHref = `${votesBase}?c=${encodeURIComponent(candidate.id)}`
+  const voteHref = `${voteBasePath}?c=${encodeURIComponent(candidate.id)}`
 
   const profileUrl = useMemo(
     () => getChallengeCandidateUrl(structure, challenge.slug, candidate.candidateCode),
     [structure, challenge.slug, candidate.candidateCode]
+  )
+
+  const voteShareUrl = useMemo(() => {
+    const base =
+      votesOpen && data.voteToken
+        ? getChallengeVotePortalUrl(structure, data.voteToken)
+        : getChallengeVotesUrl(structure, challenge.slug)
+    return buildCandidateVoteShareUrl({
+      voteBaseUrl: base,
+      candidateId: candidate.id,
+    })
+  }, [
+    votesOpen,
+    data.voteToken,
+    structure,
+    challenge.slug,
+    candidate.id,
+  ])
+
+  const shareText = useMemo(
+    () =>
+      buildCandidateVoteShareText({
+        fullName: candidate.fullName,
+        number: candidate.number,
+        candidateCode: candidate.candidateCode,
+        challengeName: challenge.name,
+        voteUrl: voteShareUrl,
+        profileUrl,
+      }),
+    [
+      candidate.fullName,
+      candidate.number,
+      candidate.candidateCode,
+      challenge.name,
+      voteShareUrl,
+      profileUrl,
+    ]
   )
 
   const parsed = candidate.video
@@ -39,15 +84,13 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
   const thumb = candidate.video?.thumbnailUrl || parsed?.thumbnailUrl
   const firstName = candidate.fullName.split(' ')[0]
 
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
-    `Soutenez ${candidate.fullName} (#${candidate.number} · ${candidate.candidateCode}) dans ${challenge.name} ! ${profileUrl}`
-  )}`
+  const whatsappHref = buildWhatsAppShareHref(shareText)
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(profileUrl)
+      await navigator.clipboard.writeText(votesOpen ? voteShareUrl : profileUrl)
       setCopied(true)
-      toast.success('Lien de la fiche copié')
+      toast.success(votesOpen ? 'Lien de vote copié' : 'Lien de la fiche copié')
       setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error('Impossible de copier')
@@ -147,20 +190,32 @@ export function ChallengeCandidatePageView({ data }: { data: PublicCandidatePage
               className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               <Share2 className="h-4 w-4" />
-              Partager sur WhatsApp
+              Partager le vote sur WhatsApp
             </a>
+            <div className="flex justify-center">
+              <ShareButtons
+                url={votesOpen ? voteShareUrl : profileUrl}
+                title={`Soutenez ${candidate.fullName}`}
+                description={shareText}
+                className="w-full justify-center rounded-full"
+              />
+            </div>
             <button
               type="button"
               onClick={handleCopy}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? 'Lien copié' : 'Copier le lien'}
+              {copied
+                ? 'Lien copié'
+                : votesOpen
+                  ? 'Copier le lien de vote'
+                  : 'Copier le lien'}
             </button>
           </div>
 
           <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
-            Partagez cette fiche pour maximiser les chances de {firstName}.
+            Partagez le lien de vote pour maximiser les chances de {firstName}.
           </p>
         </aside>
       </div>

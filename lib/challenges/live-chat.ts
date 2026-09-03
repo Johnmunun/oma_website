@@ -2,6 +2,7 @@
  * Chat live public d'un challenge
  */
 
+import { createHash } from 'crypto'
 import { ChallengeStatus, StructureStatus } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
@@ -35,6 +36,25 @@ const STRUCTURE_WHERE = (segment: string) => ({
   isActive: true,
   status: StructureStatus.ACTIVE,
 })
+
+/** Hash court d'IP pour anti-spam (pas de stockage en clair) */
+export function hashChatClientIp(ip: string): string {
+  return createHash('sha256').update(`oma-live-chat:${ip}`).digest('hex').slice(0, 40)
+}
+
+const SPAM_PATTERNS = [
+  /https?:\/\/\S+/gi,
+  /\b(viagra|casino|crypto\s*free|bit\.ly)\b/gi,
+]
+
+function looksLikeSpam(body: string): boolean {
+  const links = body.match(/https?:\/\/\S+/gi)
+  if (links && links.length >= 2) return true
+  return SPAM_PATTERNS.some((re) => {
+    re.lastIndex = 0
+    return re.test(body) && /https?:\/\//i.test(body)
+  })
+}
 
 async function resolveLiveChallenge(structureSegment: string, challengeSlug: string) {
   const segment = structureSegment.trim().toLowerCase()
@@ -105,22 +125,64 @@ export async function listPublicLiveChatMessages(
 export async function postPublicLiveChatMessage(
   structureSegment: string,
   challengeSlug: string,
-  input: z.infer<typeof liveChatPostSchema>
+  input: z.infer<typeof liveChatPostSchema>,
+  opts?: { ipHash?: string | null }
 ) {
-  const { challenge } = await resolveLiveChallenge(structureSegment, challengeSlug)
+  const { challenge, live } = await resolveLiveChallenge(structureSegment, challengeSlug)
   const data = liveChatPostSchema.parse(input)
+  const ipHash = opts?.ipHash?.trim() || null
 
-  // Anti-spam basique : max 1 message / 3s pour le même pseudo
-  const recent = await prisma.challengeLiveChatMessage.findFirst({
+  const banned = new Set(
+    (live.chatBannedNames || []).map((n) => n.trim().toLowerCase()).filter(Boolean)
+  )
+  if (banned.has(data.authorName.toLowerCase())) {
+    throw new LiveChatError('Ce pseudo n’est pas autorisé', 403)
+  }
+
+  if (looksLikeSpam(data.body)) {
+    throw new LiveChatError('Message refusé (contenu non autorisé)', 400)
+  }
+
+  // Anti-spam : 1 message / 4s pour le même pseudo
+  const recentByName = await prisma.challengeLiveChatMessage.findFirst({
     where: {
       challengeId: challenge.id,
       authorName: data.authorName,
-      createdAt: { gt: new Date(Date.now() - 3000) },
+      createdAt: { gt: new Date(Date.now() - 4000) },
     },
     select: { id: true },
   })
-  if (recent) {
+  if (recentByName) {
     throw new LiveChatError('Patientez quelques secondes avant un nouveau message', 429)
+  }
+
+  // Anti-spam IP : max 1 message / 2s
+  if (ipHash) {
+    const recentByIp = await prisma.challengeLiveChatMessage.findFirst({
+      where: {
+        challengeId: challenge.id,
+        ipHash,
+        createdAt: { gt: new Date(Date.now() - 2000) },
+      },
+      select: { id: true },
+    })
+    if (recentByIp) {
+      throw new LiveChatError('Trop de messages trop rapides', 429)
+    }
+
+    // Doublon exact du même texte sous 45s
+    const dup = await prisma.challengeLiveChatMessage.findFirst({
+      where: {
+        challengeId: challenge.id,
+        ipHash,
+        body: data.body,
+        createdAt: { gt: new Date(Date.now() - 45_000) },
+      },
+      select: { id: true },
+    })
+    if (dup) {
+      throw new LiveChatError('Message déjà envoyé récemment', 429)
+    }
   }
 
   const message = await prisma.challengeLiveChatMessage.create({
@@ -128,6 +190,7 @@ export async function postPublicLiveChatMessage(
       challengeId: challenge.id,
       authorName: data.authorName,
       body: data.body,
+      ipHash,
     },
     select: {
       id: true,

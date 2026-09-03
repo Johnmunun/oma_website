@@ -1,5 +1,6 @@
 /**
- * POST — crée une URL d'upload direct Cloudflare Stream (candidat public)
+ * POST — crée une URL d'upload Cloudflare Stream (candidat public)
+ * multipart ≤200 Mo, tus au-delà (jusqu'à 2 Go)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -8,13 +9,18 @@ import { CandidateStatus, ChallengeStatus, StructureStatus } from '@prisma/clien
 import { prisma } from '@/lib/prisma'
 import {
   CloudflareStreamError,
+  CLOUDFLARE_MULTIPART_MAX_BYTES,
+  CLOUDFLARE_TUS_MAX_BYTES,
   createCloudflareDirectUpload,
+  createCloudflareTusDirectUpload,
   isCloudflareStreamConfigured,
+  pickCloudflareUploadMode,
 } from '@/lib/videos/cloudflare-stream'
 
 const bodySchema = z.object({
   token: z.string().min(8),
   fileName: z.string().max(200).optional().nullable(),
+  fileSize: z.number().int().positive().max(CLOUDFLARE_TUS_MAX_BYTES),
   maxDurationSeconds: z.number().int().min(30).max(3600).optional(),
 })
 
@@ -81,18 +87,32 @@ export async function POST(
       )
     }
 
-    const upload = await createCloudflareDirectUpload({
-      maxDurationSeconds: body.maxDurationSeconds ?? 600,
-      creator: candidate.id,
-      metaName: body.fileName?.trim() || `Prestation — ${candidate.fullName}`,
-    })
+    const mode = pickCloudflareUploadMode(body.fileSize)
+    const metaName = body.fileName?.trim() || `Prestation — ${candidate.fullName}`
+    const maxDurationSeconds = body.maxDurationSeconds ?? 600
+
+    const upload =
+      mode === 'tus'
+        ? await createCloudflareTusDirectUpload({
+            uploadLength: body.fileSize,
+            maxDurationSeconds,
+            creator: candidate.id,
+            metaName,
+          })
+        : await createCloudflareDirectUpload({
+            maxDurationSeconds,
+            creator: candidate.id,
+            metaName,
+          })
 
     return NextResponse.json({
       success: true,
       data: {
         uploadURL: upload.uploadURL,
         uid: upload.uid,
-        maxBytes: 200 * 1024 * 1024,
+        mode,
+        maxBytes: CLOUDFLARE_TUS_MAX_BYTES,
+        multipartMaxBytes: CLOUDFLARE_MULTIPART_MAX_BYTES,
       },
     })
   } catch (error) {

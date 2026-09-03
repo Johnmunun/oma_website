@@ -14,7 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { uploadFileToCloudflareDirectUrl } from '@/lib/videos/upload-to-cloudflare-direct'
+import {
+  formatBytesLabel,
+  CLOUDFLARE_TUS_MAX_BYTES,
+} from '@/lib/videos/cloudflare-stream-limits'
+import {
+  uploadFileToCloudflareDirectUrl,
+  uploadFileToCloudflareTusUrl,
+} from '@/lib/videos/upload-to-cloudflare-direct'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -48,8 +55,6 @@ const EMPTY: ChallengeVideoFormData = {
   videoUrl: '',
   fileId: null,
 }
-
-const MAX_BYTES = 200 * 1024 * 1024
 
 export function ChallengeVideoDrawer({
   isOpen,
@@ -99,8 +104,10 @@ export function ChallengeVideoDrawer({
       let fileId = form.fileId ?? null
 
       if (mode === 'upload' && file) {
-        if (file.size > MAX_BYTES) {
-          toast.error('Fichier trop volumineux (max 200 Mo)')
+        if (file.size > CLOUDFLARE_TUS_MAX_BYTES) {
+          toast.error(
+            `Fichier trop volumineux (max ${formatBytesLabel(CLOUDFLARE_TUS_MAX_BYTES)})`
+          )
           return
         }
         const prep = await fetch(`/api/admin/challenges/${challengeId}/videos/direct-upload`, {
@@ -108,6 +115,7 @@ export function ChallengeVideoDrawer({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fileName: file.name,
+            fileSize: file.size,
             candidateId: form.candidateId,
           }),
         }).then((r) => r.json())
@@ -118,7 +126,11 @@ export function ChallengeVideoDrawer({
         }
 
         setProgress(0)
-        await uploadFileToCloudflareDirectUrl(prep.data.uploadURL, file, setProgress)
+        if (prep.data.mode === 'tus') {
+          await uploadFileToCloudflareTusUrl(prep.data.uploadURL, file, setProgress)
+        } else {
+          await uploadFileToCloudflareDirectUrl(prep.data.uploadURL, file, setProgress)
+        }
         fileId = prep.data.uid
         videoUrl = ''
       } else if (mode === 'link' && !videoUrl) {
@@ -220,7 +232,7 @@ export function ChallengeVideoDrawer({
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
               <p className="text-xs text-muted-foreground">
-                Stockage Cloudflare Stream — max 200 Mo
+                Stockage Cloudflare Stream — jusqu’à {formatBytesLabel(CLOUDFLARE_TUS_MAX_BYTES)} (tus &gt; 200 Mo)
               </p>
               {progress !== null && (
                 <p className="text-xs text-muted-foreground">Upload {progress}%</p>

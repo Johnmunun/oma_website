@@ -32,6 +32,8 @@ export default async function ChallengeJuryPortalPage({ params }: PageProps) {
         evaluations: page.evaluations,
         contactSlug: page.contactSlug,
         token: page.token,
+        activePhase: page.activePhase,
+        phasesEnabled: page.phasesEnabled,
       }}
     />
   )

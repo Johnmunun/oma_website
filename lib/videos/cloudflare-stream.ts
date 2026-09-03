@@ -8,6 +8,17 @@ import {
   buildCloudflareLiveEmbedUrl,
   normalizeCloudflareCustomerCode,
 } from '@/lib/challenges/challenge-live-settings'
+import {
+  CLOUDFLARE_MULTIPART_MAX_BYTES,
+  CLOUDFLARE_TUS_MAX_BYTES,
+  pickCloudflareUploadMode,
+} from '@/lib/videos/cloudflare-stream-limits'
+
+export {
+  CLOUDFLARE_MULTIPART_MAX_BYTES,
+  CLOUDFLARE_TUS_MAX_BYTES,
+  pickCloudflareUploadMode,
+}
 
 export class CloudflareStreamError extends Error {
   constructor(
@@ -72,6 +83,10 @@ export function buildCloudflareStreamPlayback(opts: {
   }
 }
 
+function toBase64Utf8(value: string): string {
+  return Buffer.from(value, 'utf8').toString('base64')
+}
+
 /**
  * One-time direct upload URL (fichiers ≤ ~200 Mo via POST multipart).
  * https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/
@@ -128,5 +143,83 @@ export async function createCloudflareDirectUpload(opts?: {
     if (error instanceof CloudflareStreamError) throw error
     console.error('[CloudflareStream] createDirectUpload:', error)
     throw new CloudflareStreamError('Erreur réseau Cloudflare Stream', 502)
+  }
+}
+
+/**
+ * Upload resumable tus (fichiers > 200 Mo, jusqu'à CLOUDFLARE_TUS_MAX_BYTES).
+ * https://developers.cloudflare.com/stream/uploading-videos/resumable-uploads/
+ */
+export async function createCloudflareTusDirectUpload(opts: {
+  uploadLength: number
+  maxDurationSeconds?: number
+  creator?: string
+  metaName?: string
+}): Promise<{ uploadURL: string; uid: string }> {
+  const { accountId, apiToken } = getCloudflareStreamConfig()
+  if (!accountId || !apiToken) {
+    throw new CloudflareStreamError(
+      'Cloudflare Stream non configuré (CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_STREAM_API_TOKEN)',
+      503
+    )
+  }
+
+  const length = Math.floor(opts.uploadLength)
+  if (!Number.isFinite(length) || length <= 0) {
+    throw new CloudflareStreamError('Taille de fichier invalide', 400)
+  }
+  if (length > CLOUDFLARE_TUS_MAX_BYTES) {
+    throw new CloudflareStreamError(
+      `Fichier trop volumineux (max ${Math.floor(CLOUDFLARE_TUS_MAX_BYTES / (1024 * 1024))} Mo)`,
+      400
+    )
+  }
+
+  const metaParts = [
+    `maxdurationseconds ${toBase64Utf8(String(opts.maxDurationSeconds ?? 600))}`,
+  ]
+  if (opts.metaName?.trim()) {
+    metaParts.push(`name ${toBase64Utf8(opts.metaName.trim())}`)
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'Tus-Resumable': '1.0.0',
+          'Upload-Length': String(length),
+          'Upload-Metadata': metaParts.join(','),
+          ...(opts.creator ? { 'Upload-Creator': opts.creator } : {}),
+        },
+      }
+    )
+
+    const uploadURL = res.headers.get('Location') || res.headers.get('location')
+    const uid =
+      res.headers.get('stream-media-id') ||
+      res.headers.get('Stream-Media-Id') ||
+      ''
+
+    if (!res.ok || !uploadURL || !uid) {
+      let msg = `Impossible de créer l'URL tus Cloudflare (${res.status})`
+      try {
+        const json = (await res.json()) as {
+          errors?: Array<{ message?: string }>
+        }
+        if (json.errors?.[0]?.message) msg = json.errors[0].message
+      } catch {
+        // ignore
+      }
+      throw new CloudflareStreamError(msg, res.status >= 400 ? res.status : 502)
+    }
+
+    return { uploadURL, uid }
+  } catch (error) {
+    if (error instanceof CloudflareStreamError) throw error
+    console.error('[CloudflareStream] createTusDirectUpload:', error)
+    throw new CloudflareStreamError('Erreur réseau Cloudflare Stream (tus)', 502)
   }
 }

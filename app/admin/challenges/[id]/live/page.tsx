@@ -55,6 +55,7 @@ const EMPTY_LIVE: ChallengeLiveSettings = {
   vodVideoId: null,
   replayEmbedUrl: null,
   chatEnabled: false,
+  chatBannedNames: [],
 }
 
 function toDatetimeLocalValue(iso: string | null | undefined): string {
@@ -286,6 +287,32 @@ export default function ChallengeLiveAdminPage() {
               onCheckedChange={(chatEnabled) => setLive((s) => ({ ...s, chatEnabled }))}
             />
           </div>
+
+          {live.chatEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="chat-banned">Pseudos bannis</Label>
+              <Textarea
+                id="chat-banned"
+                rows={2}
+                disabled={!canEdit}
+                placeholder="Un pseudo par ligne (ex. spammer1)"
+                value={(live.chatBannedNames || []).join('\n')}
+                onChange={(e) =>
+                  setLive((s) => ({
+                    ...s,
+                    chatBannedNames: e.target.value
+                      .split(/[\n,]+/)
+                      .map((n) => n.trim())
+                      .filter(Boolean)
+                      .slice(0, 100),
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Ces pseudos ne peuvent plus poster (insensible à la casse).
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-4">
             <div>

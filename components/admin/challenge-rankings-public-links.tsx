@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, Copy, ExternalLink, Link2 } from 'lucide-react'
+import { Check, Copy, ExternalLink, Link2, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { buildWhatsAppShareHref } from '@/lib/votes/build-candidate-vote-share'
 import {
   getChallengeHubUrl,
   getChallengeRankingsUrl,
@@ -20,6 +21,7 @@ interface ChallengePublicLinkProps {
   disabled?: boolean
   disabledHint?: string
   className?: string
+  whatsappText?: string | null
 }
 
 export function ChallengePublicLink({
@@ -29,6 +31,7 @@ export function ChallengePublicLink({
   disabled,
   disabledHint,
   className,
+  whatsappText,
 }: ChallengePublicLinkProps) {
   const [copied, setCopied] = useState(false)
 
@@ -43,6 +46,11 @@ export function ChallengePublicLink({
       toast.error('Impossible de copier')
     }
   }
+
+  const whatsappHref =
+    url && !disabled
+      ? buildWhatsAppShareHref(whatsappText?.trim() || `Votez maintenant : ${url}`)
+      : null
 
   return (
     <div
@@ -77,6 +85,13 @@ export function ChallengePublicLink({
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </Button>
+          {whatsappHref && (
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title="WhatsApp">
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
           {url && !disabled && (
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={url} target="_blank" rel="noopener noreferrer">
@@ -133,6 +148,9 @@ export function ChallengeRankingsPublicLinks({
         url={hubUrl}
         disabled={!isActive}
         disabledHint="Challenge non actif"
+        whatsappText={
+          hubUrl ? `Suivez le challenge ici : ${hubUrl}` : null
+        }
       />
       <ChallengePublicLink
         title="Page classement"
@@ -143,6 +161,9 @@ export function ChallengeRankingsPublicLinks({
           !isActive
             ? 'Challenge non actif'
             : 'Publiez le classement dans les paramètres ci-dessous'
+        }
+        whatsappText={
+          rankingsUrl ? `Classement en direct : ${rankingsUrl}` : null
         }
       />
       <ChallengePublicLink
@@ -157,6 +178,11 @@ export function ChallengeRankingsPublicLinks({
               ? 'Activez et publiez les votes ci-dessous'
               : 'Enregistrez les réglages pour générer le token'
         }
+        whatsappText={
+          shortVotesUrl
+            ? `Votez pour votre talent préféré : ${shortVotesUrl}`
+            : null
+        }
       />
       <ChallengePublicLink
         title="Page vote (URL longue)"
@@ -167,6 +193,9 @@ export function ChallengeRankingsPublicLinks({
           !isActive
             ? 'Challenge non actif'
             : 'Activez et publiez les votes ci-dessous'
+        }
+        whatsappText={
+          votesUrl ? `Votez maintenant : ${votesUrl}` : null
         }
       />
     </div>

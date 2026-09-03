@@ -159,6 +159,12 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 60 * 60 * 1000,
     keyPrefix: 'challenge-vote',
   },
+  // Chat live challenge (par IP)
+  liveChat: {
+    maxRequests: 20,
+    windowMs: 60 * 1000, // 20 msg / minute
+    keyPrefix: 'live-chat',
+  },
   // Formulaire de contact
   contact: {
     maxRequests: 3,

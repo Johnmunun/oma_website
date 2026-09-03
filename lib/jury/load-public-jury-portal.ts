@@ -1,5 +1,9 @@
 import { ChallengeStatus, ChallengeVideoStatus, StructureStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import {
+  getActivePhase,
+  parsePhasesSettingsFromChallenge,
+} from '@/lib/challenges/challenge-phase-settings'
 
 export async function loadPublicJuryPortal(
   structureSegment: string,
@@ -34,7 +38,7 @@ export async function loadPublicJuryPortal(
       slug,
       status: ChallengeStatus.ACTIVE,
     },
-    select: { id: true, name: true, slug: true, description: true },
+    select: { id: true, name: true, slug: true, description: true, settings: true },
   })
 
   if (!challenge) return null
@@ -55,10 +59,18 @@ export async function loadPublicJuryPortal(
 
   if (!member) return null
 
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const activePhase = getActivePhase(phases)
+
   const candidates = await prisma.candidate.findMany({
     where: {
       challengeId: challenge.id,
       video: { status: ChallengeVideoStatus.PUBLISHED },
+      ...(phases.enabled
+        ? activePhase
+          ? { phaseId: activePhase.id }
+          : { phaseId: '___no_active_phase___' }
+        : {}),
     },
     orderBy: { fullName: 'asc' },
     select: {
@@ -66,6 +78,7 @@ export async function loadPublicJuryPortal(
       fullName: true,
       age: true,
       city: true,
+      phaseId: true,
       video: {
         select: {
           id: true,
@@ -80,7 +93,10 @@ export async function loadPublicJuryPortal(
   })
 
   const evaluations = await prisma.challengeJuryEvaluation.findMany({
-    where: { juryMemberId: member.id },
+    where: {
+      juryMemberId: member.id,
+      candidateId: { in: candidates.map((c) => c.id) },
+    },
     select: {
       id: true,
       candidateId: true,
@@ -97,12 +113,21 @@ export async function loadPublicJuryPortal(
 
   return {
     structure,
-    challenge,
+    challenge: {
+      id: challenge.id,
+      name: challenge.name,
+      slug: challenge.slug,
+      description: challenge.description,
+    },
     member,
     candidates,
     evaluations,
     contactSlug,
     token,
+    activePhase: activePhase
+      ? { id: activePhase.id, name: activePhase.name }
+      : null,
+    phasesEnabled: phases.enabled,
   }
 }
 
@@ -157,9 +182,22 @@ export async function submitPublicJuryEvaluation(
   return { evaluation, portal }
 }
 
-export async function getChallengeJuryRankings(challengeId: string) {
+export async function getChallengeJuryRankings(
+  challengeId: string,
+  opts?: { phaseId?: string | null; phasesEnabled?: boolean }
+) {
+  const phaseId = opts?.phaseId?.trim() || null
+  const phasesEnabled = Boolean(opts?.phasesEnabled)
+
   const evaluations = await prisma.challengeJuryEvaluation.findMany({
-    where: { challengeId },
+    where: {
+      challengeId,
+      ...(phasesEnabled
+        ? phaseId
+          ? { candidate: { phaseId } }
+          : { candidate: { phaseId: '___no_active_phase___' } }
+        : {}),
+    },
     include: {
       candidate: {
         select: {
@@ -167,6 +205,7 @@ export async function getChallengeJuryRankings(challengeId: string) {
           fullName: true,
           age: true,
           city: true,
+          phaseId: true,
           video: {
             select: {
               title: true,

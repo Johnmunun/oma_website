@@ -7,7 +7,14 @@ import { Film, Link2, Send, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { uploadFileToCloudflareDirectUrl } from '@/lib/videos/upload-to-cloudflare-direct'
+import {
+  formatBytesLabel,
+  CLOUDFLARE_TUS_MAX_BYTES,
+} from '@/lib/videos/cloudflare-stream-limits'
+import {
+  uploadFileToCloudflareDirectUrl,
+  uploadFileToCloudflareTusUrl,
+} from '@/lib/videos/upload-to-cloudflare-direct'
 import { cn } from '@/lib/utils'
 
 interface ChallengeVideoSubmitFormProps {
@@ -20,8 +27,6 @@ interface ChallengeVideoSubmitFormProps {
 }
 
 type Mode = 'upload' | 'link'
-
-const MAX_BYTES = 200 * 1024 * 1024
 
 export function ChallengeVideoSubmitForm({
   contactSlug,
@@ -58,8 +63,10 @@ export function ChallengeVideoSubmitForm({
           throw new Error('Upload Cloudflare indisponible pour le moment')
         }
         if (!file) throw new Error('Choisissez un fichier vidéo')
-        if (file.size > MAX_BYTES) {
-          throw new Error('Fichier trop volumineux (max 200 Mo). Compressez la vidéo ou utilisez un lien.')
+        if (file.size > CLOUDFLARE_TUS_MAX_BYTES) {
+          throw new Error(
+            `Fichier trop volumineux (max ${formatBytesLabel(CLOUDFLARE_TUS_MAX_BYTES)}). Compressez la vidéo ou utilisez un lien.`
+          )
         }
         if (!file.type.startsWith('video/')) {
           throw new Error('Le fichier doit être une vidéo')
@@ -71,6 +78,7 @@ export function ChallengeVideoSubmitForm({
           body: JSON.stringify({
             token,
             fileName: file.name,
+            fileSize: file.size,
           }),
         }).then((r) => r.json())
 
@@ -79,7 +87,11 @@ export function ChallengeVideoSubmitForm({
         }
 
         setProgress(0)
-        await uploadFileToCloudflareDirectUrl(prep.data.uploadURL, file, setProgress)
+        if (prep.data.mode === 'tus') {
+          await uploadFileToCloudflareTusUrl(prep.data.uploadURL, file, setProgress)
+        } else {
+          await uploadFileToCloudflareDirectUrl(prep.data.uploadURL, file, setProgress)
+        }
         fileId = prep.data.uid as string
         videoUrl = null
       } else if (!videoUrl) {
@@ -182,7 +194,8 @@ export function ChallengeVideoSubmitForm({
               className="h-11 cursor-pointer"
             />
             <p className="text-xs text-slate-500">
-              Stockage Cloudflare Stream — MP4/MOV recommandé, max 200 Mo
+              Stockage Cloudflare Stream — MP4/MOV recommandé, jusqu’à{' '}
+              {formatBytesLabel(CLOUDFLARE_TUS_MAX_BYTES)} (upload resumable au-delà de 200 Mo)
             </p>
             {file && (
               <p className="text-xs font-medium text-slate-600">

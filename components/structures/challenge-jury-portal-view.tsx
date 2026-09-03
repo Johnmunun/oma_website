@@ -28,6 +28,8 @@ export type PublicJuryPortalData = {
       title: string | null
       videoUrl: string
       thumbnailUrl: string | null
+      source?: string
+      fileId?: string | null
     } | null
   }>
   evaluations: Array<{
@@ -37,10 +39,22 @@ export type PublicJuryPortalData = {
   }>
   contactSlug: string
   token: string
+  activePhase?: { id: string; name: string } | null
+  phasesEnabled?: boolean
 }
 
 export function ChallengeJuryPortalView({ data }: { data: PublicJuryPortalData }) {
-  const { structure, challenge, member, candidates, evaluations, contactSlug, token } = data
+  const {
+    structure,
+    challenge,
+    member,
+    candidates,
+    evaluations,
+    contactSlug,
+    token,
+    activePhase,
+    phasesEnabled,
+  } = data
   const themeStyle = getStructureThemeVars(structure.landingThemeColor)
   const landingPath = `/s/${contactSlug}`
 
@@ -90,6 +104,16 @@ export function ChallengeJuryPortalView({ data }: { data: PublicJuryPortalData }
           </div>
           <h1 className="mt-6 font-serif text-3xl font-bold md:text-4xl">Portail jury</h1>
           <p className="mt-2 text-slate-600">{challenge.name}</p>
+          {phasesEnabled && activePhase && (
+            <p className="mt-2 text-sm font-semibold text-[var(--st-primary-dark)]">
+              Phase en cours : {activePhase.name}
+            </p>
+          )}
+          {phasesEnabled && !activePhase && (
+            <p className="mt-2 text-sm text-amber-700">
+              Aucune phase active — les évaluations sont temporairement fermées.
+            </p>
+          )}
           <p className="mt-3 text-sm text-slate-500">
             Bonjour <strong>{member.fullName}</strong>
             {member.title ? ` · ${member.title}` : ''}
@@ -101,7 +125,11 @@ export function ChallengeJuryPortalView({ data }: { data: PublicJuryPortalData }
 
         {candidates.length === 0 ? (
           <div className="mt-12 rounded-2xl border bg-white p-10 text-center text-slate-600">
-            Aucune vidéo publiée à évaluer pour le moment.
+            {phasesEnabled && !activePhase
+              ? 'Aucune phase active. Attendez l’ouverture du prochain tour.'
+              : phasesEnabled
+                ? 'Aucun candidat avec vidéo publiée dans la phase active.'
+                : 'Aucune vidéo publiée à évaluer pour le moment.'}
           </div>
         ) : (
           <div className="mt-10 space-y-6">

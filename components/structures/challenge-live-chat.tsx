@@ -20,6 +20,7 @@ interface ChallengeLiveChatProps {
 }
 
 const NAME_KEY = 'oma-live-chat-name'
+const POLL_MS = 3500
 
 export function ChallengeLiveChat({
   contactSlug,
@@ -32,6 +33,7 @@ export function ChallengeLiveChat({
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [liveMode, setLiveMode] = useState<'sse' | 'poll'>('sse')
   const bottomRef = useRef<HTMLDivElement>(null)
   const lastCreatedAt = useRef<string | null>(null)
 
@@ -90,11 +92,106 @@ export function ChallengeLiveChat({
     [apiBase, mergeMessages]
   )
 
+  // Charge initiale
   useEffect(() => {
     void fetchMessages(false)
-    const id = window.setInterval(() => void fetchMessages(true), 4000)
-    return () => window.clearInterval(id)
   }, [fetchMessages])
+
+  // SSE + fallback poll
+  useEffect(() => {
+    let closed = false
+    let es: EventSource | null = null
+    let pollId: number | null = null
+    let reconnectId: number | null = null
+
+    const startPoll = () => {
+      setLiveMode('poll')
+      if (pollId != null) return
+      pollId = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') return
+        void fetchMessages(true)
+      }, POLL_MS)
+    }
+
+    const connectSse = () => {
+      if (closed) return
+      if (typeof EventSource === 'undefined') {
+        startPoll()
+        return
+      }
+
+      const qs = lastCreatedAt.current
+        ? `?after=${encodeURIComponent(lastCreatedAt.current)}`
+        : ''
+      es = new EventSource(`${apiBase}/stream${qs}`)
+      setLiveMode('sse')
+
+      es.addEventListener('messages', (ev) => {
+        try {
+          const list = JSON.parse((ev as MessageEvent).data) as ChatMessage[]
+          mergeMessages(list)
+          if (list.length > 0) {
+            lastCreatedAt.current = list[list.length - 1].createdAt
+          }
+          setError(null)
+          setIsLoading(false)
+        } catch {
+          // ignore
+        }
+      })
+
+      es.addEventListener('chat-error', (ev) => {
+        try {
+          const payload = JSON.parse((ev as MessageEvent).data) as {
+            message?: string
+          }
+          if (payload.message) setError(payload.message)
+        } catch {
+          // ignore
+        }
+      })
+
+      es.addEventListener('done', () => {
+        es?.close()
+        es = null
+        if (!closed) {
+          reconnectId = window.setTimeout(connectSse, 400)
+        }
+      })
+
+      es.onerror = () => {
+        es?.close()
+        es = null
+        if (closed) return
+        // Si SSE tombe, bascule poll jusqu'à prochain essai
+        startPoll()
+        reconnectId = window.setTimeout(() => {
+          if (pollId != null) {
+            window.clearInterval(pollId)
+            pollId = null
+          }
+          connectSse()
+        }, 8000)
+      }
+    }
+
+    connectSse()
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchMessages(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      closed = true
+      document.removeEventListener('visibilitychange', onVisibility)
+      es?.close()
+      if (pollId != null) window.clearInterval(pollId)
+      if (reconnectId != null) window.clearTimeout(reconnectId)
+    }
+  }, [apiBase, fetchMessages, mergeMessages])
 
   useEffect(() => {
     scrollToBottom()
@@ -143,6 +240,9 @@ export function ChallengeLiveChat({
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
         <MessageCircle className="h-4 w-4" style={{ color: 'var(--st-primary)' }} />
         <p className="text-sm font-semibold text-slate-800">Chat en direct</p>
+        <span className="ml-auto text-[10px] uppercase tracking-wide text-slate-400">
+          {liveMode === 'sse' ? 'Temps réel' : 'Actualisation'}
+        </span>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">

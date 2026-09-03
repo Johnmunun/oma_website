@@ -66,6 +66,8 @@ interface JuryStats {
   publishedVideos: number
   rankedCandidates: number
   rankings: RankingRow[]
+  phasesEnabled?: boolean
+  activePhase?: { id: string; name: string } | null
 }
 
 export default function ChallengeJuryPage() {
@@ -205,6 +207,13 @@ export default function ChallengeJuryPage() {
         {challenge && (
           <p className="mt-3 text-muted-foreground">{challenge.name}</p>
         )}
+        {stats?.phasesEnabled && (
+          <p className="mt-2 text-sm font-medium text-gold-text">
+            {stats.activePhase
+              ? `Phase active : ${stats.activePhase.name}`
+              : 'Phases activées — aucune phase active'}
+          </p>
+        )}
       </header>
 
       <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -226,7 +235,10 @@ export default function ChallengeJuryPage() {
 
       {stats && stats.rankings.length > 0 && (
         <section className="mb-10">
-          <h2 className="mb-4 text-center text-lg font-semibold">Classement provisoire</h2>
+          <h2 className="mb-4 text-center text-lg font-semibold">
+            Classement provisoire
+            {stats.activePhase ? ` — ${stats.activePhase.name}` : ''}
+          </h2>
           <div className="space-y-2">
             {stats.rankings.map((row, index) => (
               <Card key={row.candidateId} className="flex items-center justify-between gap-4 p-4">

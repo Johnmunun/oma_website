@@ -6,10 +6,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   LiveChatError,
+  hashChatClientIp,
   listPublicLiveChatMessages,
   liveChatPostSchema,
   postPublicLiveChatMessage,
 } from '@/lib/challenges/live-chat'
+import { checkRateLimit, getClientIP, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit'
 
 export async function GET(
   request: NextRequest,
@@ -41,8 +43,19 @@ export async function POST(
 ) {
   try {
     const { slug, challengeSlug } = await params
+    const ip = getClientIP(request)
+    const rate = await checkRateLimit(ip, RATE_LIMIT_CONFIGS.liveChat)
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Trop de messages. Réessayez dans une minute.' },
+        { status: 429 }
+      )
+    }
+
     const body = liveChatPostSchema.parse(await request.json())
-    const message = await postPublicLiveChatMessage(slug, challengeSlug, body)
+    const message = await postPublicLiveChatMessage(slug, challengeSlug, body, {
+      ipHash: hashChatClientIp(ip),
+    })
     return NextResponse.json({ success: true, data: message })
   } catch (error) {
     if (error instanceof z.ZodError) {
