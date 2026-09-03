@@ -1,18 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
   ArrowLeft,
-  BarChart3,
   ExternalLink,
   Loader2,
   Radio,
   Save,
   Settings,
+  Upload,
 } from 'lucide-react'
 import { PageSkeleton } from '@/components/admin/page-skeleton'
+import { ChallengeRegistrationSettingsEditor } from '@/components/admin/challenge-registration-settings-editor'
+import { ChallengeRegistrationShareLink } from '@/components/admin/challenge-registration-share-link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -27,6 +29,14 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAdminPermissions } from '@/hooks/use-admin-permissions'
+import {
+  DEFAULT_CHALLENGE_REGISTRATION_SETTINGS,
+  mergeChallengeSettings,
+  mergeRegistrationSettings,
+  parseChallengeCoverImageUrl,
+  parseChallengeSettings,
+  type ChallengeRegistrationSettings,
+} from '@/lib/challenges/challenge-registration-settings'
 import { slugifyStructureName } from '@/lib/structures/slug'
 import {
   getChallengeHubUrl,
@@ -46,6 +56,7 @@ interface ChallengeSettingsData {
   status: ChallengeStatus
   startsAt: string | null
   endsAt: string | null
+  settings?: unknown
   structure: {
     name: string
     slug: string
@@ -79,8 +90,10 @@ export default function ChallengeSettingsAdminPage() {
   const params = useParams()
   const challengeId = params.id as string
   const { can, loaded } = useAdminPermissions()
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
   const [challenge, setChallenge] = useState<ChallengeSettingsData | null>(null)
+  const [rawSettings, setRawSettings] = useState<unknown>(null)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
@@ -88,12 +101,30 @@ export default function ChallengeSettingsAdminPage() {
   const [status, setStatus] = useState<ChallengeStatus>('DRAFT')
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
+  const [coverImageUrl, setCoverImageUrl] = useState('')
+  const [registrationSettings, setRegistrationSettings] =
+    useState<ChallengeRegistrationSettings>(DEFAULT_CHALLENGE_REGISTRATION_SETTINGS)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
   const canView = can('challenges.view') || can('challenges.settings')
   const canEdit = can('challenges.update') || can('challenges.settings')
   const canPublish = can('challenges.publish')
+
+  const applyChallenge = (data: ChallengeSettingsData) => {
+    setChallenge(data)
+    setRawSettings(data.settings ?? null)
+    setName(data.name ?? '')
+    setSlug(data.slug ?? '')
+    setSlugTouched(true)
+    setDescription(data.description ?? '')
+    setStatus(data.status ?? 'DRAFT')
+    setStartsAt(toDatetimeLocalValue(data.startsAt))
+    setEndsAt(toDatetimeLocalValue(data.endsAt))
+    setCoverImageUrl(parseChallengeCoverImageUrl(data.settings) ?? '')
+    setRegistrationSettings(parseChallengeSettings(data.settings))
+  }
 
   const load = useCallback(async () => {
     try {
@@ -107,15 +138,7 @@ export default function ChallengeSettingsAdminPage() {
         return
       }
 
-      const data = res.data as ChallengeSettingsData
-      setChallenge(data)
-      setName(data.name ?? '')
-      setSlug(data.slug ?? '')
-      setSlugTouched(true)
-      setDescription(data.description ?? '')
-      setStatus(data.status ?? 'DRAFT')
-      setStartsAt(toDatetimeLocalValue(data.startsAt))
-      setEndsAt(toDatetimeLocalValue(data.endsAt))
+      applyChallenge(res.data as ChallengeSettingsData)
     } catch {
       toast.error('Erreur de chargement')
     } finally {
@@ -130,6 +153,41 @@ export default function ChallengeSettingsAdminPage() {
     }
     void load()
   }, [loaded, canView, load])
+
+  const handleCoverUpload = async (file: File) => {
+    if (!canEdit) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez sélectionner une image')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 10 Mo")
+      return
+    }
+
+    try {
+      setUploadingCover(true)
+      const body = new FormData()
+      body.append('file', file)
+      body.append('folder', '/challenges')
+
+      const res = await fetch('/api/uploads', { method: 'POST', body })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur upload')
+
+      if (data.success && data.data?.url) {
+        setCoverImageUrl(data.data.url)
+        toast.success('Image de couverture uploadée')
+      } else {
+        throw new Error(data.error || 'Erreur inconnue')
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Erreur upload')
+    } finally {
+      setUploadingCover(false)
+      if (coverInputRef.current) coverInputRef.current.value = ''
+    }
+  }
 
   const save = async () => {
     if (!canEdit) return
@@ -151,6 +209,11 @@ export default function ChallengeSettingsAdminPage() {
 
     try {
       setIsSaving(true)
+      const settings = mergeChallengeSettings(rawSettings, {
+        registration: mergeRegistrationSettings(registrationSettings),
+        coverImageUrl: coverImageUrl || null,
+      })
+
       const res = await fetch(`/api/admin/challenges/${challengeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -161,6 +224,7 @@ export default function ChallengeSettingsAdminPage() {
           status,
           startsAt: fromDatetimeLocalValue(startsAt),
           endsAt: fromDatetimeLocalValue(endsAt),
+          settings,
         }),
       }).then((r) => r.json())
 
@@ -169,14 +233,7 @@ export default function ChallengeSettingsAdminPage() {
         return
       }
 
-      const data = res.data as ChallengeSettingsData
-      setChallenge(data)
-      setName(data.name ?? '')
-      setSlug(data.slug ?? '')
-      setDescription(data.description ?? '')
-      setStatus(data.status ?? 'DRAFT')
-      setStartsAt(toDatetimeLocalValue(data.startsAt))
-      setEndsAt(toDatetimeLocalValue(data.endsAt))
+      applyChallenge(res.data as ChallengeSettingsData)
       toast.success('Paramètres enregistrés')
     } catch {
       toast.error('Erreur de sauvegarde')
@@ -346,28 +403,112 @@ export default function ChallengeSettingsAdminPage() {
           </div>
         </Card>
 
+        <Card className="space-y-4 p-5">
+          <div>
+            <h2 className="text-sm font-semibold">Image de couverture</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Bannière hero des pages publiques (inscription, hub, live…)
+            </p>
+          </div>
+
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={!canEdit || uploadingCover}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleCoverUpload(file)
+            }}
+          />
+
+          <div
+            role={canEdit ? 'button' : undefined}
+            tabIndex={canEdit ? 0 : undefined}
+            onClick={() => {
+              if (canEdit) coverInputRef.current?.click()
+            }}
+            onKeyDown={(e) => {
+              if (!canEdit) return
+              if (e.key === 'Enter' || e.key === ' ') coverInputRef.current?.click()
+            }}
+            className={`rounded-lg border-2 border-dashed border-border bg-muted/30 p-4 text-center transition ${
+              canEdit ? 'cursor-pointer hover:border-gold/50' : 'opacity-70'
+            }`}
+          >
+            {coverImageUrl ? (
+              <div className="space-y-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverImageUrl}
+                  alt="Couverture"
+                  className="mx-auto max-h-44 w-full rounded-lg object-cover"
+                />
+                {canEdit && (
+                  <p className="text-xs text-muted-foreground">Cliquez pour remplacer</p>
+                )}
+              </div>
+            ) : uploadingCover ? (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Upload en cours…</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">JPG, PNG, WEBP — max 10 Mo</p>
+              </div>
+            )}
+          </div>
+
+          {canEdit && coverImageUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setCoverImageUrl('')}
+            >
+              Supprimer l&apos;image
+            </Button>
+          )}
+        </Card>
+
+        <Card className="space-y-4 p-5">
+          <ChallengeRegistrationShareLink
+            structure={challenge.structure}
+            challengeSlug={slug}
+            challengeStatus={status}
+            challengeName={name || undefined}
+          />
+        </Card>
+
+        <Card className="p-5">
+          <div className={canEdit ? undefined : 'pointer-events-none opacity-70'}>
+            <ChallengeRegistrationSettingsEditor
+              value={registrationSettings}
+              onChange={setRegistrationSettings}
+            />
+          </div>
+        </Card>
+
         <Card className="space-y-3 p-5">
           <h2 className="text-sm font-semibold">Liens utiles</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {[
               { label: 'Hub public', href: hubUrl, external: true },
-              { label: 'Inscription', href: registrationUrl, external: true },
+              { label: 'Inscription publique', href: registrationUrl, external: true },
               {
-                label: 'Classement & votes',
+                label: 'Classement & votes (admin)',
                 href: `/admin/challenges/${challengeId}/rankings`,
-                icon: BarChart3,
               },
               {
-                label: 'Live Cloudflare',
+                label: 'Live Cloudflare (admin)',
                 href: `/admin/challenges/${challengeId}/live`,
-                icon: Radio,
               },
               { label: 'Page Live publique', href: liveUrl, external: true },
-              {
-                label: 'Classement public',
-                href: rankingsUrl,
-                external: true,
-              },
+              { label: 'Classement public', href: rankingsUrl, external: true },
             ].map((item) => (
               <Button
                 key={item.label}
@@ -382,21 +523,21 @@ export default function ChallengeSettingsAdminPage() {
                     ? { target: '_blank', rel: 'noreferrer' }
                     : {})}
                 >
-                  {item.label}
-                  <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                  <span className="truncate">{item.label}</span>
+                  {item.external ? (
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                  ) : (
+                    <Radio className="h-3.5 w-3.5 shrink-0 opacity-0" />
+                  )}
                 </a>
               </Button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Inscription / couverture image : modifiables depuis la liste des
-            challenges (tiroir d&apos;édition).
-          </p>
         </Card>
 
         {canEdit && (
-          <div className="flex justify-end">
-            <Button onClick={() => void save()} disabled={isSaving}>
+          <div className="flex justify-end pb-4">
+            <Button onClick={() => void save()} disabled={isSaving || uploadingCover}>
               {isSaving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

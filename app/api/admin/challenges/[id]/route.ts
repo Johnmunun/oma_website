@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   updateChallengeSchema,
@@ -79,14 +80,16 @@ export async function PUT(
       }
     }
 
-    const updateData: Record<string, unknown> = {}
+    const updateData: Prisma.ChallengeUpdateInput = {}
     if (data.name !== undefined) updateData.name = data.name
     if (data.slug !== undefined) updateData.slug = data.slug
     if (data.description !== undefined) updateData.description = data.description
     if (data.status !== undefined) updateData.status = data.status
     if (data.startsAt !== undefined) updateData.startsAt = parseOptionalDate(data.startsAt)
     if (data.endsAt !== undefined) updateData.endsAt = parseOptionalDate(data.endsAt)
-    if (data.settings !== undefined) updateData.settings = data.settings
+    if (data.settings !== undefined) {
+      updateData.settings = data.settings as Prisma.InputJsonValue
+    }
 
     const updated = await prisma.challenge.update({
       where: { id },
