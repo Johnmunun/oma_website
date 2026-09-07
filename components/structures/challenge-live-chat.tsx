@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, MessageCircle, Send } from 'lucide-react'
+import { Loader2, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,8 @@ interface ChallengeLiveChatProps {
   contactSlug: string
   challengeSlug: string
   className?: string
+  /** Layout sombre type YouTube Live */
+  variant?: 'default' | 'youtube'
 }
 
 const NAME_KEY = 'oma-live-chat-name'
@@ -26,6 +28,7 @@ export function ChallengeLiveChat({
   contactSlug,
   challengeSlug,
   className,
+  variant = 'default',
 }: ChallengeLiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [authorName, setAuthorName] = useState('')
@@ -36,6 +39,7 @@ export function ChallengeLiveChat({
   const [liveMode, setLiveMode] = useState<'sse' | 'poll'>('sse')
   const bottomRef = useRef<HTMLDivElement>(null)
   const lastCreatedAt = useRef<string | null>(null)
+  const isYoutube = variant === 'youtube'
 
   const apiBase = `/api/structures/${encodeURIComponent(contactSlug)}/challenges/${encodeURIComponent(challengeSlug)}/live/chat`
 
@@ -92,12 +96,10 @@ export function ChallengeLiveChat({
     [apiBase, mergeMessages]
   )
 
-  // Charge initiale
   useEffect(() => {
     void fetchMessages(false)
   }, [fetchMessages])
 
-  // SSE + fallback poll
   useEffect(() => {
     let closed = false
     let es: EventSource | null = null
@@ -163,7 +165,6 @@ export function ChallengeLiveChat({
         es?.close()
         es = null
         if (closed) return
-        // Si SSE tombe, bascule poll jusqu'à prochain essai
         startPoll()
         reconnectId = window.setTimeout(() => {
           if (pollId != null) {
@@ -233,72 +234,128 @@ export function ChallengeLiveChat({
   return (
     <div
       className={cn(
-        'flex h-[min(28rem,70vh)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm',
+        'flex flex-col overflow-hidden',
+        isYoutube
+          ? 'h-full bg-transparent text-white'
+          : 'h-[min(28rem,70vh)] rounded-2xl border border-slate-200 bg-white shadow-sm',
         className
       )}
     >
-      <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        <MessageCircle className="h-4 w-4" style={{ color: 'var(--st-primary)' }} />
-        <p className="text-sm font-semibold text-slate-800">Chat en direct</p>
-        <span className="ml-auto text-[10px] uppercase tracking-wide text-slate-400">
-          {liveMode === 'sse' ? 'Temps réel' : 'Actualisation'}
-        </span>
-      </div>
+      {!isYoutube && (
+        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-800">Chat en direct</p>
+          <span className="ml-auto text-[10px] uppercase tracking-wide text-slate-400">
+            {liveMode === 'sse' ? 'Temps réel' : 'Actualisation'}
+          </span>
+        </div>
+      )}
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <div
+        className={cn(
+          'flex-1 space-y-2.5 overflow-y-auto',
+          isYoutube ? 'px-3 py-3' : 'px-4 py-3'
+        )}
+      >
         {isLoading ? (
-          <div className="flex h-full items-center justify-center text-slate-400">
+          <div
+            className={cn(
+              'flex h-full items-center justify-center',
+              isYoutube ? 'text-white/40' : 'text-slate-400'
+            )}
+          >
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">
+          <p
+            className={cn(
+              'py-8 text-center text-sm',
+              isYoutube ? 'text-white/45' : 'text-slate-500'
+            )}
+          >
             Soyez le premier à écrire dans le chat.
           </p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="text-sm">
-              <span className="font-semibold text-slate-800">{m.authorName}</span>
-              <span className="mx-1.5 text-slate-300">·</span>
-              <span className="text-[11px] text-slate-400">
+            <div key={m.id} className="text-[13px] leading-snug">
+              <span
+                className={cn(
+                  'font-semibold',
+                  isYoutube ? 'text-[#3ea6ff]' : 'text-slate-800'
+                )}
+              >
+                {m.authorName}
+              </span>
+              <span className={cn('mx-1.5', isYoutube ? 'text-white/25' : 'text-slate-300')}>
+                ·
+              </span>
+              <span className={cn('text-[11px]', isYoutube ? 'text-white/35' : 'text-slate-400')}>
                 {new Date(m.createdAt).toLocaleTimeString('fr-FR', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </span>
-              <p className="mt-0.5 break-words text-slate-600">{m.body}</p>
+              <p className={cn('mt-0.5 break-words', isYoutube ? 'text-white/85' : 'text-slate-600')}>
+                {m.body}
+              </p>
             </div>
           ))
         )}
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={send} className="space-y-2 border-t border-slate-100 p-3">
+      <form
+        onSubmit={send}
+        className={cn(
+          'space-y-2',
+          isYoutube ? 'border-t border-white/10 p-3' : 'border-t border-slate-100 p-3'
+        )}
+      >
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+          <p
+            className={cn(
+              'rounded-lg px-3 py-2 text-xs',
+              isYoutube ? 'bg-red-500/15 text-red-300' : 'bg-red-50 text-red-700'
+            )}
+          >
+            {error}
+          </p>
         )}
         <Input
           value={authorName}
           onChange={(e) => setAuthorName(e.target.value)}
           placeholder="Votre pseudo"
           maxLength={32}
-          className="h-9"
+          className={cn(
+            'h-9',
+            isYoutube &&
+              'border-white/10 bg-[#121212] text-white placeholder:text-white/35 focus-visible:ring-white/20'
+          )}
           required
         />
         <div className="flex gap-2">
           <Input
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Votre message…"
+            placeholder="Discuter…"
             maxLength={280}
-            className="h-9"
+            className={cn(
+              'h-9',
+              isYoutube &&
+                'border-white/10 bg-[#121212] text-white placeholder:text-white/35 focus-visible:ring-white/20'
+            )}
             required
           />
           <Button
             type="submit"
             size="sm"
             disabled={isSending}
-            className="shrink-0 text-white"
-            style={{ backgroundColor: 'var(--st-primary)' }}
+            className={cn(
+              'shrink-0',
+              isYoutube
+                ? 'bg-white text-black hover:bg-white/90'
+                : 'text-white'
+            )}
+            style={isYoutube ? undefined : { backgroundColor: 'var(--st-primary)' }}
           >
             {isSending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -307,6 +364,11 @@ export function ChallengeLiveChat({
             )}
           </Button>
         </div>
+        {isYoutube && (
+          <p className="text-[10px] text-white/30">
+            {liveMode === 'sse' ? 'Temps réel' : 'Actualisation'} · soyez respectueux
+          </p>
+        )}
       </form>
     </div>
   )

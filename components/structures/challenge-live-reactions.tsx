@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { LIVE_REACTION_EMOJIS, type LiveReactionEmoji } from '@/lib/challenges/live-reactions'
+import {
+  LIVE_REACTION_EMOJIS,
+  type LiveReactionEmoji,
+} from '@/lib/challenges/live-reaction-emojis'
 
 type ReactionEvent = {
   id: string
@@ -24,6 +27,7 @@ interface ChallengeLiveReactionsProps {
   challengeSlug: string
   enabled: boolean
   className?: string
+  variant?: 'default' | 'youtube'
 }
 
 const POLL_MS = 1200
@@ -32,7 +36,7 @@ function spawnFloat(emoji: string, id?: string): FloatingEmoji {
   return {
     key: id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     emoji,
-    leftPct: 62 + Math.random() * 32,
+    leftPct: 68 + Math.random() * 28,
     driftPx: Math.round((Math.random() - 0.5) * 48),
     durationMs: 2400 + Math.round(Math.random() * 900),
     sizePx: 26 + Math.round(Math.random() * 14),
@@ -44,11 +48,13 @@ export function ChallengeLiveReactions({
   challengeSlug,
   enabled,
   className,
+  variant = 'default',
 }: ChallengeLiveReactionsProps) {
   const [floats, setFloats] = useState<FloatingEmoji[]>([])
   const seenIds = useRef<Set<string>>(new Set())
   const lastCreatedAt = useRef<string | null>(null)
   const apiBase = `/api/structures/${encodeURIComponent(contactSlug)}/challenges/${encodeURIComponent(challengeSlug)}/live/reactions`
+  const isYoutube = variant === 'youtube'
 
   const pushFloats = useCallback((emoji: string, id?: string) => {
     const batch = Array.from({ length: 1 + (Math.random() > 0.65 ? 1 : 0) }, () =>
@@ -138,7 +144,6 @@ export function ChallengeLiveReactions({
         }
       `}</style>
 
-      {/* Emojis flottants */}
       <div className="absolute inset-0 overflow-hidden">
         {floats.map((f) => (
           <span
@@ -161,14 +166,26 @@ export function ChallengeLiveReactions({
         ))}
       </div>
 
-      {/* Barre d’emojis (style TikTok) */}
-      <div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex max-w-[95%] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-full border border-white/15 bg-black/55 px-2 py-1.5 shadow-lg backdrop-blur-md">
+      {/* Barre d’emojis — verticale à droite façon YouTube */}
+      <div
+        className={cn(
+          'pointer-events-auto absolute z-20 flex',
+          isYoutube
+            ? 'bottom-4 right-3 flex-col gap-1 rounded-full border border-white/10 bg-black/50 p-1.5 backdrop-blur-md'
+            : 'bottom-3 left-1/2 max-w-[95%] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-full border border-white/15 bg-black/55 px-2 py-1.5 shadow-lg backdrop-blur-md'
+        )}
+      >
         {LIVE_REACTION_EMOJIS.map((emoji) => (
           <button
             key={emoji}
             type="button"
             aria-label={`Réagir ${emoji}`}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-xl transition hover:scale-110 hover:bg-white/15 active:scale-95"
+            className={cn(
+              'flex items-center justify-center rounded-full transition hover:scale-110 active:scale-95',
+              isYoutube
+                ? 'h-8 w-8 text-lg hover:bg-white/15'
+                : 'h-9 w-9 text-xl hover:bg-white/15'
+            )}
             onClick={() => void sendReaction(emoji)}
           >
             {emoji}

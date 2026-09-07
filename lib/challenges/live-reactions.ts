@@ -7,21 +7,12 @@ import { ChallengeStatus, StructureStatus } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { parseLiveSettingsFromChallenge } from '@/lib/challenges/challenge-live-settings'
+import {
+  LIVE_REACTION_EMOJIS,
+  type LiveReactionEmoji,
+} from '@/lib/challenges/live-reaction-emojis'
 
-export const LIVE_REACTION_EMOJIS = [
-  '❤️',
-  '🔥',
-  '👏',
-  '😂',
-  '😮',
-  '🎉',
-  '💯',
-  '👍',
-  '🙌',
-  '💖',
-] as const
-
-export type LiveReactionEmoji = (typeof LIVE_REACTION_EMOJIS)[number]
+export { LIVE_REACTION_EMOJIS, type LiveReactionEmoji }
 
 export const liveReactionPostSchema = z.object({
   emoji: z.enum(LIVE_REACTION_EMOJIS),
