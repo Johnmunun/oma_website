@@ -30,6 +30,7 @@ import type {
   ChallengePhaseItem,
   ChallengePhasesSettings,
 } from '@/lib/challenges/challenge-phase-settings'
+import { ChallengeTournamentBracket } from '@/components/challenges/challenge-tournament-bracket'
 import { toast } from 'sonner'
 
 type CandidateRow = {
@@ -106,6 +107,27 @@ export default function ChallengePhasesAdminPage() {
 
   const phaseOptions = useMemo(() => phases.items, [phases.items])
 
+  const bracketRounds = useMemo(() => {
+    return phases.items.map((phase, index) => {
+      const list = candidates
+        .filter((c) => (assignments[c.id] ?? c.phaseId) === phase.id)
+        .map((c, i) => ({
+          id: c.id,
+          fullName: c.fullName,
+          candidateCode: c.candidateCode,
+          number: i + 1,
+        }))
+      return {
+        id: phase.id,
+        name: phase.name,
+        status: phase.status,
+        isActive: phases.activePhaseId === phase.id,
+        candidates: list,
+        order: index,
+      }
+    })
+  }, [phases.items, phases.activePhaseId, candidates, assignments])
+
   const save = async () => {
     if (!canEdit) return
     try {
@@ -164,7 +186,7 @@ export default function ChallengePhasesAdminPage() {
   if (isLoading) return <PageSkeleton />
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
           <Link href={`/admin/challenges/${challengeId}`}>
@@ -236,6 +258,15 @@ export default function ChallengePhasesAdminPage() {
             </div>
           )}
         </Card>
+
+        {phases.enabled && phases.items.length > 0 && (
+          <ChallengeTournamentBracket
+            variant="light"
+            title={challengeName || 'Tableau du tournoi'}
+            subtitle="Aperçu style FIFA — les talents de chaque tour"
+            rounds={bracketRounds}
+          />
+        )}
 
         <Card className="space-y-4 p-5">
           <div className="flex items-center justify-between gap-3">

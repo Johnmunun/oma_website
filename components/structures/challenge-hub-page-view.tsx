@@ -12,6 +12,7 @@ import {
   Video,
 } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
+import { ChallengeTournamentBracket } from '@/components/challenges/challenge-tournament-bracket'
 import type { PublicChallengeHubData } from '@/lib/challenges/load-public-challenge-hub'
 import {
   getChallengeCandidatePath,
@@ -194,6 +195,21 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
           ))}
         </div>
       </div>
+
+      {data.phases?.enabled && (data.phases.bracketRounds?.length ?? 0) > 0 && (
+        <section className="mt-14">
+          <ChallengeTournamentBracket
+            variant="dark"
+            title={`Tableau — ${challenge.name}`}
+            subtitle={
+              activePhaseName
+                ? `Tour en cours : ${activePhaseName}`
+                : 'Suivez la progression des talents tour par tour'
+            }
+            rounds={data.phases.bracketRounds}
+          />
+        </section>
+      )}
 
       {spotlight.length > 0 ? (
         <section className="mt-14">

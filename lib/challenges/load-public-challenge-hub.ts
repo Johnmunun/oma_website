@@ -131,6 +131,42 @@ export async function loadPublicChallengeHub(
     },
   })
 
+  const bracketCandidates = phases.enabled
+    ? await prisma.candidate.findMany({
+        where: {
+          challengeId: challenge.id,
+          status: CandidateStatus.APPROVED,
+          phaseId: { not: null },
+        },
+        orderBy: { fullName: 'asc' },
+        select: {
+          id: true,
+          fullName: true,
+          candidateCode: true,
+          phaseId: true,
+        },
+      })
+    : []
+
+  const bracketRounds = phases.enabled
+    ? [...phases.items]
+        .sort((a, b) => a.order - b.order)
+        .map((phase) => ({
+          id: phase.id,
+          name: phase.name,
+          status: phase.status,
+          isActive: phases.activePhaseId === phase.id,
+          candidates: bracketCandidates
+            .filter((c) => c.phaseId === phase.id)
+            .map((c, index) => ({
+              id: c.id,
+              fullName: c.fullName,
+              candidateCode: c.candidateCode,
+              number: index + 1,
+            })),
+        }))
+    : []
+
   return {
     structure,
     challenge: {
@@ -149,6 +185,7 @@ export async function loadPublicChallengeHub(
     phases: {
       enabled: phases.enabled,
       activePhase,
+      bracketRounds,
     },
     coverImageUrl,
     contactSlug,
