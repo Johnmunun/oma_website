@@ -201,6 +201,12 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 24 * 60 * 60 * 1000, // 24 heures
     keyPrefix: 'testimonial',
   },
+  // Critiques d'événements
+  eventReview: {
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    keyPrefix: 'event-review',
+  },
   // Général (par défaut)
   default: {
     maxRequests: 10,

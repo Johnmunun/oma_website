@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card'
 import { Calendar, MapPin, Clock, ArrowLeft, Loader2, CheckCircle2, Ticket } from 'lucide-react'
 import Link from 'next/link'
 import { EventRegistrationForm } from '@/components/admin/event-registration-form'
+import { EventReviewsSection } from '@/components/events/event-reviews-section'
 import { HtmlContent } from '@/components/html-content'
 import { ShareButtons } from '@/components/admin/share-buttons'
 
@@ -304,6 +305,13 @@ export default function EventDetailContent({ slug }: { slug: string }) {
               </Link>
             </Card>
           ) : null}
+
+          {/* Appréciations / critiques */}
+          {event.id && (
+            <div className="mt-12">
+              <EventReviewsSection eventId={event.id} />
+            </div>
+          )}
 
         </div>
       </div>

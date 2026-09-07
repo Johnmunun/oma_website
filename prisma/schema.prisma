@@ -262,14 +262,37 @@ model Event {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   showOnBanner  Boolean        @default(false)
+  structureId   String?        @db.Uuid
+  structure     Structure?     @relation(fields: [structureId], references: [id], onDelete: SetNull)
   formations    Formation[]
   media         Media[]
   registrations Registration[]
+  reviews       EventReview[]
 
   @@index([startsAt])
   @@index([status])
   @@index([showOnBanner])
+  @@index([structureId, startsAt])
+  @@index([structureId, status])
   @@map("Event")
+}
+
+model EventReview {
+  id        String            @id @default(uuid()) @db.Uuid
+  eventId   String            @db.Uuid
+  name      String
+  email     String
+  rating    Int
+  content   String
+  status    EventReviewStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  event     Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, email])
+  @@index([eventId, status])
+  @@index([eventId, createdAt])
+  @@map("EventReview")
 }
 
 model Registration {
@@ -541,6 +564,7 @@ model Structure {
   challenges        Challenge[]
   contactMessages   ContactMessage[]
   landingServices   StructureLandingService[]
+  events            Event[]
 
   @@index([type, isActive])
   @@index([parentId])
@@ -829,6 +853,12 @@ enum EventStatus {
   DRAFT
   PUBLISHED
   CANCELLED
+}
+
+enum EventReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
 }
 
 enum RegistrationStatus {

@@ -8,7 +8,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Edit2, Trash2, Calendar, MapPin, Users, Search, UserPlus, ExternalLink } from "lucide-react"
+import { Plus, Edit2, Trash2, Calendar, MapPin, Users, Search, UserPlus, Building2, Star } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -37,9 +38,18 @@ interface AdminEvent {
   metaTitle: string | null
   metaDesc: string | null
   showOnBanner: boolean
+  structureId?: string | null
+  structure?: { id: string; name: string; slug: string } | null
   registrations: number
+  reviewsCount?: number
   createdAt: string
   updatedAt: string
+}
+
+interface StructureOption {
+  id: string
+  name: string
+  slug: string
 }
 
 
@@ -177,6 +187,12 @@ function EventRow({
             </Button>
           </div>
           <StatutBadge status={event.status} type={event.type} startsAt={event.startsAt} />
+          {event.structure && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
+              <Building2 className="w-3 h-3" />
+              {event.structure.name}
+            </span>
+          )}
         </div>
 
         {/* Actions */}
@@ -245,6 +261,8 @@ export default function AdminEventsPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | AdminEvent["status"]>("all")
   const [filterType, setFilterType] = useState<"all" | "online" | "inperson">("all")
   const [filterTime, setFilterTime] = useState<"all" | "upcoming" | "past">("all")
+  const [filterStructure, setFilterStructure] = useState<string>("all")
+  const [structures, setStructures] = useState<StructureOption[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<AdminEvent | undefined>()
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false)
@@ -253,6 +271,23 @@ export default function AdminEventsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalEvents, setTotalEvents] = useState(0)
   const itemsPerPage = 5
+
+  useEffect(() => {
+    fetch("/api/admin/structures")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setStructures(
+            res.data.map((s: { id: string; name: string; slug: string }) => ({
+              id: s.id,
+              name: s.name,
+              slug: s.slug,
+            }))
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -265,6 +300,10 @@ export default function AdminEventsPage() {
         
         if (filterStatus !== "all") {
           params.append("status", filterStatus)
+        }
+
+        if (filterStructure !== "all") {
+          params.append("structureId", filterStructure)
         }
         
         if (searchTerm) {
@@ -295,7 +334,7 @@ export default function AdminEventsPage() {
       }
     }
     loadEvents()
-  }, [currentPage, filterStatus, searchTerm, itemsPerPage])
+  }, [currentPage, filterStatus, filterStructure, searchTerm, itemsPerPage])
 
   /**
    * Filtrer les événements selon les critères sélectionnés (filtres côté client)
@@ -312,7 +351,7 @@ export default function AdminEventsPage() {
   // Réinitialiser la page quand on change les filtres
   useEffect(() => {
     setCurrentPage(1)
-  }, [filterStatus, filterType, filterTime, searchTerm])
+  }, [filterStatus, filterType, filterTime, filterStructure, searchTerm])
 
   const handleDelete = async (id: string) => {
     try {
@@ -406,16 +445,26 @@ export default function AdminEventsPage() {
             {filteredEvents.length} événement(s) affiché(s) / {totalEvents} au total
           </p>
         </div>
-        {canEdit && (
-          <Button
-            size="lg"
-            onClick={() => setIsModalOpen(true)}
-            className="gap-2 shadow-lg hover:shadow-xl transition-all animate-pulse"
-          >
-            <Plus className="w-5 h-5" />
-            Nouvel événement
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canEdit && (
+            <Link href="/admin/events/reviews">
+              <Button variant="outline" size="lg" className="gap-2">
+                <Star className="w-5 h-5" />
+                Critiques
+              </Button>
+            </Link>
+          )}
+          {canEdit && (
+            <Button
+              size="lg"
+              onClick={() => setIsModalOpen(true)}
+              className="gap-2 shadow-lg hover:shadow-xl transition-all animate-pulse"
+            >
+              <Plus className="w-5 h-5" />
+              Nouvel événement
+            </Button>
+          )}
+        </div>
       </div>
 
       <EventModal
@@ -443,6 +492,9 @@ export default function AdminEventsPage() {
               })
               if (filterStatus !== "all") {
                 params.append("status", filterStatus)
+              }
+              if (filterStructure !== "all") {
+                params.append("structureId", filterStructure)
               }
               if (searchTerm) {
                 params.append("search", searchTerm)
@@ -521,6 +573,22 @@ export default function AdminEventsPage() {
               </select>
             </div>
 
+            {/* Filtre structure */}
+            <div>
+              <label className="text-sm font-medium block mb-2">Structure</label>
+              <select
+                value={filterStructure}
+                onChange={(e) => setFilterStructure(e.target.value)}
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm"
+              >
+                <option value="all">Toutes les structures</option>
+                {structures.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </Card>

@@ -23,6 +23,7 @@ const eventUpdateSchema = z.object({
   metaTitle: z.string().nullable().optional(),
   metaDesc: z.string().nullable().optional(),
   showOnBanner: z.boolean().optional(),
+  structureId: z.string().uuid().nullable().optional(),
 })
 
 // GET /api/admin/events/[id]
@@ -41,9 +42,11 @@ export async function GET(
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
+        structure: { select: { id: true, name: true, slug: true } },
         registrations: {
           select: { id: true },
         },
+        _count: { select: { reviews: true } },
       },
     })
 
@@ -70,7 +73,10 @@ export async function GET(
         metaTitle: event.metaTitle,
         metaDesc: event.metaDesc,
         showOnBanner: event.showOnBanner,
+        structureId: event.structureId,
+        structure: event.structure,
         registrations: event.registrations.length,
+        reviewsCount: event._count.reviews,
         createdAt: event.createdAt.toISOString(),
         updatedAt: event.updatedAt.toISOString(),
       },
@@ -147,8 +153,10 @@ export async function PUT(
         ...(validatedData.metaTitle !== undefined && { metaTitle: validatedData.metaTitle }),
         ...(validatedData.metaDesc !== undefined && { metaDesc: validatedData.metaDesc }),
         ...(validatedData.showOnBanner !== undefined && { showOnBanner: validatedData.showOnBanner }),
+        ...(validatedData.structureId !== undefined && { structureId: validatedData.structureId }),
       },
       include: {
+        structure: { select: { id: true, name: true, slug: true } },
         registrations: {
           select: { id: true },
         },
@@ -171,6 +179,8 @@ export async function PUT(
         metaTitle: updatedEvent.metaTitle,
         metaDesc: updatedEvent.metaDesc,
         showOnBanner: updatedEvent.showOnBanner,
+        structureId: updatedEvent.structureId,
+        structure: updatedEvent.structure,
         registrations: updatedEvent.registrations.length,
         createdAt: updatedEvent.createdAt.toISOString(),
         updatedAt: updatedEvent.updatedAt.toISOString(),

@@ -1,16 +1,16 @@
-/**
- * @file components/admin/event-modal.tsx
- * @description Modal coulissante pour créer/modifier un événement
- * Slide depuis la droite avec formulaire complet
- * @todo Intégrer avec l'API backend pour créer/modifier
- */
-
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { X, Calendar, MapPin, Type, ArrowRight, Upload, Loader2 } from "lucide-react"
+import { X, Calendar, MapPin, Type, ArrowRight, Upload, Loader2, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
@@ -29,6 +29,13 @@ interface EventFormData {
   metaTitle?: string | null
   metaDesc?: string | null
   showOnBanner?: boolean
+  structureId?: string | null
+}
+
+interface StructureOption {
+  id: string
+  name: string
+  slug: string
 }
 
 interface EventModalProps {
@@ -38,52 +45,61 @@ interface EventModalProps {
   initialData?: EventFormData
 }
 
-export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModalProps) {
-  const [formData, setFormData] = useState<EventFormData>(
-    initialData || {
-      title: "",
-      description: null,
-      type: null,
-      status: "DRAFT",
-      imageUrl: null,
-      location: null,
-      startsAt: null,
-      endsAt: null,
-      metaTitle: null,
-      metaDesc: null,
-      showOnBanner: false,
-    },
-  )
+const EMPTY_FORM: EventFormData = {
+  title: "",
+  description: null,
+  type: null,
+  status: "DRAFT",
+  imageUrl: null,
+  location: null,
+  startsAt: null,
+  endsAt: null,
+  metaTitle: null,
+  metaDesc: null,
+  showOnBanner: false,
+  structureId: null,
+}
 
-  // Réinitialiser le formulaire quand initialData change (pour l'édition)
+export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModalProps) {
+  const [formData, setFormData] = useState<EventFormData>(EMPTY_FORM)
+  const [structures, setStructures] = useState<StructureOption[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetch("/api/admin/structures")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setStructures(
+            res.data.map((s: { id: string; name: string; slug: string }) => ({
+              id: s.id,
+              name: s.name,
+              slug: s.slug,
+            }))
+          )
+        }
+      })
+      .catch(() => {})
+  }, [isOpen])
+
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        setFormData(initialData)
-      } else {
         setFormData({
-          title: "",
-          description: null,
-          type: null,
-          status: "DRAFT",
-          imageUrl: null,
-          location: null,
-          startsAt: null,
-          endsAt: null,
-          metaTitle: null,
-          metaDesc: null,
-          showOnBanner: false,
+          ...EMPTY_FORM,
+          ...initialData,
+          structureId: initialData.structureId ?? null,
         })
+      } else {
+        setFormData({ ...EMPTY_FORM })
       }
       setErrors({})
     }
   }, [initialData, isOpen])
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Générer un slug automatique à partir du titre
   const generateSlug = (title: string) => {
     return title
       .toLowerCase()
@@ -110,7 +126,6 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
     return Object.keys(newErrors).length === 0
   }
 
-  // Upload d'image via ImageKit
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Veuillez sélectionner une image")
@@ -123,13 +138,13 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
 
     try {
       setUploadingImage(true)
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("folder", "/events")
+      const body = new FormData()
+      body.append("file", file)
+      body.append("folder", "/events")
 
       const res = await fetch("/api/uploads", {
         method: "POST",
-        body: formData,
+        body,
       })
 
       if (!res.ok) {
@@ -163,30 +178,15 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
     e.preventDefault()
 
     if (validateForm()) {
-      // Générer le slug si non fourni
       const slug = formData.slug || generateSlug(formData.title)
-      
-      // Préparer les données pour l'API
-      const submitData = {
+      onSubmit({
         ...formData,
         slug,
+        structureId: formData.structureId || null,
         startsAt: formData.startsAt || null,
         endsAt: formData.endsAt || null,
-      }
-
-      onSubmit(submitData as any)
-      setFormData({
-        title: "",
-        description: null,
-        type: null,
-        status: "DRAFT",
-        imageUrl: null,
-        location: null,
-        startsAt: null,
-        endsAt: null,
-        metaTitle: null,
-        metaDesc: null,
       })
+      setFormData({ ...EMPTY_FORM })
       onClose()
     }
   }
@@ -196,8 +196,7 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
     if (errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: "" }))
     }
-    
-    // Générer automatiquement le slug si le titre change
+
     if (key === "title" && !formData.slug) {
       const slug = generateSlug(value)
       setFormData((prev) => ({ ...prev, slug }))
@@ -214,7 +213,6 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
           isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
-        {/* Header */}
         <div className="sticky top-0 border-b border-border bg-background/95 backdrop-blur">
           <div className="flex items-center justify-between h-16 px-6">
             <h2 className="text-xl font-bold">{initialData ? "Modifier l'événement" : "Créer un événement"}</h2>
@@ -224,12 +222,36 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
           </div>
         </div>
 
-        {/* Contenu du formulaire */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="space-y-6">
-            {/* Titre */}
             <div>
-              <label className="text-sm font-medium block mb-2">Titre de l'événement *</label>
+              <label className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Structure
+              </label>
+              <Select
+                value={formData.structureId || "__none__"}
+                onValueChange={(v) => handleChange("structureId", v === "__none__" ? null : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir une structure" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Aucune (Réseau OMA)</SelectItem>
+                  {structures.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Affecte l&apos;événement à une structure partenaire (JoyStudio, etc.).
+              </p>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-2">Titre de l&apos;événement *</label>
               <Input
                 value={formData.title}
                 onChange={(e) => handleChange("title", e.target.value)}
@@ -239,7 +261,6 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
               {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
             </div>
 
-            {/* Slug (auto-généré, modifiable) */}
             <div>
               <label className="text-sm font-medium block mb-2">Slug (URL)</label>
               <Input
@@ -248,25 +269,17 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
                 placeholder="exemple-evenement"
                 className="font-mono text-sm"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                L'URL de l'événement. Généré automatiquement à partir du titre.
-              </p>
             </div>
 
-            {/* Description */}
             <div>
               <label className="text-sm font-medium block mb-2">Description</label>
               <TiptapEditor
                 content={formData.description}
                 onChange={(html) => handleChange("description", html || null)}
-                placeholder="Description complète de l'événement... Utilisez la barre d'outils pour formater le texte."
+                placeholder="Description complète de l'événement..."
               />
-              <p className="text-xs text-muted-foreground mt-2">
-                Utilisez la barre d'outils pour formater votre texte (gras, italique, listes, titres, etc.)
-              </p>
             </div>
 
-            {/* Statut */}
             <div>
               <label className="text-sm font-medium block mb-2">Statut</label>
               <select
@@ -280,164 +293,135 @@ export function EventModal({ isOpen, onClose, onSubmit, initialData }: EventModa
               </select>
             </div>
 
-            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium block mb-2 flex items-center gap-2">
+                <label className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Date de début *
                 </label>
                 <Input
                   type="datetime-local"
                   value={formData.startsAt ? new Date(formData.startsAt).toISOString().slice(0, 16) : ""}
-                  onChange={(e) => handleChange("startsAt", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                  onChange={(e) =>
+                    handleChange("startsAt", e.target.value ? new Date(e.target.value).toISOString() : null)
+                  }
                   className={errors.startsAt ? "border-red-500" : ""}
                 />
                 {errors.startsAt && <p className="text-red-500 text-xs mt-1">{errors.startsAt}</p>}
               </div>
               <div>
-                <label className="text-sm font-medium block mb-2">Date de fin</label>
+                <label className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Date de fin
+                </label>
                 <Input
                   type="datetime-local"
                   value={formData.endsAt ? new Date(formData.endsAt).toISOString().slice(0, 16) : ""}
-                  onChange={(e) => handleChange("endsAt", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                  onChange={(e) =>
+                    handleChange("endsAt", e.target.value ? new Date(e.target.value).toISOString() : null)
+                  }
                   className={errors.endsAt ? "border-red-500" : ""}
                 />
                 {errors.endsAt && <p className="text-red-500 text-xs mt-1">{errors.endsAt}</p>}
               </div>
             </div>
 
-            {/* Type et Lieu */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium block mb-2 flex items-center gap-2">
-                  <Type className="w-4 h-4" />
-                  Type
-                </label>
-                <Input
-                  value={formData.type || ""}
-                  onChange={(e) => handleChange("type", e.target.value || null)}
-                  placeholder="Ex: Formation, Conférence, Atelier"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium block mb-2 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Lieu
-                </label>
-                <Input
-                  value={formData.location || ""}
-                  onChange={(e) => handleChange("location", e.target.value || null)}
-                  placeholder="Ex: Dakar, Sénégal ou En ligne"
-                />
-              </div>
+            <div>
+              <label className="text-sm font-medium mb-2 flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Lieu
+              </label>
+              <Input
+                value={formData.location || ""}
+                onChange={(e) => handleChange("location", e.target.value || null)}
+                placeholder="Ex: Kinshasa / Online"
+              />
             </div>
 
-            {/* Image de couverture */}
             <div>
-              <label className="text-sm font-medium block mb-2 flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                Image de couverture
+              <label className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Type className="w-4 h-4" />
+                Type
               </label>
+              <Input
+                value={formData.type || ""}
+                onChange={(e) => handleChange("type", e.target.value || null)}
+                placeholder="Formation, Conférence, Atelier…"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-2">Image de couverture</label>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={handleFileChange}
                 className="hidden"
-                id="event-image-upload"
-                disabled={uploadingImage}
+                onChange={handleFileChange}
               />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-gold transition-colors bg-muted/30"
-              >
-                {formData.imageUrl ? (
-                  <div className="space-y-2">
-                    <img
-                      src={formData.imageUrl}
-                      alt="Preview"
-                      className="max-h-48 mx-auto rounded-lg object-cover"
-                    />
-                    <p className="text-sm text-muted-foreground">Cliquez pour changer l'image</p>
-                  </div>
-                ) : uploadingImage ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin text-gold" />
-                    <p className="text-sm text-muted-foreground">Upload en cours...</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Cliquez pour télécharger une image</p>
-                    <p className="text-xs text-muted-foreground">JPG, PNG, WEBP (max 10MB)</p>
-                  </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingImage}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingImage ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  {formData.imageUrl ? "Changer l'image" : "Uploader une image"}
+                </Button>
+                {formData.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={formData.imageUrl}
+                    alt=""
+                    className="h-16 w-24 rounded border object-cover"
+                  />
                 )}
               </div>
             </div>
 
-            {/* Afficher dans le banner */}
-            <div className="space-y-4 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium block mb-1">
-                    Afficher dans le banner de la page d'accueil
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Si activé, cet événement sera affiché dans le banner défilant après la section hero
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleChange("showOnBanner", !formData.showOnBanner)}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                    formData.showOnBanner ? "bg-gold" : "bg-muted"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                      formData.showOnBanner ? "translate-x-6" : "translate-x-1"
-                    )}
-                  />
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="showOnBanner"
+                type="checkbox"
+                checked={Boolean(formData.showOnBanner)}
+                onChange={(e) => handleChange("showOnBanner", e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="showOnBanner" className="text-sm">
+                Afficher dans le bandeau d&apos;accueil
+              </label>
             </div>
 
-            {/* SEO (Meta Title & Description) */}
-            <div className="space-y-4 border-t border-border pt-4">
-              <h3 className="text-sm font-semibold">SEO (Optionnel)</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium block mb-2">Meta Title</label>
+                <label className="text-sm font-medium block mb-2">Meta title SEO</label>
                 <Input
                   value={formData.metaTitle || ""}
                   onChange={(e) => handleChange("metaTitle", e.target.value || null)}
-                  placeholder="Titre pour les moteurs de recherche"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-2">Meta Description</label>
-                <textarea
+                <label className="text-sm font-medium block mb-2">Meta description SEO</label>
+                <Input
                   value={formData.metaDesc || ""}
                   onChange={(e) => handleChange("metaDesc", e.target.value || null)}
-                  placeholder="Description pour les moteurs de recherche"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-sm resize-none"
                 />
               </div>
             </div>
           </div>
 
-
-          {/* Boutons d'action - Toujours visible */}
-          <div className="flex gap-3 pt-6 border-t border-border sticky bottom-0 bg-background">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1 bg-transparent">
+          <div className="sticky bottom-0 -mx-6 flex justify-end gap-3 border-t bg-background px-6 py-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" className="flex-1 gap-2">
-              {initialData ? "Modifier" : "Créer"}
-              <ArrowRight className="w-4 h-4" />
+            <Button type="submit" className="bg-gold text-primary hover:bg-gold-dark">
+              {initialData ? "Enregistrer" : "Créer"}
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </form>

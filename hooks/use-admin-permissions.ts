@@ -59,6 +59,7 @@ export const ADMIN_NAV_PERMISSIONS: Record<string, string | null> = {
   '/admin/content': 'content.view',
   '/admin/challenges': 'challenges.view',
   '/admin/events': 'events.view',
+  '/admin/events/reviews': 'events.view',
   '/admin/team': 'team.view',
   '/admin/users': 'users.view',
   '/admin/roles': 'roles.view',

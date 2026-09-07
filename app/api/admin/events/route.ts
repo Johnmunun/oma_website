@@ -23,6 +23,7 @@ const eventSchema = z.object({
   metaTitle: z.string().nullable().optional(),
   metaDesc: z.string().nullable().optional(),
   showOnBanner: z.boolean().optional(),
+  structureId: z.string().uuid().nullable().optional(),
 })
 
 // GET /api/admin/events
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "5")
     const status = searchParams.get("status")
     const search = searchParams.get("search")
+    const structureId = searchParams.get("structureId")
 
     const skip = (page - 1) * limit
 
@@ -45,6 +47,9 @@ export async function GET(request: NextRequest) {
     const where: any = {}
     if (status && status !== "all") {
       where.status = status
+    }
+    if (structureId && structureId !== "all") {
+      where.structureId = structureId
     }
     if (search) {
       where.OR = [
@@ -65,8 +70,9 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
         include: {
+          structure: { select: { id: true, name: true, slug: true } },
           _count: {
-            select: { registrations: true },
+            select: { registrations: true, reviews: true },
           },
         },
       }),
@@ -86,11 +92,14 @@ export async function GET(request: NextRequest) {
       startsAt: event.startsAt?.toISOString() || null,
       endsAt: event.endsAt?.toISOString() || null,
       metaTitle: event.metaTitle,
-        metaDesc: event.metaDesc,
-        showOnBanner: event.showOnBanner,
-        registrations: event._count.registrations,
-        createdAt: event.createdAt.toISOString(),
-        updatedAt: event.updatedAt.toISOString(),
+      metaDesc: event.metaDesc,
+      showOnBanner: event.showOnBanner,
+      structureId: event.structureId,
+      structure: event.structure,
+      registrations: event._count.registrations,
+      reviewsCount: event._count.reviews,
+      createdAt: event.createdAt.toISOString(),
+      updatedAt: event.updatedAt.toISOString(),
     }))
 
     return NextResponse.json({
@@ -164,6 +173,10 @@ export async function POST(request: NextRequest) {
         metaTitle: validatedData.metaTitle || null,
         metaDesc: validatedData.metaDesc || null,
         showOnBanner: validatedData.showOnBanner || false,
+        structureId: validatedData.structureId ?? null,
+      },
+      include: {
+        structure: { select: { id: true, name: true, slug: true } },
       },
     })
 
@@ -183,6 +196,8 @@ export async function POST(request: NextRequest) {
         metaTitle: event.metaTitle,
         metaDesc: event.metaDesc,
         showOnBanner: event.showOnBanner,
+        structureId: event.structureId,
+        structure: event.structure,
         registrations: 0,
         createdAt: event.createdAt.toISOString(),
         updatedAt: event.updatedAt.toISOString(),
