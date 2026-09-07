@@ -2,58 +2,72 @@
  * @file lib/imagekit.ts
  * @description Configuration ImageKit pour upload et transformation d'images
  * Remplace Supabase Storage
+ *
+ * Lazy-init : ne pas throw au import (sinon le build Vercel échoue
+ * si les env ImageKit manquent pendant "collect page data").
  */
 
 import ImageKit from 'imagekit'
 
-if (!process.env.IMAGEKIT_PUBLIC_KEY) {
-  throw new Error('IMAGEKIT_PUBLIC_KEY is not set')
+let imagekitInstance: ImageKit | null = null
+
+function requireImageKitEnv() {
+  const publicKey = process.env.IMAGEKIT_PUBLIC_KEY?.trim()
+  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY?.trim()
+  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim()
+
+  if (!publicKey || !privateKey || !urlEndpoint) {
+    throw new Error(
+      'ImageKit non configuré (IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT)'
+    )
+  }
+
+  return { publicKey, privateKey, urlEndpoint }
 }
 
-if (!process.env.IMAGEKIT_PRIVATE_KEY) {
-  throw new Error('IMAGEKIT_PRIVATE_KEY is not set')
+function getImageKit(): ImageKit {
+  if (!imagekitInstance) {
+    const env = requireImageKitEnv()
+    imagekitInstance = new ImageKit(env)
+  }
+  return imagekitInstance
 }
 
-if (!process.env.IMAGEKIT_URL_ENDPOINT) {
-  throw new Error('IMAGEKIT_URL_ENDPOINT is not set')
-}
-
-export const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+/** @deprecated Prefer getImageKit() — kept for any direct imports */
+export const imagekit = new Proxy({} as ImageKit, {
+  get(_target, prop, receiver) {
+    const client = getImageKit() as unknown as Record<string | symbol, unknown>
+    const value = Reflect.get(client, prop, receiver)
+    return typeof value === 'function' ? value.bind(client) : value
+  },
 })
 
 /**
  * Génère une URL signée pour upload sécurisé
- * @param fileName - Nom du fichier
- * @param folder - Dossier de destination (optionnel)
- * @returns Token et signature pour upload
  */
 export async function getImageKitUploadToken(fileName: string, folder?: string) {
   try {
-    const authenticationParameters = imagekit.getAuthenticationParameters()
+    const env = requireImageKitEnv()
+    const authenticationParameters = getImageKit().getAuthenticationParameters()
 
     return {
       token: authenticationParameters.token,
       signature: authenticationParameters.signature,
       expire: authenticationParameters.expire,
-      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+      publicKey: env.publicKey,
+      urlEndpoint: env.urlEndpoint,
       folder: folder || '/uploads',
     }
   } catch (error) {
     console.error('[ImageKit] Erreur génération token:', error)
-    throw new Error('Erreur lors de la génération du token ImageKit')
+    throw error instanceof Error
+      ? error
+      : new Error('Erreur lors de la génération du token ImageKit')
   }
 }
 
 /**
  * Upload un fichier directement depuis le serveur
- * @param file - Buffer ou base64 du fichier
- * @param fileName - Nom du fichier
- * @param folder - Dossier de destination
- * @returns URL de l'image uploadée
  */
 export async function uploadToImageKit(
   file: Buffer | string,
@@ -61,7 +75,7 @@ export async function uploadToImageKit(
   folder: string = '/uploads'
 ) {
   try {
-    const result = await imagekit.upload({
+    const result = await getImageKit().upload({
       file: file,
       fileName: fileName,
       folder: folder,
@@ -75,15 +89,14 @@ export async function uploadToImageKit(
     }
   } catch (error) {
     console.error('[ImageKit] Erreur upload:', error)
-    throw new Error('Erreur lors de l\'upload vers ImageKit')
+    throw error instanceof Error
+      ? error
+      : new Error("Erreur lors de l'upload vers ImageKit")
   }
 }
 
 /**
  * Génère une URL avec transformations ImageKit
- * @param imagePath - Chemin de l'image (URL complète ou chemin relatif)
- * @param transformations - Options de transformation
- * @returns URL avec transformations appliquées
  */
 export function getImageKitUrl(
   imagePath: string,
@@ -97,39 +110,28 @@ export function getImageKitUrl(
 ) {
   if (!imagePath) return ''
 
-  // Si c'est déjà une URL ImageKit, utiliser directement
+  const client = getImageKit()
+  const transformation = transformations
+    ? [
+        {
+          width: transformations.width,
+          height: transformations.height,
+          quality: transformations.quality || 80,
+          format: transformations.format || 'auto',
+          crop: transformations.crop || 'maintain_ratio',
+        },
+      ]
+    : []
+
   if (imagePath.startsWith('http')) {
-    return imagekit.url({
+    return client.url({
       src: imagePath,
-      transformation: transformations
-        ? [
-            {
-              width: transformations.width,
-              height: transformations.height,
-              quality: transformations.quality || 80,
-              format: transformations.format || 'auto',
-              crop: transformations.crop || 'maintain_ratio',
-            },
-          ]
-        : [],
+      transformation,
     })
   }
 
-  // Sinon, construire l'URL depuis le chemin
-  return imagekit.url({
+  return client.url({
     path: imagePath,
-    transformation: transformations
-      ? [
-          {
-            width: transformations.width,
-            height: transformations.height,
-            quality: transformations.quality || 80,
-            format: transformations.format || 'auto',
-            crop: transformations.crop || 'maintain_ratio',
-          },
-        ]
-      : [],
+    transformation,
   })
 }
-
-

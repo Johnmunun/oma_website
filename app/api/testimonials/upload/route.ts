@@ -9,6 +9,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { uploadToImageKit } from '@/lib/imagekit'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // POST /api/testimonials/upload
 // Upload une photo pour un témoignage via token
 export async function POST(request: NextRequest) {

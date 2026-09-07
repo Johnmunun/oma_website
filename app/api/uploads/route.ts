@@ -8,6 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { uploadToImageKit, getImageKitUploadToken } from '@/lib/imagekit'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // POST /api/uploads
 // Upload un fichier vers ImageKit (serveur-side)
 export async function POST(request: NextRequest) {
