@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getMainSiteDomain, getMainSiteOrigin } from '@/lib/site-origin'
 
 function hasSessionCookie(req: NextRequest): boolean {
   return Boolean(
@@ -14,16 +15,8 @@ function hasSessionCookie(req: NextRequest): boolean {
   )
 }
 
-function getMainSiteOrigin(): string {
-  const url = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/$/, '')
-  if (url) return url
-  const domain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
-  if (domain) return `https://${domain}`
-  return 'http://localhost:3000'
-}
-
 function resolveSubdomain(host: string): string | null {
-  const siteDomain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
+  const siteDomain = getMainSiteDomain()
 
   if (siteDomain) {
     if (host === siteDomain || host === `www.${siteDomain}`) return null

@@ -2,15 +2,9 @@
  * URLs publiques des structures (landing + sous-domaine)
  */
 
-export function getMainSiteOrigin(): string {
-  const url = process.env.NEXT_PUBLIC_SITE_URL?.trim()?.replace(/\/$/, '')
-  if (url) return url
+import { getMainSiteDomain, getMainSiteOrigin } from '@/lib/site-origin'
 
-  const domain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
-  if (domain) return `https://${domain}`
-
-  return 'http://localhost:3000'
-}
+export { getMainSiteOrigin } from '@/lib/site-origin'
 
 export function getStructurePathSegment(structure: {
   slug: string
@@ -37,7 +31,7 @@ export function getStructurePublicUrls(structure: {
   const segment = getStructurePathSegment(structure)
   const pathUrl = `${origin}/s/${segment}`
 
-  const siteDomain = process.env.NEXT_PUBLIC_SITE_DOMAIN?.trim()
+  const siteDomain = getMainSiteDomain()
   const sub = structure.subdomain?.trim()
   const subdomainUrl =
     siteDomain && sub ? `https://${sub}.${siteDomain}` : null

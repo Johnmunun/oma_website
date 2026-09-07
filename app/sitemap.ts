@@ -8,9 +8,10 @@
 
 import { MetadataRoute } from "next"
 import { prisma } from "@/lib/prisma"
+import { getMainSiteOrigin } from "@/lib/site-origin"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://votre-domaine.com"
+  const baseUrl = getMainSiteOrigin()
 
   // Pages statiques
   const staticPages: MetadataRoute.Sitemap = [

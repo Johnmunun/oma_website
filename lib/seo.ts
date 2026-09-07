@@ -7,6 +7,7 @@
 
 import { Metadata } from "next"
 import { prisma } from "@/lib/prisma"
+import { getMainSiteOrigin } from "@/lib/site-origin"
 
 interface SeoMetaData {
   title?: string | null
@@ -29,7 +30,7 @@ interface SeoMetaData {
 const defaultTitle = "Réseau OMA - Oratoire Mon Art"
 const defaultDescription = "Plateforme internationale dédiée à l'art oratoire, la communication, le marketing et les formations numériques."
 const defaultImage = "/og-image.jpg"
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://votre-domaine.com"
+const baseUrl = getMainSiteOrigin()
 
 /**
  * Récupère les métadonnées SEO pour un slug donné

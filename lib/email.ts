@@ -4,6 +4,7 @@
  */
 
 import nodemailer from 'nodemailer'
+import { getMainSiteOrigin } from '@/lib/site-origin'
 
 // Configuration du transporteur email
 const transporter = nodemailer.createTransport({
@@ -77,7 +78,7 @@ export function generateRegistrationConfirmationEmail(data: {
   registrationId: string
   eventSlug?: string
 }): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://reseau-oma.com'
+  const siteUrl = getMainSiteOrigin()
   const supportEmail = process.env.SUPPORT_EMAIL || 'contact@reseau-oma.com'
 
   return `
@@ -225,7 +226,7 @@ function generateEventReminderEmail(data: {
   eventSlug: string
   registrationId: string
 }): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://reseau-oma.com'
+  const siteUrl = getMainSiteOrigin()
   const supportEmail = process.env.SUPPORT_EMAIL || 'contact@reseau-oma.com'
   const unsubscribeUrl = `${siteUrl}/events/${data.eventSlug}/reminders?registration=${data.registrationId}&action=unsubscribe`
   const eventUrl = `${siteUrl}/events/${data.eventSlug}`
