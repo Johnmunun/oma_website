@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { openBracketPdfExport } from '@/lib/challenges/export-bracket-pdf'
+import { downloadBracketPdf } from '@/lib/challenges/export-bracket-pdf'
 import { toast } from 'sonner'
 
 export type BracketCandidate = {
@@ -54,20 +54,20 @@ export function ChallengeTournamentBracket({
   const sorted = [...rounds]
   const [exporting, setExporting] = useState(false)
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     try {
       setExporting(true)
-      openBracketPdfExport({
+      await downloadBracketPdf({
         title,
         subtitle,
         rounds: sorted,
         challengeName: title,
       })
-      toast.success('Fenêtre d’impression ouverte — choisissez « Enregistrer au format PDF »')
+      toast.success('PDF téléchargé')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Export PDF impossible')
     } finally {
-      setTimeout(() => setExporting(false), 500)
+      setExporting(false)
     }
   }
 

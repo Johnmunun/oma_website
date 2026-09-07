@@ -1,18 +1,21 @@
 /**
- * Export du tableau FIFA en PDF (via impression navigateur → Enregistrer en PDF)
+ * Export PDF du tableau FIFA — téléchargement réel via jsPDF
  */
 
+import { jsPDF } from 'jspdf'
 import type { BracketRound } from '@/components/challenges/challenge-tournament-bracket'
 
-function escapeHtml(value: string) {
+function slugify(value: string) {
   return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60)
 }
 
-export function openBracketPdfExport(opts: {
+export async function downloadBracketPdf(opts: {
   title: string
   subtitle?: string
   rounds: BracketRound[]
@@ -27,197 +30,163 @@ export function openBracketPdfExport(opts: {
     minute: '2-digit',
   })
 
-  const roundsHtml = rounds
-    .map((round) => {
-      const candidates =
-        round.candidates.length > 0
-          ? round.candidates
-              .map(
-                (c, i) => `
-            <div class="slot">
-              <span class="num">${c.number ?? i + 1}</span>
-              <div>
-                <div class="name">${escapeHtml(c.fullName)}</div>
-                ${
-                  c.candidateCode
-                    ? `<div class="code">${escapeHtml(c.candidateCode)}</div>`
-                    : ''
-                }
-              </div>
-            </div>`
-              )
-              .join('')
-          : `<div class="slot empty"><span class="num">·</span><div class="name">Aucun talent</div></div>`
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  })
 
-      return `
-        <section class="round ${round.isActive ? 'active' : ''}">
-          <header>
-            <h2>${escapeHtml(round.name)}</h2>
-            <p>${round.isActive ? 'Tour actif' : `${round.candidates.length} talent(s)`}</p>
-          </header>
-          <div class="slots">${candidates}</div>
-        </section>`
-    })
-    .join('<div class="arrow">→</div>')
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const margin = 12
+  let y = margin
 
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)} — Tableau PDF</title>
-  <style>
-    @page { size: A4 landscape; margin: 12mm; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      color: #0f172a;
-      background: #fff;
-    }
-    .sheet { padding: 8px 4px; }
-    .brand {
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #64748b;
-      font-family: system-ui, sans-serif;
-      font-weight: 700;
-    }
-    h1 {
-      margin: 6px 0 4px;
-      font-size: 26px;
-      line-height: 1.15;
-    }
-    .sub {
-      margin: 0 0 18px;
-      color: #475569;
-      font-size: 13px;
-      font-family: system-ui, sans-serif;
-    }
-    .meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      border-top: 1px solid #e2e8f0;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 8px 0;
-      margin-bottom: 18px;
-      font-family: system-ui, sans-serif;
-      font-size: 11px;
-      color: #64748b;
-    }
-    .board {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      flex-wrap: nowrap;
-    }
-    .round {
-      flex: 1 1 0;
-      min-width: 160px;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #f8fafc;
-    }
-    .round.active {
-      border-color: #c9a227;
-      box-shadow: inset 0 0 0 1px #c9a227;
-      background: #fffbeb;
-    }
-    .round header {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e2e8f0;
-      background: #fff;
-    }
-    .round.active header { background: #fef3c7; }
-    .round h2 {
-      margin: 0;
-      font-size: 15px;
-    }
-    .round header p {
-      margin: 2px 0 0;
-      font-size: 10px;
-      color: #64748b;
-      font-family: system-ui, sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    .slots { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-    .slot {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 8px;
-      border-radius: 8px;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-    }
-    .slot.empty { opacity: 0.55; }
-    .num {
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      background: #0f172a;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-family: system-ui, sans-serif;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-    .name { font-size: 12px; font-weight: 700; }
-    .code {
-      font-size: 10px;
-      color: #64748b;
-      font-family: ui-monospace, monospace;
-      margin-top: 1px;
-    }
-    .arrow {
-      align-self: center;
-      color: #94a3b8;
-      font-size: 18px;
-      font-family: system-ui, sans-serif;
-      padding: 0 2px;
-    }
-    .footer {
-      margin-top: 18px;
-      font-size: 10px;
-      color: #94a3b8;
-      font-family: system-ui, sans-serif;
-    }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="brand">Bracket · style FIFA</div>
-    <h1>${escapeHtml(title)}</h1>
-    ${subtitle ? `<p class="sub">${escapeHtml(subtitle)}</p>` : ''}
-    <div class="meta">
-      <span>${escapeHtml(challengeName || title)}</span>
-      <span>Exporté le ${escapeHtml(dateLabel)}</span>
-    </div>
-    <div class="board">${roundsHtml}</div>
-    <p class="footer">Document généré depuis l’administration OMA / JoyStudio. Utilisez « Enregistrer au format PDF » dans la boîte d’impression.</p>
-  </div>
-  <script>
-    window.onload = function () {
-      setTimeout(function () { window.print(); }, 250);
-    };
-  </script>
-</body>
-</html>`
+  // En-tête
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(100, 116, 139)
+  doc.text('BRACKET  ·  STYLE FIFA', margin, y)
 
-  const win = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800')
-  if (!win) {
-    throw new Error('Pop-up bloquée — autorisez les fenêtres pour exporter le PDF')
+  y += 8
+  doc.setFont('times', 'bold')
+  doc.setFontSize(20)
+  doc.setTextColor(15, 23, 42)
+  doc.text(title, margin, y, { maxWidth: pageW - margin * 2 })
+
+  y += 7
+  if (subtitle) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(71, 85, 105)
+    doc.text(subtitle, margin, y, { maxWidth: pageW - margin * 2 })
+    y += 6
   }
-  win.document.open()
-  win.document.write(html)
-  win.document.close()
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(100, 116, 139)
+  doc.text(challengeName || title, margin, y)
+  doc.text(`Exporte le ${dateLabel}`, pageW - margin, y, { align: 'right' })
+
+  y += 3
+  doc.setDrawColor(226, 232, 240)
+  doc.setLineWidth(0.3)
+  doc.line(margin, y, pageW - margin, y)
+  y += 8
+
+  // Colonnes des tours
+  const count = Math.max(rounds.length, 1)
+  const gap = 4
+  const usable = pageW - margin * 2 - gap * (count - 1)
+  const colW = usable / count
+  const colTop = y
+  const colBottom = pageH - margin - 10
+
+  rounds.forEach((round, index) => {
+    const x = margin + index * (colW + gap)
+    const isActive = Boolean(round.isActive)
+
+    // Fond colonne
+    if (isActive) {
+      doc.setFillColor(255, 251, 235)
+      doc.setDrawColor(201, 162, 39)
+    } else {
+      doc.setFillColor(248, 250, 252)
+      doc.setDrawColor(203, 213, 225)
+    }
+    doc.setLineWidth(0.4)
+    doc.roundedRect(x, colTop, colW, colBottom - colTop, 2, 2, 'FD')
+
+    // Titre tour
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(15, 23, 42)
+    doc.text(round.name, x + colW / 2, colTop + 8, {
+      align: 'center',
+      maxWidth: colW - 6,
+    })
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    const status = isActive
+      ? 'Tour actif'
+      : `${round.candidates.length} talent(s)`
+    doc.text(status, x + colW / 2, colTop + 13, { align: 'center' })
+
+    // Candidats
+    let slotY = colTop + 18
+    const slotH = 14
+    const list =
+      round.candidates.length > 0
+        ? round.candidates
+        : [{ id: 'empty', fullName: 'Aucun talent', candidateCode: null, number: null }]
+
+    for (let i = 0; i < list.length; i++) {
+      if (slotY + slotH > colBottom - 4) {
+        doc.setFontSize(7)
+        doc.setTextColor(148, 163, 184)
+        doc.text(`+${list.length - i} autres…`, x + 3, slotY + 4)
+        break
+      }
+
+      const c = list[i]
+      const empty = c.id === 'empty'
+
+      doc.setFillColor(255, 255, 255)
+      doc.setDrawColor(226, 232, 240)
+      doc.roundedRect(x + 2.5, slotY, colW - 5, slotH - 2, 1.5, 1.5, 'FD')
+
+      // Numéro
+      doc.setFillColor(15, 23, 42)
+      doc.roundedRect(x + 4.5, slotY + 2.5, 6, 6, 1, 1, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(6)
+      doc.setTextColor(255, 255, 255)
+      const num =
+        c.number != null ? String(c.number) : empty ? '·' : String(i + 1)
+      doc.text(num, x + 7.5, slotY + 6.5, { align: 'center' })
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(empty ? 148 : 15, empty ? 163 : 23, empty ? 184 : 42)
+      doc.text(c.fullName, x + 12.5, slotY + 5.5, {
+        maxWidth: colW - 16,
+      })
+
+      if (c.candidateCode) {
+        doc.setFont('courier', 'normal')
+        doc.setFontSize(6.5)
+        doc.setTextColor(100, 116, 139)
+        doc.text(c.candidateCode, x + 12.5, slotY + 10, {
+          maxWidth: colW - 16,
+        })
+      }
+
+      slotY += slotH
+    }
+
+    // Flèche entre colonnes
+    if (index < rounds.length - 1) {
+      const ax = x + colW + gap / 2
+      const ay = colTop + (colBottom - colTop) / 2
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(12)
+      doc.setTextColor(148, 163, 184)
+      doc.text('>', ax, ay, { align: 'center' })
+    }
+  })
+
+  // Pied de page
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(148, 163, 184)
+  doc.text(
+    'Document genere depuis OMA / JoyStudio',
+    margin,
+    pageH - 5
+  )
+
+  const filename = `bracket-${slugify(challengeName || title) || 'tournoi'}.pdf`
+  doc.save(filename)
 }
