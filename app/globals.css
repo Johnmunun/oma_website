@@ -1109,3 +1109,33 @@
 .prose a {
   @apply text-gold hover:underline;
 }
+
+/* Réactions emoji live — visibles pour l’auteur et les autres */
+@keyframes oma-live-emoji-rise {
+  0% {
+    transform: translate(-50%, 8px) scale(0.55);
+    opacity: 1;
+  }
+  18% {
+    transform: translate(-50%, -10px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--drift, 0px)), -340px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.oma-live-emoji-float {
+  animation-name: oma-live-emoji-rise;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.oma-live-emoji-float--local {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.35));
+  z-index: 2;
+}
+

@@ -87,7 +87,7 @@ export async function listPublicLiveReactions(
   const reactions = await prisma.challengeLiveReaction.findMany({
     where: {
       challengeId: challenge.id,
-      createdAt: { gt: after },
+      ...(after ? { createdAt: { gt: after } } : {}),
     },
     orderBy: { createdAt: 'asc' },
     take: 80,

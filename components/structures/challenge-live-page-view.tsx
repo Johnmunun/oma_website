@@ -20,6 +20,7 @@ import { getStructureThemeVars } from '@/lib/structures/landing-theme'
 import {
   getChallengeHubPath,
   getChallengeRankingsPath,
+  getChallengeVotePortalPath,
   getChallengeVotesPath,
 } from '@/lib/structures/public-url'
 import { cn } from '@/lib/utils'
@@ -41,10 +42,14 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
   const { structure, challenge, live, embedUrl, replayUrl, contactSlug } = data
   const themeStyle = getStructureThemeVars(structure.landingThemeColor)
   const hubPath = getChallengeHubPath(structure, challenge.slug)
-  const votesPath = getChallengeVotesPath(structure, challenge.slug)
+  const votesPath =
+    data.votesOpen && data.voteToken
+      ? getChallengeVotePortalPath(structure, data.voteToken)
+      : getChallengeVotesPath(structure, challenge.slug)
   const rankingsPath = getChallengeRankingsPath(structure, challenge.slug)
   const landingPath = `/s/${contactSlug}`
   const scheduleLabel = formatSchedule(live.scheduledAt)
+  const showVoteCta = Boolean(data.votesOpen)
 
   const showLivePlayer = live.isLive && Boolean(embedUrl)
   const showReplayPlayer = !live.isLive && live.replayEnabled && Boolean(replayUrl)
@@ -130,13 +135,13 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
         >
           {/* Colonne principale */}
           <div className="min-w-0">
-            <div className="relative bg-black sm:overflow-hidden sm:rounded-xl">
+            <div className="relative isolate bg-black sm:overflow-hidden sm:rounded-xl">
               {playerUrl ? (
-                <div className="relative aspect-video w-full">
+                <div className="relative isolate aspect-video w-full">
                   <iframe
                     src={playerUrl}
                     title={title}
-                    className="absolute inset-0 h-full w-full border-0"
+                    className="absolute inset-0 z-0 h-full w-full border-0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
                     allowFullScreen
                   />
@@ -146,6 +151,7 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
                       challengeSlug={challenge.slug}
                       enabled
                       variant="youtube"
+                      className="z-30"
                     />
                   )}
                 </div>
@@ -214,13 +220,15 @@ export function ChallengeLivePageView({ data }: { data: PublicChallengeLiveData 
                 </Link>
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
-                  <Link
-                    href={votesPath}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/10 px-3.5 text-sm font-medium transition hover:bg-white/15"
-                  >
-                    <Heart className="h-4 w-4" />
-                    Voter
-                  </Link>
+                  {showVoteCta && (
+                    <Link
+                      href={votesPath}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/10 px-3.5 text-sm font-medium transition hover:bg-white/15"
+                    >
+                      <Heart className="h-4 w-4" />
+                      Voter
+                    </Link>
+                  )}
                   <Link
                     href={rankingsPath}
                     className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/10 px-3.5 text-sm font-medium transition hover:bg-white/15"

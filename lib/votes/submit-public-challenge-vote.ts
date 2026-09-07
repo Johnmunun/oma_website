@@ -140,13 +140,6 @@ async function recordVote(
     throw new PublicVoteError('Code de confirmation requis', 400)
   }
 
-  await consumeVoteOtp({
-    challengeId,
-    phaseKey,
-    email: voterKey,
-    otp,
-  })
-
   const candidate = await prisma.candidate.findFirst({
     where: {
       id: candidateId,
@@ -178,6 +171,13 @@ async function recordVote(
       409
     )
   }
+
+  await consumeVoteOtp({
+    challengeId,
+    phaseKey,
+    email: voterKey,
+    otp,
+  })
 
   const vote = await prisma.challengeVote.create({
     data: {

@@ -5,12 +5,14 @@
 import { ChallengeStatus, StructureStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registration-settings'
+import { parseFeatureSettingsFromChallenge } from '@/lib/challenges/challenge-feature-settings'
 import {
   parseLiveSettingsFromChallenge,
   resolveLiveEmbedUrl,
   resolveReplayEmbedUrl,
   type ChallengeLiveSettings,
 } from '@/lib/challenges/challenge-live-settings'
+import { getVotePublicTokenFromSettings } from '@/lib/votes/vote-public-token'
 
 const STRUCTURE_WHERE = (segment: string) => ({
   OR: [{ slug: segment }, { landingPagePath: segment }, { subdomain: segment }],
@@ -62,6 +64,9 @@ export async function loadPublicChallengeLive(
     const live = parseLiveSettingsFromChallenge(challenge.settings)
     if (!live.enabled) return null
 
+    const features = parseFeatureSettingsFromChallenge(challenge.settings)
+    const voteToken = getVotePublicTokenFromSettings(challenge.settings)
+    const votesOpen = features.votes.enabled && features.votes.published
     const coverImageUrl = parseChallengeCoverImageUrl(challenge.settings)
     const embedUrl = resolveLiveEmbedUrl(live)
     const replayUrl = resolveReplayEmbedUrl(live)
@@ -83,6 +88,8 @@ export async function loadPublicChallengeLive(
       live,
       embedUrl,
       replayUrl,
+      votesOpen,
+      voteToken,
     }
   } catch (error) {
     console.error('[loadPublicChallengeLive]', error)

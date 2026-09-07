@@ -43,8 +43,8 @@ export type PublicVotesPageData = PublicChallengePageData & {
   }
 }
 
-function votedStorageKey(challengeId: string, phaseId: string | null | undefined) {
-  return `oma_voted:${challengeId}:${phaseId || '_'}`
+function votedStorageKey(challengeId: string | undefined, phaseId: string | null | undefined) {
+  return `oma_voted:${challengeId || 'challenge'}:${phaseId || '_'}`
 }
 
 export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) {

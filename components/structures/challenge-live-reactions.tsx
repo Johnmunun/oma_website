@@ -20,6 +20,7 @@ type FloatingEmoji = {
   driftPx: number
   durationMs: number
   sizePx: number
+  local: boolean
 }
 
 interface ChallengeLiveReactionsProps {
@@ -32,14 +33,19 @@ interface ChallengeLiveReactionsProps {
 
 const POLL_MS = 1200
 
-function spawnFloat(emoji: string, id?: string): FloatingEmoji {
+function spawnFloat(emoji: string, opts?: { id?: string; local?: boolean }): FloatingEmoji {
+  // Colonne droite (près de la barre) pour rester bien visible au-dessus de la vidéo
+  const local = Boolean(opts?.local)
   return {
-    key: id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    key: opts?.id
+      ? `${opts.id}-${Math.random().toString(36).slice(2, 7)}`
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     emoji,
-    leftPct: 68 + Math.random() * 28,
-    driftPx: Math.round((Math.random() - 0.5) * 48),
-    durationMs: 2400 + Math.round(Math.random() * 900),
-    sizePx: 26 + Math.round(Math.random() * 14),
+    leftPct: local ? 72 + Math.random() * 22 : 62 + Math.random() * 32,
+    driftPx: Math.round((Math.random() - 0.5) * 56),
+    durationMs: local ? 2200 + Math.round(Math.random() * 600) : 2400 + Math.round(Math.random() * 900),
+    sizePx: local ? 30 + Math.round(Math.random() * 16) : 26 + Math.round(Math.random() * 14),
+    local,
   }
 }
 
@@ -51,24 +57,29 @@ export function ChallengeLiveReactions({
   variant = 'default',
 }: ChallengeLiveReactionsProps) {
   const [floats, setFloats] = useState<FloatingEmoji[]>([])
+  const [burstEmoji, setBurstEmoji] = useState<string | null>(null)
   const seenIds = useRef<Set<string>>(new Set())
   const lastCreatedAt = useRef<string | null>(null)
   const apiBase = `/api/structures/${encodeURIComponent(contactSlug)}/challenges/${encodeURIComponent(challengeSlug)}/live/reactions`
   const isYoutube = variant === 'youtube'
 
-  const pushFloats = useCallback((emoji: string, id?: string) => {
-    const batch = Array.from({ length: 1 + (Math.random() > 0.65 ? 1 : 0) }, () =>
-      spawnFloat(emoji, id ? `${id}-${Math.random()}` : undefined)
-    )
-    setFloats((prev) => [...prev, ...batch].slice(-48))
-  }, [])
+  const pushFloats = useCallback(
+    (emoji: string, opts?: { id?: string; local?: boolean; count?: number }) => {
+      const count = opts?.count ?? (opts?.local ? 3 : 1 + (Math.random() > 0.7 ? 1 : 0))
+      const batch = Array.from({ length: count }, () =>
+        spawnFloat(emoji, { id: opts?.id, local: opts?.local })
+      )
+      setFloats((prev) => [...prev, ...batch].slice(-64))
+    },
+    []
+  )
 
   const ingestRemote = useCallback(
     (items: ReactionEvent[]) => {
       for (const item of items) {
         if (seenIds.current.has(item.id)) continue
         seenIds.current.add(item.id)
-        pushFloats(item.emoji, item.id)
+        pushFloats(item.emoji, { id: item.id, local: false, count: 1 })
         lastCreatedAt.current = item.createdAt
       }
       if (seenIds.current.size > 500) {
@@ -103,7 +114,11 @@ export function ChallengeLiveReactions({
   }, [enabled, poll])
 
   const sendReaction = async (emoji: LiveReactionEmoji) => {
-    pushFloats(emoji)
+    // Feedback immédiat pour la personne qui clique (ne dépend pas du poll)
+    pushFloats(emoji, { local: true, count: 3 })
+    setBurstEmoji(emoji)
+    window.setTimeout(() => setBurstEmoji(null), 420)
+
     try {
       const res = await fetch(apiBase, {
         method: 'POST',
@@ -113,8 +128,11 @@ export function ChallengeLiveReactions({
       const data = await res.json()
       if (res.ok && data.success) {
         const item = data.data as ReactionEvent
-        if (!seenIds.current.has(item.id)) {
-          seenIds.current.add(item.id)
+        seenIds.current.add(item.id)
+        if (
+          !lastCreatedAt.current ||
+          new Date(item.createdAt) > new Date(lastCreatedAt.current)
+        ) {
           lastCreatedAt.current = item.createdAt
         }
       }
@@ -126,35 +144,25 @@ export function ChallengeLiveReactions({
   if (!enabled) return null
 
   return (
-    <div className={cn('pointer-events-none absolute inset-0 z-10', className)}>
-      <style jsx global>{`
-        @keyframes oma-live-emoji-rise {
-          0% {
-            transform: translate(-50%, 0) scale(0.4);
-            opacity: 0;
-          }
-          12% {
-            opacity: 1;
-            transform: translate(-50%, -12px) scale(1);
-          }
-          100% {
-            transform: translate(calc(-50% + var(--drift)), -320px) scale(1.15);
-            opacity: 0;
-          }
-        }
-      `}</style>
-
-      <div className="absolute inset-0 overflow-hidden">
+    <div
+      className={cn(
+        'pointer-events-none absolute inset-0 z-30 isolate overflow-hidden',
+        className
+      )}
+    >
+      <div className="absolute inset-0 overflow-hidden" aria-hidden>
         {floats.map((f) => (
           <span
             key={f.key}
-            aria-hidden
-            className="absolute bottom-[18%] select-none will-change-transform"
+            className={cn(
+              'oma-live-emoji-float absolute bottom-[14%] select-none will-change-transform drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]',
+              f.local && 'oma-live-emoji-float--local'
+            )}
             style={{
               left: `${f.leftPct}%`,
               fontSize: `${f.sizePx}px`,
               lineHeight: 1,
-              animation: `oma-live-emoji-rise ${f.durationMs}ms ease-out forwards`,
+              animationDuration: `${f.durationMs}ms`,
               ['--drift' as string]: `${f.driftPx}px`,
             }}
             onAnimationEnd={() => {
@@ -166,12 +174,11 @@ export function ChallengeLiveReactions({
         ))}
       </div>
 
-      {/* Barre d’emojis — verticale à droite façon YouTube */}
       <div
         className={cn(
-          'pointer-events-auto absolute z-20 flex',
+          'pointer-events-auto absolute z-40 flex',
           isYoutube
-            ? 'bottom-4 right-3 flex-col gap-1 rounded-full border border-white/10 bg-black/50 p-1.5 backdrop-blur-md'
+            ? 'bottom-4 right-3 flex-col gap-1 rounded-full border border-white/10 bg-black/55 p-1.5 shadow-lg backdrop-blur-md'
             : 'bottom-3 left-1/2 max-w-[95%] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-full border border-white/15 bg-black/55 px-2 py-1.5 shadow-lg backdrop-blur-md'
         )}
       >
@@ -181,14 +188,15 @@ export function ChallengeLiveReactions({
             type="button"
             aria-label={`Réagir ${emoji}`}
             className={cn(
-              'flex items-center justify-center rounded-full transition hover:scale-110 active:scale-95',
+              'relative flex items-center justify-center rounded-full transition hover:scale-110 active:scale-90',
               isYoutube
-                ? 'h-8 w-8 text-lg hover:bg-white/15'
-                : 'h-9 w-9 text-xl hover:bg-white/15'
+                ? 'h-9 w-9 text-lg hover:bg-white/15'
+                : 'h-9 w-9 text-xl hover:bg-white/15',
+              burstEmoji === emoji && 'scale-125 bg-white/20 ring-2 ring-white/40'
             )}
             onClick={() => void sendReaction(emoji)}
           >
-            {emoji}
+            <span className="relative z-10">{emoji}</span>
           </button>
         ))}
       </div>
