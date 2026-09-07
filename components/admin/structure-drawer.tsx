@@ -508,6 +508,22 @@ export function StructureDrawer({
                 <p className="mt-1 break-all font-mono text-sm text-foreground">
                   {publicUrls.primaryUrl}
                 </p>
+                {publicUrls.primaryUrl.includes('vercel.app') && (
+                  <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                    Ce n&apos;est pas le DNS wildcard : sur Vercel, ajoutez{' '}
+                    <code className="rounded bg-muted px-1">NEXT_PUBLIC_SITE_DOMAIN=oratoiremonart.org</code>{' '}
+                    et{' '}
+                    <code className="rounded bg-muted px-1">
+                      NEXT_PUBLIC_SITE_URL=https://oratoiremonart.org
+                    </code>
+                    , puis <strong>Redeploy</strong>. Le lien passera à{' '}
+                    <code className="rounded bg-muted px-1">
+                      https://{(form.subdomain || form.slug || 'structure').toLowerCase()}
+                      .oratoiremonart.org
+                    </code>
+                    .
+                  </p>
+                )}
               </div>
             )}
           </div>
