@@ -139,13 +139,14 @@ export async function buildChallengeRankings(
       fullName: candidate.fullName,
       age: candidate.age,
       city: candidate.city,
-      video: candidate.video
-        ? {
-            title: candidate.video.title,
-            videoUrl: candidate.video.videoUrl,
-            thumbnailUrl: candidate.video.thumbnailUrl,
-          }
-        : null,
+      video:
+        candidate.video?.status === ChallengeVideoStatus.PUBLISHED
+          ? {
+              title: candidate.video.title,
+              videoUrl: candidate.video.videoUrl,
+              thumbnailUrl: candidate.video.thumbnailUrl,
+            }
+          : null,
       juryAverage,
       juryEvaluationCount: scores.length,
       voteCount,
@@ -218,7 +219,7 @@ export async function loadPublicChallengeRankings(
   const rankings = await buildChallengeRankings(challenge.id, {
     rankingSettings: features.ranking,
     votesEnabled: features.votes.enabled,
-    onlyPublishedVideos: true,
+    onlyPublishedVideos: false,
     phaseId,
   })
 

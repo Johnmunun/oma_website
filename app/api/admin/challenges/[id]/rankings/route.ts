@@ -50,7 +50,7 @@ export async function GET(
       buildChallengeRankings(id, {
         rankingSettings: features.ranking,
         votesEnabled: features.votes.enabled,
-        onlyPublishedVideos: true,
+        onlyPublishedVideos: false,
         phaseId,
       }),
       prisma.challengeVote.count({ where: voteWhere }),

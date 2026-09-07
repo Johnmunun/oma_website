@@ -1,4 +1,4 @@
-import { CandidateStatus, ChallengeStatus, ChallengeVideoStatus, StructureStatus } from '@prisma/client'
+import { CandidateStatus, ChallengeStatus, StructureStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { parseChallengeCoverImageUrl } from '@/lib/challenges/challenge-registration-settings'
 import { normalizeCandidateEmail } from '@/lib/candidates/candidate-schema'
@@ -82,11 +82,12 @@ async function loadEligibleCandidates(
   challengeId: string,
   phaseId: string | null
 ) {
+  // Vote ouvert pour tout candidat APPROUVÉ du tour actif (vidéo facultative).
+  // Le challenge doit rester ACTIVE + votes publiés (vérifié en amont).
   const rows = await prisma.candidate.findMany({
     where: {
       challengeId,
       status: CandidateStatus.APPROVED,
-      video: { status: ChallengeVideoStatus.PUBLISHED },
       ...(phaseId ? { phaseId } : {}),
     },
     orderBy: [{ createdAt: 'asc' }, { fullName: 'asc' }],
@@ -102,6 +103,7 @@ async function loadEligibleCandidates(
           title: true,
           thumbnailUrl: true,
           videoUrl: true,
+          status: true,
         },
       },
       votes: phaseId
@@ -118,7 +120,14 @@ async function loadEligibleCandidates(
     city: c.city,
     candidateCode: c.candidateCode,
     phaseId: c.phaseId,
-    video: c.video,
+    video:
+      c.video?.status === 'PUBLISHED'
+        ? {
+            title: c.video.title,
+            thumbnailUrl: c.video.thumbnailUrl,
+            videoUrl: c.video.videoUrl,
+          }
+        : null,
     voteCount: c.votes.length,
   }))
 }
@@ -137,7 +146,6 @@ async function recordVote(
       id: candidateId,
       challengeId,
       status: CandidateStatus.APPROVED,
-      video: { status: ChallengeVideoStatus.PUBLISHED },
       ...(requiredPhaseId ? { phaseId: requiredPhaseId } : {}),
     },
   })

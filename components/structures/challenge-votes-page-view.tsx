@@ -160,7 +160,8 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
             Aucun candidat éligible
           </p>
           <p className="mt-2 text-sm text-slate-500">
-            Les votes ouvriront dès que des vidéos seront publiées.
+            Aucun talent approuvé pour ce tour. Le vote reprendra dès qu&apos;un
+            candidat sera validé et que le challenge restera en cours.
           </p>
         </div>
       ) : (
