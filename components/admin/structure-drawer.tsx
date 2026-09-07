@@ -103,6 +103,8 @@ export function StructureDrawer({
 }: StructureDrawerProps) {
   const [form, setForm] = useState<StructureFormData>(EMPTY_FORM)
   const [slugTouched, setSlugTouched] = useState(false)
+  const [subdomainTouched, setSubdomainTouched] = useState(false)
+  const [pathTouched, setPathTouched] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expertiseDomains, setExpertiseDomains] = useState<{ id: string; name: string }[]>([])
   const formInitializedFor = useRef<string | null>(null)
@@ -322,11 +324,16 @@ export function StructureDrawer({
               value={form.name}
               onChange={(e) => {
                 const name = e.target.value
-                setForm((prev) => ({
-                  ...prev,
-                  name,
-                  slug: slugTouched ? prev.slug : slugifyStructureName(name),
-                }))
+                setForm((prev) => {
+                  const nextSlug = slugTouched ? prev.slug : slugifyStructureName(name)
+                  return {
+                    ...prev,
+                    name,
+                    slug: nextSlug,
+                    subdomain: subdomainTouched ? prev.subdomain : nextSlug,
+                    landingPagePath: pathTouched ? prev.landingPagePath : nextSlug,
+                  }
+                })
               }}
               required
             />
@@ -339,8 +346,14 @@ export function StructureDrawer({
                 id="structure-slug"
                 value={form.slug}
                 onChange={(e) => {
+                  const slug = e.target.value
                   setSlugTouched(true)
-                  setForm((prev) => ({ ...prev, slug: e.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    slug,
+                    subdomain: subdomainTouched ? prev.subdomain : slug,
+                    landingPagePath: pathTouched ? prev.landingPagePath : slug,
+                  }))
                 }}
                 pattern="[a-z0-9-]+"
                 required
@@ -437,20 +450,28 @@ export function StructureDrawer({
 
           <div className="rounded-lg border border-border/70 bg-muted/20 p-4 space-y-4">
             <p className="text-sm font-medium">Landing page & sous-domaine</p>
+            <p className="text-xs text-muted-foreground">
+              Remplis automatiquement depuis le slug. Le DNS wildcard{' '}
+              <code className="rounded bg-muted px-1">
+                *.{process.env.NEXT_PUBLIC_SITE_DOMAIN || 'oratoiremonart.org'}
+              </code>{' '}
+              se configure <strong>une seule fois</strong> — pas de DNS par structure.
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="structure-landing-path">Chemin landing</Label>
                 <Input
                   id="structure-landing-path"
                   value={form.landingPagePath}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setPathTouched(true)
                     setForm((prev) => ({ ...prev, landingPagePath: e.target.value }))
-                  }
+                  }}
                   placeholder={form.slug || 'joystudio'}
                   pattern="[a-z0-9-]*"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Chemin : {publicUrls.pathUrl}
+                  Secours : {publicUrls.pathUrl}
                 </p>
               </div>
               <div className="space-y-2">
@@ -458,20 +479,21 @@ export function StructureDrawer({
                 <Input
                   id="structure-subdomain"
                   value={form.subdomain}
-                  onChange={(e) => setForm((prev) => ({ ...prev, subdomain: e.target.value }))}
-                  placeholder="joystudio"
+                  onChange={(e) => {
+                    setSubdomainTouched(true)
+                    setForm((prev) => ({ ...prev, subdomain: e.target.value }))
+                  }}
+                  placeholder={form.slug || 'joystudio'}
                   pattern="[a-z0-9-]*"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {publicUrls.subdomainUrl ? (
+                  {publicUrls.primaryUrl ? (
                     <>
-                      Wildcard DNS :{' '}
-                      <code className="text-[11px]">*.{process.env.NEXT_PUBLIC_SITE_DOMAIN || 'votredomaine.com'}</code>
-                      <br />
-                      Lien : {publicUrls.subdomainUrl}
+                      Lien public :{' '}
+                      <code className="text-[11px]">{publicUrls.primaryUrl}</code>
                     </>
                   ) : (
-                    'Définissez NEXT_PUBLIC_SITE_DOMAIN + enregistrez un wildcard DNS (*.)'
+                    'Définissez NEXT_PUBLIC_SITE_DOMAIN sur Vercel'
                   )}
                 </p>
               </div>

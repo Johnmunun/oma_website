@@ -72,7 +72,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const subdomain = normalizeOptionalString(data.subdomain)
+    const slug = data.slug.trim().toLowerCase()
+    // Auto : sous-domaine + chemin dérivés du slug si non fournis
+    const subdomain =
+      normalizeOptionalString(data.subdomain) || slug
+    const landingPagePath =
+      normalizeOptionalString(data.landingPagePath) || slug
+
     if (subdomain) {
       const subTaken = await prisma.structure.findFirst({ where: { subdomain } })
       if (subTaken) {
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
     const structure = await prisma.structure.create({
       data: {
         name: data.name,
-        slug: data.slug,
+        slug,
         type: data.type,
         description: data.description ?? null,
         logoUrl: normalizeOptionalUrl(data.logoUrl),
@@ -95,7 +101,7 @@ export async function POST(request: NextRequest) {
         expertiseDomainId: data.expertiseDomainId ?? null,
         showOnLanding: data.showOnLanding,
         landingOrder: data.landingOrder,
-        landingPagePath: normalizeOptionalString(data.landingPagePath),
+        landingPagePath,
         landingHeroTitle: normalizeOptionalString(data.landingHeroTitle),
         landingHeroHighlight: normalizeOptionalString(data.landingHeroHighlight),
         landingHeroSubtitle: normalizeOptionalString(data.landingHeroSubtitle),
