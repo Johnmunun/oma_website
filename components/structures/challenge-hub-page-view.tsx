@@ -206,6 +206,8 @@ export function ChallengeHubPageView({ data }: { data: PublicChallengeHubData })
                 ? `Tour en cours : ${activePhaseName}`
                 : 'Suivez la progression des talents tour par tour'
             }
+            logoUrl={structure.logoUrl}
+            logoAlt={structure.name}
             rounds={data.phases.bracketRounds}
           />
         </section>

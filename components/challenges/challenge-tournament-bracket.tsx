@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { downloadBracketPdf } from '@/lib/challenges/export-bracket-pdf'
+import { useDynamicLogo } from '@/components/theming/dynamic-logo'
 import { toast } from 'sonner'
 
 export type BracketCandidate = {
@@ -26,12 +27,15 @@ interface ChallengeTournamentBracketProps {
   rounds: BracketRound[]
   title?: string
   subtitle?: string
-  /** dark = FIFA/stadium look (public), light = admin */
+  /** dark = stadium look (public), light = admin */
   variant?: 'dark' | 'light'
   className?: string
   emptyHint?: string
   /** Affiche le bouton Export PDF */
   enablePdfExport?: boolean
+  /** Logo optionnel (sinon logo du site) */
+  logoUrl?: string | null
+  logoAlt?: string
 }
 
 function statusLabel(status?: string) {
@@ -49,10 +53,32 @@ export function ChallengeTournamentBracket({
   className,
   emptyHint = 'Ajoutez des tours et assignez des candidats pour afficher le tableau.',
   enablePdfExport = true,
+  logoUrl: logoUrlProp,
+  logoAlt = 'Logo',
 }: ChallengeTournamentBracketProps) {
   const isDark = variant === 'dark'
   const sorted = [...rounds]
   const [exporting, setExporting] = useState(false)
+  const [logoFailed, setLogoFailed] = useState(false)
+  const siteLogo = useDynamicLogo()
+  const logoSrc = (logoUrlProp?.trim() || siteLogo || '').trim() || null
+
+  const summary = useMemo(() => {
+    const uniqueIds = new Set<string>()
+    for (const round of rounds) {
+      for (const c of round.candidates) {
+        if (c.id) uniqueIds.add(c.id)
+      }
+    }
+    const activeRound = rounds.find((r) => r.isActive)
+    const closedCount = rounds.filter((r) => r.status === 'CLOSED').length
+    return {
+      tours: rounds.length,
+      talents: uniqueIds.size,
+      activeName: activeRound?.name ?? null,
+      closedCount,
+    }
+  }, [rounds])
 
   const handleExportPdf = async () => {
     try {
@@ -62,6 +88,12 @@ export function ChallengeTournamentBracket({
         subtitle,
         rounds: sorted,
         challengeName: title,
+        logoUrl: logoSrc,
+        summary: {
+          tours: summary.tours,
+          talents: summary.talents,
+          activeName: summary.activeName,
+        },
       })
       toast.success('PDF téléchargé')
     } catch (err: unknown) {
@@ -103,28 +135,48 @@ export function ChallengeTournamentBracket({
           isDark ? 'border-white/10' : 'border-border/50'
         )}
       >
-        <div>
-          <p
-            className={cn(
-              'text-[10px] font-bold uppercase tracking-[0.22em]',
-              isDark ? 'text-emerald-300/80' : 'text-muted-foreground'
-            )}
-          >
-            Bracket · style FIFA
-          </p>
-          <h2
-            className={cn(
-              'mt-1 font-serif text-xl font-bold tracking-tight sm:text-2xl',
-              isDark ? 'text-white' : 'text-foreground'
-            )}
-          >
-            {title}
-          </h2>
-          {subtitle && (
-            <p className={cn('mt-1 text-xs', isDark ? 'text-white/55' : 'text-muted-foreground')}>
-              {subtitle}
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+          {logoSrc && !logoFailed ? (
+            <div
+              className={cn(
+                'flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border sm:h-14 sm:w-14',
+                isDark
+                  ? 'border-white/15 bg-white/95 shadow-[0_0_24px_rgba(16,185,129,0.15)]'
+                  : 'border-border/60 bg-white shadow-sm'
+              )}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoSrc}
+                alt={logoAlt}
+                className="h-full w-full object-contain p-1.5"
+                onError={() => setLogoFailed(true)}
+              />
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <p
+              className={cn(
+                'text-[10px] font-bold uppercase tracking-[0.22em]',
+                isDark ? 'text-emerald-300/80' : 'text-muted-foreground'
+              )}
+            >
+              Tableau du tournoi
             </p>
-          )}
+            <h2
+              className={cn(
+                'mt-1 font-serif text-xl font-bold tracking-tight sm:text-2xl',
+                isDark ? 'text-white' : 'text-foreground'
+              )}
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p className={cn('mt-1 text-xs', isDark ? 'text-white/55' : 'text-muted-foreground')}>
+                {subtitle}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {sorted.map((round) => (
@@ -167,6 +219,46 @@ export function ChallengeTournamentBracket({
         </div>
       </div>
 
+      <div
+        className={cn(
+          'grid grid-cols-2 gap-2 border-b px-4 py-3 sm:grid-cols-4 sm:px-5',
+          isDark ? 'border-white/10 bg-black/20' : 'border-border/50 bg-muted/20'
+        )}
+      >
+        {[
+          { label: 'Tours', value: String(summary.tours) },
+          { label: 'Talents', value: String(summary.talents) },
+          {
+            label: 'Tour actif',
+            value: summary.activeName || '—',
+          },
+          {
+            label: 'Terminés',
+            value: String(summary.closedCount),
+          },
+        ].map((item) => (
+          <div key={item.label} className="min-w-0">
+            <p
+              className={cn(
+                'text-[10px] font-semibold uppercase tracking-wider',
+                isDark ? 'text-white/40' : 'text-muted-foreground'
+              )}
+            >
+              {item.label}
+            </p>
+            <p
+              className={cn(
+                'mt-0.5 truncate text-sm font-semibold',
+                isDark ? 'text-white' : 'text-foreground'
+              )}
+              title={item.value}
+            >
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
       <div className="overflow-x-auto">
         <div
           className="flex min-w-max items-stretch gap-0 px-4 py-6 sm:px-6"
@@ -185,7 +277,7 @@ export function ChallengeTournamentBracket({
                     empty: true as const,
                   }))
 
-            // Pair into match boxes for FIFA feel
+            // Pair into match boxes
             const pairs: Array<Array<(typeof slots)[number] & { empty?: boolean }>> = []
             for (let i = 0; i < slots.length; i += 2) {
               pairs.push(slots.slice(i, i + 2) as Array<(typeof slots)[number] & { empty?: boolean }>)

@@ -1,5 +1,5 @@
 /**
- * Export PDF du tableau FIFA — téléchargement réel via jsPDF
+ * Export PDF du tableau du tournoi — téléchargement réel via jsPDF
  */
 
 import { jsPDF } from 'jspdf'
@@ -15,13 +15,40 @@ function slugify(value: string) {
     .slice(0, 60)
 }
 
+async function loadImageAsDataUrl(url: string): Promise<{ dataUrl: string; format: 'PNG' | 'JPEG' } | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const type = blob.type || ''
+    const format: 'PNG' | 'JPEG' =
+      type.includes('jpeg') || type.includes('jpg') ? 'JPEG' : 'PNG'
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(new Error('Lecture image impossible'))
+      reader.readAsDataURL(blob)
+    })
+    if (!dataUrl.startsWith('data:')) return null
+    return { dataUrl, format }
+  } catch {
+    return null
+  }
+}
+
 export async function downloadBracketPdf(opts: {
   title: string
   subtitle?: string
   rounds: BracketRound[]
   challengeName?: string
+  logoUrl?: string | null
+  summary?: {
+    tours: number
+    talents: number
+    activeName: string | null
+  }
 }) {
-  const { title, subtitle, rounds, challengeName } = opts
+  const { title, subtitle, rounds, challengeName, logoUrl, summary } = opts
   const dateLabel = new Date().toLocaleString('fr-FR', {
     day: 'numeric',
     month: 'long',
@@ -40,26 +67,53 @@ export async function downloadBracketPdf(opts: {
   const pageH = doc.internal.pageSize.getHeight()
   const margin = 12
   let y = margin
+  let textLeft = margin
+
+  if (logoUrl) {
+    const logo = await loadImageAsDataUrl(logoUrl)
+    if (logo) {
+      try {
+        const logoSize = 14
+        doc.addImage(logo.dataUrl, logo.format, margin, y - 2, logoSize, logoSize)
+        textLeft = margin + logoSize + 4
+      } catch {
+        // ignore logo if format unsupported
+      }
+    }
+  }
 
   // En-tête
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(100, 116, 139)
-  doc.text('BRACKET  ·  STYLE FIFA', margin, y)
+  doc.text('TABLEAU DU TOURNOI', textLeft, y)
 
   y += 8
   doc.setFont('times', 'bold')
   doc.setFontSize(20)
   doc.setTextColor(15, 23, 42)
-  doc.text(title, margin, y, { maxWidth: pageW - margin * 2 })
+  doc.text(title, textLeft, y, { maxWidth: pageW - textLeft - margin })
 
   y += 7
   if (subtitle) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
     doc.setTextColor(71, 85, 105)
-    doc.text(subtitle, margin, y, { maxWidth: pageW - margin * 2 })
+    doc.text(subtitle, textLeft, y, { maxWidth: pageW - textLeft - margin })
     y += 6
+  }
+
+  if (summary) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(71, 85, 105)
+    const parts = [
+      `${summary.tours} tour${summary.tours > 1 ? 's' : ''}`,
+      `${summary.talents} talent${summary.talents > 1 ? 's' : ''}`,
+      summary.activeName ? `Actif : ${summary.activeName}` : null,
+    ].filter(Boolean)
+    doc.text(parts.join('  ·  '), textLeft, y)
+    y += 5
   }
 
   doc.setFont('helvetica', 'normal')

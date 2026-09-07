@@ -264,7 +264,7 @@ export default function ChallengePhasesAdminPage() {
           <ChallengeTournamentBracket
             variant="light"
             title={challengeName || 'Tableau du tournoi'}
-            subtitle="Aperçu style FIFA — les talents de chaque tour"
+            subtitle="Aperçu du tableau — les talents de chaque tour"
             rounds={bracketRounds}
           />
         )}
