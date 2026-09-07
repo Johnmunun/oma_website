@@ -15,8 +15,8 @@ import {
   updateLiveSettingsSchema,
 } from '@/lib/challenges/challenge-live-settings'
 import {
+  getChallengeLivePath,
   getChallengeLiveUrl,
-  getStructurePathSegment,
 } from '@/lib/structures/public-url'
 
 const patchLiveSchema = z.object({
@@ -61,7 +61,7 @@ export async function GET(
     const embedUrl = resolveLiveEmbedUrl(live)
     const replayUrl = resolveReplayEmbedUrl(live)
     const publicUrl = getChallengeLiveUrl(challenge.structure, challenge.slug)
-    const publicPath = `/s/${getStructurePathSegment(challenge.structure)}/challenges/${challenge.slug}/live`
+    const publicPath = getChallengeLivePath(challenge.structure, challenge.slug)
 
     return NextResponse.json({
       success: true,

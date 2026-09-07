@@ -1,16 +1,21 @@
 /**
  * URLs publiques des structures (landing + sous-domaine)
+ *
+ * Canonique structures : https://{subdomain}.oratoiremonart.org/...
+ * Fallback chemin :     https://oratoiremonart.org/s/{segment}/...
  */
 
 import { getMainSiteDomain, getMainSiteOrigin } from '@/lib/site-origin'
 
 export { getMainSiteOrigin } from '@/lib/site-origin'
 
-export function getStructurePathSegment(structure: {
+export type StructureUrlRef = {
   slug: string
   landingPagePath?: string | null
   subdomain?: string | null
-}): string {
+}
+
+export function getStructurePathSegment(structure: StructureUrlRef): string {
   return (
     structure.landingPagePath?.trim() ||
     structure.subdomain?.trim() ||
@@ -18,282 +23,257 @@ export function getStructurePathSegment(structure: {
   )
 }
 
-export function getStructurePublicUrls(structure: {
-  slug: string
-  landingPagePath?: string | null
-  subdomain?: string | null
-}): {
+/** Sous-domaine DNS de la structure (ex. joystudio) */
+export function getStructureSubdomainLabel(structure: StructureUrlRef): string | null {
+  const sub = (structure.subdomain?.trim() || structure.slug?.trim() || '').toLowerCase()
+  return sub || null
+}
+
+/** Hôte public structure : joystudio.oratoiremonart.org */
+export function getStructureSubdomainHost(structure: StructureUrlRef): string | null {
+  const siteDomain = getMainSiteDomain()
+  const sub = getStructureSubdomainLabel(structure)
+  if (!siteDomain || !sub) return null
+  return `${sub}.${siteDomain}`
+}
+
+/**
+ * Origine publique d'une structure.
+ * Ex. https://joystudio.oratoiremonart.org
+ * Fallback : origine du site principal (chemins /s/...).
+ */
+export function getStructurePublicOrigin(structure: StructureUrlRef): string {
+  const host = getStructureSubdomainHost(structure)
+  if (host) return `https://${host}`
+  return getMainSiteOrigin()
+}
+
+function usesStructureSubdomain(structure: StructureUrlRef): boolean {
+  return Boolean(getStructureSubdomainHost(structure))
+}
+
+/**
+ * Chemin interne Next (App Router) — toujours préfixé /s/{segment}
+ * pour fonctionner sur le domaine principal et via rewrite sous-domaine.
+ */
+export function getStructureAppPath(
+  structure: StructureUrlRef,
+  suffix = ''
+): string {
+  const segment = getStructurePathSegment(structure)
+  const clean = suffix.startsWith('/') ? suffix : suffix ? `/${suffix}` : ''
+  return `/s/${segment}${clean}`
+}
+
+/**
+ * URL absolue publique.
+ * Sous-domaine : https://joystudio.domain/challenges/...
+ * Sinon :        https://domain/s/joystudio/challenges/...
+ */
+export function getStructurePublicAbsoluteUrl(
+  structure: StructureUrlRef,
+  suffix = ''
+): string {
+  const clean = suffix.startsWith('/') ? suffix : suffix ? `/${suffix}` : ''
+  if (usesStructureSubdomain(structure)) {
+    return `${getStructurePublicOrigin(structure)}${clean || '/'}`
+  }
+  return `${getMainSiteOrigin()}${getStructureAppPath(structure, clean)}`
+}
+
+export function getStructurePublicUrls(structure: StructureUrlRef): {
   pathUrl: string
   subdomainUrl: string | null
   primaryUrl: string
 } {
-  const origin = getMainSiteOrigin()
-  const segment = getStructurePathSegment(structure)
-  const pathUrl = `${origin}/s/${segment}`
-
-  const siteDomain = getMainSiteDomain()
-  const sub = structure.subdomain?.trim()
-  const subdomainUrl =
-    siteDomain && sub ? `https://${sub}.${siteDomain}` : null
-
-  const useSubdomainAsPrimary =
-    subdomainUrl && process.env.NODE_ENV !== 'development'
+  const pathUrl = `${getMainSiteOrigin()}${getStructureAppPath(structure)}`
+  const host = getStructureSubdomainHost(structure)
+  const subdomainUrl = host ? `https://${host}` : null
 
   return {
     pathUrl,
     subdomainUrl,
-    primaryUrl: useSubdomainAsPrimary ? subdomainUrl : pathUrl,
+    primaryUrl: subdomainUrl || pathUrl,
   }
 }
 
 /** Page publique d'inscription à un challenge */
 export function getChallengeRegistrationUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const origin = getMainSiteOrigin()
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `${origin}/s/${segment}/challenges/${slug}/inscription`
+  return getStructurePublicAbsoluteUrl(structure, `/challenges/${slug}/inscription`)
 }
 
 export function getChallengeRegistrationPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/inscription`
+  return getStructureAppPath(structure, `/challenges/${slug}/inscription`)
 }
 
 export function getChallengeRegistrationSuccessPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
   return `${getChallengeRegistrationPath(structure, challengeSlug)}/success`
 }
 
 export function getChallengeRegistrationErrorPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
   return `${getChallengeRegistrationPath(structure, challengeSlug)}/erreur`
 }
 
 export function getChallengeVideoSubmitPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   token: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/video/${token}`
+  return getStructureAppPath(structure, `/challenges/${slug}/video/${token}`)
 }
 
 export function getChallengeVideoSubmitUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   token: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeVideoSubmitPath(structure, challengeSlug, token)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(
+    structure,
+    `/challenges/${slug}/video/${token}`
+  )
 }
 
 export function getChallengeJuryPortalPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   token: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/jury/${token}`
+  return getStructureAppPath(structure, `/challenges/${slug}/jury/${token}`)
 }
 
 export function getChallengeJuryPortalUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   token: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeJuryPortalPath(structure, challengeSlug, token)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(
+    structure,
+    `/challenges/${slug}/jury/${token}`
+  )
 }
 
 export function getChallengeRankingsPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/classement`
+  return getStructureAppPath(structure, `/challenges/${slug}/classement`)
 }
 
 export function getChallengeRankingsUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeRankingsPath(structure, challengeSlug)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(
+    structure,
+    `/challenges/${slug}/classement`
+  )
 }
 
 export function getChallengeVotesPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/votes`
+  return getStructureAppPath(structure, `/challenges/${slug}/votes`)
 }
 
-/** Lien court de vote public : /s/{structure}/v/{token} */
+/** Lien court de vote public (chemin app) */
 export function getChallengeVotePortalPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   voteToken: string
 ): string {
-  const segment = getStructurePathSegment(structure)
-  return `/s/${segment}/v/${voteToken.trim()}`
+  return getStructureAppPath(structure, `/v/${voteToken.trim()}`)
 }
 
 export function getChallengeVotePortalUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   voteToken: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeVotePortalPath(structure, voteToken)}`
+  return getStructurePublicAbsoluteUrl(structure, `/v/${voteToken.trim()}`)
 }
 
 export function getChallengeVotesUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeVotesPath(structure, challengeSlug)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(structure, `/challenges/${slug}/votes`)
 }
 
 /** Hub public du challenge */
 export function getChallengeHubPath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}`
+  return getStructureAppPath(structure, `/challenges/${slug}`)
 }
 
 export function getChallengeHubUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeHubPath(structure, challengeSlug)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(structure, `/challenges/${slug}`)
 }
 
 /** Fiche publique d'un candidat (par code KID-0001) */
 export function getChallengeCandidatePath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   candidateCode: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
   const code = encodeURIComponent(candidateCode.trim())
-  return `/s/${segment}/challenges/${slug}/candidats/${code}`
+  return getStructureAppPath(structure, `/challenges/${slug}/candidats/${code}`)
 }
 
 export function getChallengeCandidateUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string,
   candidateCode: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeCandidatePath(structure, challengeSlug, candidateCode)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  const code = encodeURIComponent(candidateCode.trim())
+  return getStructurePublicAbsoluteUrl(
+    structure,
+    `/challenges/${slug}/candidats/${code}`
+  )
 }
 
 /** Page Live Cloudflare Stream du challenge */
 export function getChallengeLivePath(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  const segment = getStructurePathSegment(structure)
   const slug = challengeSlug.trim().toLowerCase()
-  return `/s/${segment}/challenges/${slug}/live`
+  return getStructureAppPath(structure, `/challenges/${slug}/live`)
 }
 
 export function getChallengeLiveUrl(
-  structure: {
-    slug: string
-    landingPagePath?: string | null
-    subdomain?: string | null
-  },
+  structure: StructureUrlRef,
   challengeSlug: string
 ): string {
-  return `${getMainSiteOrigin()}${getChallengeLivePath(structure, challengeSlug)}`
+  const slug = challengeSlug.trim().toLowerCase()
+  return getStructurePublicAbsoluteUrl(structure, `/challenges/${slug}/live`)
 }

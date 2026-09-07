@@ -1,10 +1,13 @@
 /**
  * @file middleware.ts
  * @description Sous-domaines structures + protection routes admin
+ *
+ * joystudio.oratoiremonart.org/challenges/...
+ *   → rewrite interne /s/joystudio/challenges/...
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getMainSiteDomain, getMainSiteOrigin } from '@/lib/site-origin'
+import { getMainSiteDomain } from '@/lib/site-origin'
 
 function hasSessionCookie(req: NextRequest): boolean {
   return Boolean(
@@ -35,30 +38,41 @@ function resolveSubdomain(host: string): string | null {
   return null
 }
 
+function rewriteStructurePath(req: NextRequest, subdomain: string): NextResponse {
+  const { pathname, search } = req.nextUrl
+
+  // Déjà préfixé /s/{sub} → laisser passer (évite double rewrite)
+  if (pathname === `/s/${subdomain}` || pathname.startsWith(`/s/${subdomain}/`)) {
+    return NextResponse.next()
+  }
+
+  // Ne pas réécrire les assets / routes techniques
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/favicon')
+  ) {
+    return NextResponse.next()
+  }
+
+  const targetPath =
+    pathname === '/' ? `/s/${subdomain}` : `/s/${subdomain}${pathname}`
+
+  const rewriteUrl = req.nextUrl.clone()
+  rewriteUrl.pathname = targetPath
+  // search déjà sur nextUrl
+  return NextResponse.rewrite(rewriteUrl)
+}
+
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl
   const host = req.headers.get('host')?.split(':')[0] ?? ''
 
   const subdomain = resolveSubdomain(host)
-  if (
-    subdomain &&
-    !url.pathname.startsWith('/admin') &&
-    !url.pathname.startsWith('/api') &&
-    !url.pathname.startsWith('/_next')
-  ) {
-    if (url.pathname === '/') {
-      return NextResponse.rewrite(new URL(`/s/${subdomain}`, req.url))
-    }
-
-    const mainOrigin = getMainSiteOrigin()
-    try {
-      const mainHost = new URL(mainOrigin).host
-      if (host !== mainHost) {
-        return NextResponse.redirect(new URL(url.pathname + url.search, mainOrigin))
-      }
-    } catch {
-      // ignore invalid main origin
-    }
+  if (subdomain) {
+    return rewriteStructurePath(req, subdomain)
   }
 
   if (!url.pathname.startsWith('/admin')) {
