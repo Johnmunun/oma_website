@@ -1,6 +1,11 @@
 'use client'
 
+import { useState } from 'react'
+import { Download, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { openBracketPdfExport } from '@/lib/challenges/export-bracket-pdf'
+import { toast } from 'sonner'
 
 export type BracketCandidate = {
   id: string
@@ -25,6 +30,8 @@ interface ChallengeTournamentBracketProps {
   variant?: 'dark' | 'light'
   className?: string
   emptyHint?: string
+  /** Affiche le bouton Export PDF */
+  enablePdfExport?: boolean
 }
 
 function statusLabel(status?: string) {
@@ -41,9 +48,28 @@ export function ChallengeTournamentBracket({
   variant = 'dark',
   className,
   emptyHint = 'Ajoutez des tours et assignez des candidats pour afficher le tableau.',
+  enablePdfExport = true,
 }: ChallengeTournamentBracketProps) {
   const isDark = variant === 'dark'
-  const sorted = [...rounds].sort((a, b) => 0) // already ordered by caller
+  const sorted = [...rounds]
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportPdf = () => {
+    try {
+      setExporting(true)
+      openBracketPdfExport({
+        title,
+        subtitle,
+        rounds: sorted,
+        challengeName: title,
+      })
+      toast.success('Fenêtre d’impression ouverte — choisissez « Enregistrer au format PDF »')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Export PDF impossible')
+    } finally {
+      setTimeout(() => setExporting(false), 500)
+    }
+  }
 
   if (sorted.length === 0) {
     return (
@@ -100,7 +126,7 @@ export function ChallengeTournamentBracket({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {sorted.map((round) => (
             <span
               key={`legend-${round.id}`}
@@ -118,6 +144,26 @@ export function ChallengeTournamentBracket({
               {round.name}
             </span>
           ))}
+          {enablePdfExport && (
+            <Button
+              type="button"
+              size="sm"
+              variant={isDark ? 'secondary' : 'outline'}
+              className={cn(
+                'h-8 gap-1.5 text-xs',
+                isDark && 'bg-white/10 text-white hover:bg-white/15 hover:text-white'
+              )}
+              disabled={exporting}
+              onClick={handleExportPdf}
+            >
+              {exporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              Export PDF
+            </Button>
+          )}
         </div>
       </div>
 

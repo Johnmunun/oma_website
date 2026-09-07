@@ -145,7 +145,8 @@ export default function ChallengePhasesAdminPage() {
             enabled: phases.enabled,
             activePhaseId: phases.activePhaseId,
             items: phases.items.map((p, index) => ({
-              id: p.id.startsWith('local-') ? undefined : p.id,
+              // Garder les id temporaires local-… : l’API les remappe vers des UUID
+              id: p.id,
               name: p.name,
               order: index,
               status: p.status,

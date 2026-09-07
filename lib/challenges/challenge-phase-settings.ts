@@ -69,29 +69,44 @@ export function createPhaseId(): string {
 export function mergeChallengePhasesSettings(
   existingSettings: unknown,
   patch: z.infer<typeof updatePhasesSettingsSchema>
-): Record<string, unknown> {
+): {
+  settings: Record<string, unknown>
+  /** tempId (ex. local-…) → UUID final */
+  idMap: Record<string, string>
+} {
   const base =
     existingSettings && typeof existingSettings === 'object'
       ? { ...(existingSettings as Record<string, unknown>) }
       : {}
 
   const current = parsePhasesSettings(base.phases)
+  const idMap: Record<string, string> = {}
 
   let items = current.items
   if (patch.items) {
-    items = patch.items.map((item, index) =>
-      challengePhaseItemSchema.parse({
-        id: item.id?.trim() || createPhaseId(),
+    items = patch.items.map((item, index) => {
+      const incomingId = item.id?.trim() || ''
+      const isTemp = !incomingId || incomingId.startsWith('local-')
+      const finalId = isTemp ? createPhaseId() : incomingId
+      if (incomingId && isTemp) {
+        idMap[incomingId] = finalId
+      }
+      return challengePhaseItemSchema.parse({
+        id: finalId,
         name: item.name.trim(),
         order: item.order ?? index,
         status: item.status ?? 'DRAFT',
       })
-    )
+    })
     items.sort((a, b) => a.order - b.order)
   }
 
   let activePhaseId =
     patch.activePhaseId !== undefined ? patch.activePhaseId : current.activePhaseId
+
+  if (activePhaseId && idMap[activePhaseId]) {
+    activePhaseId = idMap[activePhaseId]
+  }
 
   if (activePhaseId && !items.some((p) => p.id === activePhaseId)) {
     activePhaseId = null
@@ -106,8 +121,11 @@ export function mergeChallengePhasesSettings(
   })
 
   return {
-    ...base,
-    phases: merged,
+    settings: {
+      ...base,
+      phases: merged,
+    },
+    idMap,
   }
 }
 

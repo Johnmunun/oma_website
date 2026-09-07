@@ -121,12 +121,14 @@ export async function PATCH(
     }
 
     let settings: unknown = challenge.settings
+    let idMap: Record<string, string> = {}
     if (body.phases) {
       const merged = mergeChallengePhasesSettings(challenge.settings, body.phases)
-      settings = merged
+      settings = merged.settings
+      idMap = merged.idMap
       await prisma.challenge.update({
         where: { id },
-        data: { settings: merged as Prisma.InputJsonValue },
+        data: { settings: merged.settings as Prisma.InputJsonValue },
       })
     }
 
@@ -134,7 +136,13 @@ export async function PATCH(
 
     if (body.assignments?.length) {
       const validIds = new Set(phases.items.map((p) => p.id))
-      for (const row of body.assignments) {
+      const remapped = body.assignments.map((row) => {
+        const phaseId =
+          row.phaseId && idMap[row.phaseId] ? idMap[row.phaseId] : row.phaseId
+        return { ...row, phaseId }
+      })
+
+      for (const row of remapped) {
         if (row.phaseId && !validIds.has(row.phaseId)) {
           return NextResponse.json(
             { success: false, error: `Phase inconnue: ${row.phaseId}` },
@@ -144,7 +152,7 @@ export async function PATCH(
       }
 
       await prisma.$transaction(
-        body.assignments.map((row) =>
+        remapped.map((row) =>
           prisma.candidate.updateMany({
             where: { id: row.candidateId, challengeId: id },
             data: { phaseId: row.phaseId },
