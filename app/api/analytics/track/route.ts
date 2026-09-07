@@ -13,10 +13,24 @@ import { detectDevice, detectBrowser, detectOS, getClientIP, resolveVisitorGeo }
 const emptyToNull = (v: unknown) =>
   v === '' || v === 'null' || v === undefined ? null : v
 
+const softUrl = z.preprocess((v) => {
+  const n = emptyToNull(v)
+  if (n == null) return null
+  if (typeof n !== 'string') return null
+  try {
+    // Valide sans faire échouer tout le tracking
+    // eslint-disable-next-line no-new
+    new URL(n)
+    return n
+  } catch {
+    return null
+  }
+}, z.string().url().nullable())
+
 const trackVisitSchema = z.object({
-  url: z.string().url(),
+  url: z.string().min(1),
   path: z.string().min(1),
-  referer: z.preprocess(emptyToNull, z.string().url().nullable().optional()),
+  referer: softUrl.optional(),
   screenWidth: z.number().int().positive().optional().nullable(),
   screenHeight: z.number().int().positive().optional().nullable(),
   language: z.preprocess(emptyToNull, z.string().nullable().optional()),
@@ -43,8 +57,8 @@ export async function POST(request: NextRequest) {
     const referer = validatedData.referer || request.headers.get('referer') || null
     const ip = getClientIP(request)
 
-    // Mise à jour de durée : ne pas créer une seconde visite
-    if (validatedData.duration && validatedData.sessionId) {
+    // Mise à jour de durée uniquement (ne jamais créer une 2e visite)
+    if (validatedData.duration != null && validatedData.sessionId) {
       try {
         const lastVisit = await prisma.visit.findFirst({
           where: {
@@ -55,15 +69,27 @@ export async function POST(request: NextRequest) {
           select: { id: true, createdAt: true },
         })
         if (lastVisit && Date.now() - lastVisit.createdAt.getTime() < 45 * 60 * 1000) {
-          await prisma.visit.update({
-            where: { id: lastVisit.id },
-            data: { duration: validatedData.duration },
-          })
+          if (validatedData.duration > 0) {
+            await prisma.visit.update({
+              where: { id: lastVisit.id },
+              data: { duration: validatedData.duration },
+            })
+          }
           return NextResponse.json({ success: true, data: { id: lastVisit.id, updated: true } })
         }
       } catch (err) {
         console.warn('[API] Mise à jour durée visite échouée:', err)
       }
+      // Beacon durée sans visite récente → ignorer (pas de doublon)
+      return NextResponse.json({ success: true, data: { skipped: true } })
+    }
+
+    let pageUrl = validatedData.url
+    try {
+      // eslint-disable-next-line no-new
+      new URL(pageUrl)
+    } catch {
+      pageUrl = `https://unknown.local${validatedData.path.startsWith('/') ? '' : '/'}${validatedData.path}`
     }
 
     const device = detectDevice(userAgent)
@@ -76,7 +102,7 @@ export async function POST(request: NextRequest) {
         ip,
         userAgent,
         referer,
-        url: validatedData.url,
+        url: pageUrl,
         path: validatedData.path,
         method: 'GET',
         country: geo.country,
@@ -88,7 +114,7 @@ export async function POST(request: NextRequest) {
         screenHeight: validatedData.screenHeight || null,
         language: validatedData.language || null,
         sessionId: validatedData.sessionId || null,
-        duration: validatedData.duration || null,
+        duration: null,
         userId: null,
       },
     })

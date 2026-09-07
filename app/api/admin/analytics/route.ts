@@ -75,17 +75,19 @@ export async function GET(request: NextRequest) {
         ? Prisma.sql`TRUE`
         : Prisma.sql`"createdAt" >= ${dateFrom} AND "createdAt" <= ${dateTo}`
 
+    // Graphique : pour "all", limiter à 365 j (lisible) ; sinon = période
     const chartFrom =
       period === 'all'
-        ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+        ? new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
         : dateFrom
+    const chartTo = dateTo
 
     const [
       totalVisits,
       uniqueRow,
       extraRow,
       avgDuration,
-      visitsByDay,
+      visitsByDayRaw,
       visitsByPath,
       visitsByCountry,
       visitsByCity,
@@ -144,15 +146,16 @@ export async function GET(request: NextRequest) {
         _avg: { duration: true },
       }),
 
-      prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
+      // Jour calendaire en UTC (date texte YYYY-MM-DD, sans dérive timezone client)
+      prisma.$queryRaw<Array<{ day: string; count: bigint }>>`
         SELECT
-          DATE_TRUNC('day', "createdAt")::date as date,
+          to_char(DATE_TRUNC('day', "createdAt" AT TIME ZONE 'UTC'), 'YYYY-MM-DD') as day,
           COUNT(*)::int as count
         FROM "Visit"
         WHERE "createdAt" >= ${chartFrom}
-          AND "createdAt" <= ${dateTo}
-        GROUP BY DATE_TRUNC('day', "createdAt")::date
-        ORDER BY date ASC
+          AND "createdAt" <= ${chartTo}
+        GROUP BY DATE_TRUNC('day', "createdAt" AT TIME ZONE 'UTC')
+        ORDER BY day ASC
       `,
 
       prisma.visit.groupBy({
@@ -232,6 +235,25 @@ export async function GET(request: NextRequest) {
         ? Math.round((extras.bounceSessions / extras.totalSessions) * 100)
         : 0
 
+    const countByDay = new Map(
+      visitsByDayRaw.map((row) => [String(row.day), Number(row.count)])
+    )
+
+    // Remplir tous les jours de la plage (0 si aucune visite)
+    const visitsByDay: Array<{ date: string; count: number }> = []
+    const cursor = new Date(chartFrom)
+    cursor.setUTCHours(0, 0, 0, 0)
+    const end = new Date(chartTo)
+    end.setUTCHours(0, 0, 0, 0)
+    // Limite de sécurité (évite boucle infinie si dates invalides)
+    let guard = 0
+    while (cursor.getTime() <= end.getTime() && guard < 400) {
+      const key = cursor.toISOString().slice(0, 10)
+      visitsByDay.push({ date: key, count: countByDay.get(key) ?? 0 })
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+      guard += 1
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -245,10 +267,7 @@ export async function GET(request: NextRequest) {
           uniqueCountries: Number(extras.uniqueCountries || 0),
           uniqueCities: Number(extras.uniqueCities || 0),
         },
-        visitsByDay: visitsByDay.map((item) => ({
-          date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : String(item.date),
-          count: Number(item.count),
-        })),
+        visitsByDay,
         visitsByPath: visitsByPath.map((item) => ({
           path: item.path,
           count: item._count,
@@ -282,8 +301,10 @@ export async function GET(request: NextRequest) {
           count: item._count,
         })),
         period: {
-          from: dateFrom.toISOString(),
+          from: (period === 'all' ? chartFrom : dateFrom).toISOString(),
           to: dateTo.toISOString(),
+          chartFrom: chartFrom.toISOString(),
+          label: period,
         },
       },
     })

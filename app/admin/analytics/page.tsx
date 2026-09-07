@@ -152,6 +152,49 @@ function formatDuration(seconds: number) {
   return `${hours}h ${minutes % 60}m`
 }
 
+function formatDayLabel(isoDate: string) {
+  // isoDate = YYYY-MM-DD — parser en local pour éviter le décalage UTC
+  const parts = isoDate.split("-").map(Number)
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return isoDate
+  const [y, m, d] = parts
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+  })
+}
+
+function deviceLabel(device: string | null | undefined) {
+  const labels: Record<string, string> = {
+    desktop: "Ordinateur",
+    mobile: "Mobile",
+    tablet: "Tablette",
+  }
+  if (!device) return "Inconnu"
+  return labels[device] || device
+}
+
+function csvEscape(value: string | number | null | undefined) {
+  const s = String(value ?? "")
+  return `"${s.replace(/"/g, '""')}"`
+}
+
+function periodLabel(period: string) {
+  switch (period) {
+    case "24h":
+      return "24 heures"
+    case "7d":
+      return "7 jours"
+    case "30d":
+      return "30 jours"
+    case "90d":
+      return "90 jours"
+    case "all":
+      return "Toute la période (graphique 365 j)"
+    default:
+      return period
+  }
+}
+
 function RankingList({
   items,
   empty,
@@ -274,22 +317,17 @@ export default function AdminAnalyticsPage() {
   const visitsByDayFormatted = useMemo(
     () =>
       (data?.visitsByDay || []).map((item) => ({
-        date: new Date(item.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+        date: formatDayLabel(item.date),
         visites: item.count || 0,
       })),
     [data]
   )
 
   const deviceData = useMemo(() => {
-    const labels: Record<string, string> = {
-      desktop: "Ordinateur",
-      mobile: "Mobile",
-      tablet: "Tablette",
-    }
     return (data?.visitsByDevice || [])
       .map((item) => ({
         key: item.device,
-        name: labels[item.device] || item.device,
+        name: deviceLabel(item.device),
         value: item.count || 0,
         color: DEVICE_COLORS[item.device] || "#888",
       }))
@@ -300,22 +338,109 @@ export default function AdminAnalyticsPage() {
 
   const exportCsv = () => {
     if (!data) return
-    const rows: string[][] = [
-      ["Section", "Libellé", "Visites"],
-      ...data.visitsByCountry.map((i) => ["Pays", countryLabel(i.country), String(i.count)]),
-      ...data.visitsByCity.map((i) => ["Ville", i.city, String(i.count)]),
-      ...data.visitsByDevice.map((i) => ["Appareil", i.device, String(i.count)]),
-      ...data.visitsByBrowser.map((i) => ["Navigateur", i.browser, String(i.count)]),
-      ...data.visitsByOS.map((i) => ["OS", i.os, String(i.count)]),
-      ...data.visitsByPath.map((i) => ["Page", i.path, String(i.count)]),
-      ...data.topReferrers.map((i) => ["Référent", refererHost(i.referer), String(i.count)]),
-    ]
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n")
+
+    const exportedAt = new Date().toLocaleString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    const fromLabel = data.period?.from
+      ? new Date(data.period.from).toLocaleDateString("fr-FR")
+      : "—"
+    const toLabel = data.period?.to
+      ? new Date(data.period.to).toLocaleDateString("fr-FR")
+      : "—"
+
+    const lines: string[] = []
+    const push = (...cols: Array<string | number>) => {
+      lines.push(cols.map(csvEscape).join(";"))
+    }
+    const blank = () => lines.push("")
+    const section = (title: string) => {
+      blank()
+      push(title)
+    }
+
+    push("OMA Analytics — Export")
+    push("Période sélectionnée", periodLabel(period))
+    push("Du", fromLabel)
+    push("Au", toLabel)
+    push("Exporté le", exportedAt)
+
+    section("SYNTHÈSE")
+    push("Métrique", "Valeur")
+    push("Visites", data.overview.totalVisits)
+    push("Visiteurs uniques", data.overview.uniqueVisitors)
+    push("Pages vues", data.overview.totalPageViews)
+    push("Durée moyenne", formatDuration(data.overview.avgDuration))
+    push("Taux de rebond (%)", data.overview.bounceRate ?? 0)
+    push("Pages / session", data.overview.pagesPerSession ?? 0)
+    push("Pays", data.overview.uniqueCountries ?? 0)
+    push("Villes", data.overview.uniqueCities ?? 0)
+
+    section("VISITES PAR JOUR")
+    push("Date", "Visites")
+    for (const row of data.visitsByDay) {
+      push(row.date, row.count)
+    }
+
+    section("PAGES")
+    push("Chemin", "Visites")
+    for (const row of data.visitsByPath) {
+      push(row.path, row.count)
+    }
+
+    section("PAYS")
+    push("Pays", "Code", "Visites")
+    for (const row of data.visitsByCountry) {
+      push(countryLabel(row.country), row.country || "", row.count)
+    }
+
+    section("VILLES")
+    push("Ville", "Visites")
+    for (const row of data.visitsByCity) {
+      push(row.city || "Inconnu", row.count)
+    }
+
+    section("APPAREILS")
+    push("Appareil", "Visites")
+    for (const row of data.visitsByDevice) {
+      push(deviceLabel(row.device), row.count)
+    }
+
+    section("NAVIGATEURS")
+    push("Navigateur", "Visites")
+    for (const row of data.visitsByBrowser) {
+      push(row.browser || "Inconnu", row.count)
+    }
+
+    section("SYSTÈMES")
+    push("OS", "Visites")
+    for (const row of data.visitsByOS) {
+      push(row.os || "Inconnu", row.count)
+    }
+
+    section("LANGUES")
+    push("Langue", "Code", "Visites")
+    for (const row of data.visitsByLanguage) {
+      push(languageLabel(row.language), row.language || "", row.count)
+    }
+
+    section("RÉFÉRENTS")
+    push("Source", "URL", "Visites")
+    for (const row of data.topReferrers) {
+      push(refererHost(row.referer), row.referer || "", row.count)
+    }
+
+    const csv = lines.join("\r\n")
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `oma-analytics-${period}.csv`
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.download = `oma-analytics-${stamp}-${period}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success("Export CSV téléchargé")
