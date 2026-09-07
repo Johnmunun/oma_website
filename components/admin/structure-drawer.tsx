@@ -173,11 +173,15 @@ export function StructureDrawer({
         publicUrl: initialData.publicUrl ?? '',
       })
       setSlugTouched(true)
+      setSubdomainTouched(true)
+      setPathTouched(true)
     } else {
       const defaultParent =
         structures.find((s) => s.slug === 'oma')?.id ?? structures[0]?.id ?? ''
       setForm({ ...EMPTY_FORM, parentId: defaultParent })
       setSlugTouched(false)
+      setSubdomainTouched(false)
+      setPathTouched(false)
     }
   }, [isOpen, initialData, structures])
 
