@@ -612,6 +612,7 @@ model Challenge {
   juryMembers ChallengeJuryMember[]
   juryEvaluations ChallengeJuryEvaluation[]
   votes       ChallengeVote[]
+  voteOtps    ChallengeVoteOtp[]
   liveChatMessages ChallengeLiveChatMessage[]
   liveReactions    ChallengeLiveReaction[]
 
@@ -740,6 +741,8 @@ model ChallengeVote {
   voterEmail  String?
   /** '' = hors phases ; sinon id de la phase au moment du vote */
   phaseId     String    @default("")
+  /** Hash SHA-256 tronqué de l'IP (audit anti-fraude) */
+  ipHash      String?
   createdAt   DateTime  @default(now())
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
@@ -747,7 +750,26 @@ model ChallengeVote {
   @@unique([challengeId, voterKey, phaseId])
   @@index([challengeId, candidateId])
   @@index([challengeId, phaseId])
+  @@index([challengeId, ipHash])
   @@map("ChallengeVote")
+}
+
+/** Code OTP email pour confirmer un vote public */
+model ChallengeVoteOtp {
+  id          String    @id @default(uuid()) @db.Uuid
+  challengeId String    @db.Uuid
+  /** '' = hors phases ; sinon id de phase */
+  phaseId     String    @default("")
+  email       String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, phaseId, email])
+  @@index([expiresAt])
+  @@map("ChallengeVoteOtp")
 }
 
 /** Chat public pendant le Live d'un challenge */

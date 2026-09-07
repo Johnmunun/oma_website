@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, Heart, Loader2, Trophy } from 'lucide-react'
+import { CheckCircle2, Heart, Loader2, Mail, Trophy } from 'lucide-react'
 import { ChallengeRegistrationShell } from '@/components/structures/challenge-registration-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,12 +43,20 @@ export type PublicVotesPageData = PublicChallengePageData & {
   }
 }
 
+function votedStorageKey(challengeId: string, phaseId: string | null | undefined) {
+  return `oma_voted:${challengeId}:${phaseId || '_'}`
+}
+
 export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) {
   const { structure, challenge, contactSlug, candidates, totalVotes, coverImageUrl } = data
   const hasCover = Boolean(coverImageUrl)
   const phaseLabel = data.phases?.enabled ? data.phases.activePhase?.name : null
+  const phaseId = data.phases?.enabled ? data.phases.activePhase?.id ?? null : null
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [voted, setVoted] = useState(false)
   const rankingsPath = getChallengeRankingsPath(structure, challenge.slug)
@@ -56,6 +64,13 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
   const voteSubmitPath =
     data.voteSubmitPath ||
     `/api/structures/${contactSlug}/challenges/${challenge.slug}/votes`
+  const otpRequestPath = useMemo(() => {
+    if (voteSubmitPath.endsWith('/votes')) {
+      return `${voteSubmitPath}/request-otp`
+    }
+    // short link: /api/structures/{slug}/votes/{token}
+    return `${voteSubmitPath}/request-otp`
+  }, [voteSubmitPath])
 
   useEffect(() => {
     try {
@@ -63,10 +78,14 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
       if (preselect && candidates.some((c) => c.id === preselect)) {
         setSelectedId(preselect)
       }
+      const key = votedStorageKey(challenge.id, phaseId)
+      if (window.localStorage.getItem(key) === '1') {
+        setVoted(true)
+      }
     } catch {
       // ignore
     }
-  }, [candidates])
+  }, [candidates, challenge.id, phaseId])
 
   const selected = candidates.find((c) => c.id === selectedId) ?? null
 
@@ -90,11 +109,40 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
       </h1>
       <p className={cn('mt-3 text-base', hasCover ? 'text-white/75' : 'text-slate-600')}>
         {phaseLabel ? `${phaseLabel} · ` : ''}
-        1 vote par email{phaseLabel ? ' et par tour' : ''} · {totalVotes} vote
+        1 vote par personne (email vérifié)
+        {phaseLabel ? ' et par tour' : ''} · {totalVotes} vote
         {totalVotes !== 1 ? 's' : ''} enregistré{totalVotes !== 1 ? 's' : ''}
       </p>
     </div>
   )
+
+  const handleRequestOtp = async () => {
+    if (!selectedId) {
+      toast.error('Sélectionnez un candidat')
+      return
+    }
+    if (!email.trim()) {
+      toast.error('Indiquez votre email')
+      return
+    }
+
+    setIsSendingOtp(true)
+    try {
+      const res = await fetch(otpRequestPath, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erreur')
+      setOtpSent(true)
+      toast.success(json.message || 'Code envoyé par email')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Impossible d'envoyer le code")
+    } finally {
+      setIsSendingOtp(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,16 +154,30 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
       toast.error('Indiquez votre email')
       return
     }
+    if (!otp.trim()) {
+      toast.error('Entrez le code reçu par email')
+      return
+    }
 
     setIsSubmitting(true)
     try {
       const res = await fetch(voteSubmitPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId: selectedId, email: email.trim() }),
+        credentials: 'include',
+        body: JSON.stringify({
+          candidateId: selectedId,
+          email: email.trim(),
+          otp: otp.trim(),
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erreur')
+      try {
+        window.localStorage.setItem(votedStorageKey(challenge.id, phaseId), '1')
+      } catch {
+        // ignore
+      }
       setVoted(true)
       toast.success(json.message || 'Vote enregistré !')
     } catch (err: unknown) {
@@ -263,14 +325,61 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
               required
               placeholder="vous@exemple.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setOtpSent(false)
+                setOtp('')
+              }}
               className="mt-2"
             />
-            <p className="mt-2 text-xs text-slate-400">Un seul vote par adresse email.</p>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isSendingOtp || !selectedId || !email.trim()}
+              onClick={handleRequestOtp}
+              className="mt-3 h-10 w-full rounded-full text-sm font-semibold"
+            >
+              {isSendingOtp ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi du code…
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  {otpSent ? 'Renvoyer le code' : 'Recevoir le code'}
+                </>
+              )}
+            </Button>
+
+            {otpSent && (
+              <>
+                <label htmlFor="voter-otp" className="mt-5 block text-sm font-medium text-slate-700">
+                  Code reçu par email
+                </label>
+                <Input
+                  id="voter-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  required
+                  placeholder="123456"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="mt-2 tracking-[0.3em]"
+                />
+              </>
+            )}
+
+            <p className="mt-2 text-xs text-slate-400">
+              1 vote par personne (email vérifié){phaseLabel ? ' et par tour' : ''}.
+            </p>
 
             <Button
               type="submit"
-              disabled={isSubmitting || !selectedId}
+              disabled={isSubmitting || !selectedId || !otpSent || otp.length !== 6}
               className="mt-6 h-12 w-full rounded-full font-semibold text-white"
               style={{
                 backgroundImage:
@@ -280,7 +389,7 @@ export function ChallengeVotesPageView({ data }: { data: PublicVotesPageData }) 
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Envoi…
+                  Validation…
                 </>
               ) : (
                 <>

@@ -1,6 +1,6 @@
 /**
  * POST /api/structures/[slug]/challenges/[challengeSlug]/votes
- * Vote public (un vote par email par challenge)
+ * Vote public (email + OTP + anti-fraude navigateur / IP)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -9,11 +9,14 @@ import {
   PublicVoteError,
   submitPublicChallengeVote,
 } from '@/lib/votes/submit-public-challenge-vote'
+import { applyBallotCookie, hasBallotCookie } from '@/lib/votes/vote-ballot-cookie'
+import { hashVoteIp } from '@/lib/votes/vote-ip-guard'
 import { checkRateLimit, getClientIP, RATE_LIMIT_CONFIGS } from '@/lib/rate-limit'
 
 const voteBodySchema = z.object({
   candidateId: z.string().uuid('Candidat invalide'),
   email: z.string().email('Email invalide'),
+  otp: z.string().min(4).max(12),
 })
 
 export async function POST(
@@ -42,14 +45,26 @@ export async function POST(
       slug,
       challengeSlug,
       body.candidateId,
-      body.email
+      body.email,
+      {
+        otp: body.otp,
+        ipHash: hashVoteIp(ip),
+        clientIp: ip,
+        checkBallot: (challengeId, phaseKey) => hasBallotCookie(request, challengeId, phaseKey),
+      }
     )
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Merci ! Votre vote pour ${result.candidate.fullName} a bien été enregistré.`,
-      data: { candidateId: result.candidate.id },
+      data: {
+        candidateId: result.candidate.id,
+        challengeId: result.challenge.id,
+        phaseKey: result.phaseKey,
+      },
     })
+    applyBallotCookie(response, result.challenge.id, result.phaseKey)
+    return response
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -65,7 +80,7 @@ export async function POST(
     }
     console.error('[API] Erreur POST public vote:', error)
     return NextResponse.json(
-      { success: false, error: 'Erreur lors de l\'enregistrement du vote' },
+      { success: false, error: "Erreur lors de l'enregistrement du vote" },
       { status: 500 }
     )
   }

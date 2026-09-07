@@ -9,16 +9,10 @@ import {
   parsePhasesSettingsFromChallenge,
 } from '@/lib/challenges/challenge-phase-settings'
 import { getVotePublicTokenFromSettings } from '@/lib/votes/vote-public-token'
+import { PublicVoteError } from '@/lib/votes/public-vote-error'
+import { consumeVoteOtp } from '@/lib/votes/vote-otp'
 
-export class PublicVoteError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number
-  ) {
-    super(message)
-    this.name = 'PublicVoteError'
-  }
-}
+export { PublicVoteError } from '@/lib/votes/public-vote-error'
 
 const STRUCTURE_WHERE = (segment: string) => ({
   OR: [{ slug: segment }, { landingPagePath: segment }, { subdomain: segment }],
@@ -137,9 +131,21 @@ async function recordVote(
   candidateId: string,
   email: string,
   phaseKey: string,
-  requiredPhaseId: string | null
+  requiredPhaseId: string | null,
+  opts?: { ipHash?: string | null; otp?: string }
 ) {
   const voterKey = normalizeCandidateEmail(email)
+  const otp = opts?.otp?.trim()
+  if (!otp) {
+    throw new PublicVoteError('Code de confirmation requis', 400)
+  }
+
+  await consumeVoteOtp({
+    challengeId,
+    phaseKey,
+    email: voterKey,
+    otp,
+  })
 
   const candidate = await prisma.candidate.findFirst({
     where: {
@@ -180,10 +186,11 @@ async function recordVote(
       voterKey,
       voterEmail: voterKey,
       phaseId: phaseKey,
+      ipHash: opts?.ipHash?.trim() || null,
     },
   })
 
-  return { vote, candidate }
+  return { vote, candidate, phaseKey }
 }
 
 function buildVotePagePayload(
@@ -236,7 +243,13 @@ export async function submitPublicChallengeVoteByToken(
   structureSegment: string,
   voteToken: string,
   candidateId: string,
-  email: string
+  email: string,
+  opts?: {
+    otp?: string
+    ipHash?: string | null
+    clientIp?: string
+    checkBallot?: (challengeId: string, phaseKey: string) => boolean
+  }
 ) {
   const segment = structureSegment.trim().toLowerCase()
 
@@ -262,22 +275,47 @@ export async function submitPublicChallengeVoteByToken(
     throw new PublicVoteError('Aucune phase active pour le vote', 403)
   }
 
+  if (opts?.checkBallot?.(challenge.id, phaseKey)) {
+    throw new PublicVoteError('Ce navigateur a déjà voté pour ce tour', 409)
+  }
+
+  const { isVoteIpLimitReached, recordSuccessfulVoteIp } = await import(
+    '@/lib/votes/vote-ip-guard'
+  )
+  if (opts?.clientIp && (await isVoteIpLimitReached(challenge.id, phaseKey, opts.clientIp))) {
+    throw new PublicVoteError(
+      'Trop de votes depuis cette connexion. Réessayez plus tard.',
+      429
+    )
+  }
+
   const { vote, candidate } = await recordVote(
     challenge.id,
     candidateId,
     email,
     phaseKey,
-    requiredPhaseId
+    requiredPhaseId,
+    opts
   )
 
-  return { vote, challenge, structure, candidate }
+  if (opts?.clientIp) {
+    await recordSuccessfulVoteIp(challenge.id, phaseKey, opts.clientIp)
+  }
+
+  return { vote, challenge, structure, candidate, phaseKey }
 }
 
 export async function submitPublicChallengeVote(
   structureSegment: string,
   challengeSlug: string,
   candidateId: string,
-  email: string
+  email: string,
+  opts?: {
+    otp?: string
+    ipHash?: string | null
+    clientIp?: string
+    checkBallot?: (challengeId: string, phaseKey: string) => boolean
+  }
 ) {
   const segment = structureSegment.trim().toLowerCase()
   const slug = challengeSlug.trim().toLowerCase()
@@ -312,15 +350,111 @@ export async function submitPublicChallengeVote(
     throw new PublicVoteError('Aucune phase active pour le vote', 403)
   }
 
+  if (opts?.checkBallot?.(challenge.id, phaseKey)) {
+    throw new PublicVoteError('Ce navigateur a déjà voté pour ce tour', 409)
+  }
+
+  const { isVoteIpLimitReached, recordSuccessfulVoteIp } = await import(
+    '@/lib/votes/vote-ip-guard'
+  )
+  if (opts?.clientIp && (await isVoteIpLimitReached(challenge.id, phaseKey, opts.clientIp))) {
+    throw new PublicVoteError(
+      'Trop de votes depuis cette connexion. Réessayez plus tard.',
+      429
+    )
+  }
+
   const { vote, candidate } = await recordVote(
     challenge.id,
     candidateId,
     email,
     phaseKey,
-    requiredPhaseId
+    requiredPhaseId,
+    opts
   )
 
-  return { vote, challenge, structure, candidate }
+  if (opts?.clientIp) {
+    await recordSuccessfulVoteIp(challenge.id, phaseKey, opts.clientIp)
+  }
+
+  return { vote, challenge, structure, candidate, phaseKey }
+}
+
+export async function requestPublicVoteOtpByToken(
+  structureSegment: string,
+  voteToken: string,
+  email: string
+) {
+  const segment = structureSegment.trim().toLowerCase()
+  const structure = await prisma.structure.findFirst({
+    where: STRUCTURE_WHERE(segment),
+    select: { id: true, name: true },
+  })
+  if (!structure) throw new PublicVoteError('Lien de vote invalide', 404)
+
+  const challenge = await findChallengeByVoteToken(structure.id, voteToken)
+  if (!challenge) throw new PublicVoteError('Lien de vote invalide ou expiré', 404)
+
+  assertVotesOpen(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const phaseKey = getVotePhaseKey(phases)
+  if (phases.enabled && !phases.activePhaseId) {
+    throw new PublicVoteError('Aucune phase active pour le vote', 403)
+  }
+
+  const { issueVoteOtp } = await import('@/lib/votes/vote-otp')
+  await issueVoteOtp({
+    challengeId: challenge.id,
+    challengeName: challenge.name,
+    phaseKey,
+    email,
+    structureName: structure.name,
+  })
+
+  return { challengeId: challenge.id, phaseKey }
+}
+
+export async function requestPublicVoteOtp(
+  structureSegment: string,
+  challengeSlug: string,
+  email: string
+) {
+  const segment = structureSegment.trim().toLowerCase()
+  const slug = challengeSlug.trim().toLowerCase()
+
+  const structure = await prisma.structure.findFirst({
+    where: STRUCTURE_WHERE(segment),
+    select: { id: true, name: true },
+  })
+  if (!structure) throw new PublicVoteError('Challenge introuvable', 404)
+
+  const challenge = await prisma.challenge.findFirst({
+    where: {
+      structureId: structure.id,
+      slug,
+      status: ChallengeStatus.ACTIVE,
+    },
+    select: { id: true, name: true, slug: true, description: true, settings: true },
+  })
+  if (!challenge) throw new PublicVoteError('Challenge introuvable ou fermé', 404)
+
+  assertVotesOpen(challenge.settings)
+  const phases = parsePhasesSettingsFromChallenge(challenge.settings)
+  const phaseKey = getVotePhaseKey(phases)
+  if (phases.enabled && !phases.activePhaseId) {
+    throw new PublicVoteError('Aucune phase active pour le vote', 403)
+  }
+
+  const { issueVoteOtp } = await import('@/lib/votes/vote-otp')
+  await issueVoteOtp({
+    challengeId: challenge.id,
+    challengeName: challenge.name,
+    phaseKey,
+    email,
+    structureName: structure.name,
+  })
+
+  return { challengeId: challenge.id, phaseKey }
 }
 
 export async function loadPublicVotePageByToken(

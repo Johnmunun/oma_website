@@ -153,11 +153,23 @@ export const RATE_LIMIT_CONFIGS = {
     windowMs: 15 * 60 * 1000,
     keyPrefix: 'challenge-register',
   },
-  // Vote public challenge
+  // Vote public challenge (tentatives formulaire)
   challengeVote: {
-    maxRequests: 5,
-    windowMs: 60 * 60 * 1000,
+    maxRequests: 8,
+    windowMs: 15 * 60 * 1000, // 15 minutes
     keyPrefix: 'challenge-vote',
+  },
+  // Votes réussis par IP / challenge / phase
+  challengeVoteOk: {
+    maxRequests: 3,
+    windowMs: 24 * 60 * 60 * 1000, // 24 heures
+    keyPrefix: 'challenge-vote-ok',
+  },
+  // Demande de code OTP vote
+  challengeVoteOtp: {
+    maxRequests: 5,
+    windowMs: 15 * 60 * 1000,
+    keyPrefix: 'challenge-vote-otp',
   },
   // Chat live challenge (par IP)
   liveChat: {
